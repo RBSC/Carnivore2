@@ -1,0 +1,52 @@
+
+
+U1 		- EP2C5Q208C8 Altera CYCLONE II (PQFP208)
+U2		- M29W640 Flash ROM (TSOP48)
+U3		- CY62167DV30 RAM (TSOP48)
+U4		- EPCS4SI8 Altera config eeprom (SOIC8)
+U5              - YAC516-E DAC 16 Stereo (SSOP24)
+U6		- M93C46MN1 (SOP8) EEPROM 				- (Optional)
+U7		- SG-310 50 MHz
+AU1,AU2		- 4558D 				  - 2
+UCT1		- AMS1117-1.2v	(SOT223)		  - 1
+UCT2,UCT3	- AMS1117-3.3v (LM1117-3.3v) (SOT223)	  - 2
+
+(smd 1210)
+C1-C4,C22,C23,
+C28 		- 10uF 10v				  - 7
+C20,C21		- 100uF 16v				  - 2
+C29		- 22-47uF 6v
+
+(smd 1206)
+C103,C105,
+C204,C205	- 4.7uF 25v				  - 4
+
+(smd 0603)
+C5-C19, C24 	- 0.1uF 				  - 19
+C25,С27,С30	
+
+C101, C102
+С201, С202 	- 1nF					  - 4
+С104, С204	- 390p					  - 2
+
+
+(smd 0603)
+R1	 	- 0 (перемычка)
+R2-R42	 	- 330 om 				  - 41
+R43-R44, R54 	- 10 om					  - 3
+R45		- 220 om				  - 1
+R46-48,R50,R52
+R65,R66,
+R101,R201	- 10 kom 				  - 9
+R53,R61-63	- 1 kom					  - 4
+R102,R103
+R202,R203 	- 4.7 kom				  - 4
+R105,R105	- 1.8 kom				  - 2
+
+
+AX1		- ST-222 (jack 3.5mm stereo)
+
+T1		- 2SC945 SOT23 (optional) npn
+T2		- 2SA733 SOT23 (optional) pnp
+T3,T4,T5	- 2SC945 SOT23				 - 3 (4)
+T6		- 2SA733 SOT23				 - 1 (2)
