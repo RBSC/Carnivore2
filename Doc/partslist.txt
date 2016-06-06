@@ -1,11 +1,12 @@
-
+Partslist for Carnivore2 FlashROM IDE SCC FMPAC cartidge
+--------------------------------------------------------
 
 U1 		- EP2C5Q208C8 Altera CYCLONE II (PQFP208)
 U2		- M29W640 Flash ROM (TSOP48)
 U3		- CY62167DV30 RAM (TSOP48)
 U4		- EPCS4SI8 Altera config eeprom (SOIC8)
 U5              - YAC516-E DAC 16 Stereo (SSOP24)
-U6		- M93C46MN1 (SOP8) EEPROM 				- (Optional)
+U6		- M93C46MN1 (SOP8) EEPROM 		  - (Optional)
 U7		- SG-310 50 MHz
 AU1,AU2		- 4558D 				  - 2
 UCT1		- AMS1117-1.2v	(SOT223)		  - 1
@@ -22,16 +23,16 @@ C103,C105,
 C204,C205	- 4.7uF 25v				  - 4
 
 (smd 0603)
-C5-C19, C24 	- 0.1uF 				  - 19
-C25,С27,С30	
+C5-C19,C24 	- 0.1uF 				  - 19
+C25,C27,C30	
 
 C101, C102
-С201, С202 	- 1nF					  - 4
-С104, С204	- 390p					  - 2
+C201, C202 	- 1nF					  - 4
+C104, C204	- 390p					  - 2
 
 
 (smd 0603)
-R1	 	- 0 (перемычка)
+R1	 	- 0 (jumper)
 R2-R42	 	- 330 om 				  - 41
 R43-R44, R54 	- 10 om					  - 3
 R45		- 220 om				  - 1
