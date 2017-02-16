@@ -1,5 +1,5 @@
-Partslist for Carnivore2 FlashROM IDE SCC FMPAC cartidge
---------------------------------------------------------
+Partslist for Carnivore2 MultiFunctional Cartridge
+--------------------------------------------------
 
 ==- Microchips SMD -==
 U1 		- EP2C5Q208C8 Altera CYCLONE II (PQFP208)
@@ -37,11 +37,10 @@ C201, C202 	- 1nF					- 4
 C104, C204	- 390pF					- 2
 
 ==- Resistors SMD 0603 -==
-R1	 	- 0 (jumper)                            - (not needed)
 R2-R42	 	- 330 Ohm 				- 41
 R43,R44,R54,R64	- 10 Ohm				- 4
 R55,R56,R45	- 220 Ohm				- 3
-R47-49,R50,R52,
+R46-48,R50,R52,
 R65,R66,
 R60,R101,R201	- 10 kOhm 				- 10
 R51,R106,R206,
@@ -51,9 +50,6 @@ R102,R103
 R202,R203 	- 4.7 kOhm				- 4
 R105,R205	- 1.8 kOhm				- 2
 R104,R204	- 100 kOhm				- 2
-
-
-R51, R55, R56, R64, R104, R204, R106, R206, R57-R60
 
 ==- Diodes non-SMD -==
 D1-D6		- 1N4148				- 6
@@ -71,3 +67,6 @@ T6		- 2SA733 SOT23				- 1
 ==- Miscellaneous -==
 LED1		- any SMD or normal LED			- 1
 KN1		- pushbutton				- 1
+
+
+See the readme.txt file for more info.
