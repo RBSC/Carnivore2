@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 MultiFunctional Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.0
+; Version 1.13
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -872,10 +872,10 @@ fptl06:
 	ret
 FPT10:
 
-; file close
-	ld	de,FCB
-	ld	c,_FCLOSE
-	call	DOS
+; file close NO! saved for next block
+;	ld	de,FCB
+;	ld	c,_FCLOSE
+;	call	DOS
 
 ; print test ROM descriptor table
 	ld	a,(F_V)			; verbose mode?
@@ -980,6 +980,7 @@ FPT04:
 DTMAP:
 	print	Analis_S
 	ld	de,0
+DTME6:				; point next portion analis
 	ld	ix,BUFTOP
 	ld	bc,#8000
 DTM01:	ld	a,(ix)
@@ -1064,6 +1065,20 @@ DTMB0:
 
 DTME:
 	ld	(BMAP),de		; save detected bit mask
+
+	ld	a,(F_V)			; verbose mode?
+	or	a
+	jr	z,DTME23
+; print bitmask
+	ld	a,(BMAP+1)
+	call	HEXOUT
+	ld	a,(BMAP)
+	call	HEXOUT	
+	ld	e," "
+	ld	c,_CONOUT
+	call	DOS
+DTME23:
+
 	ld	a,0
 
 ;    BIT E 76543210
@@ -1078,30 +1093,70 @@ DTME:
 ;    BIT D 76543210
 ;	          . B000h
 	ld	a,(BMAP+1)
-	cp	%00000001
+	bit	0,a
+;	cp	%00000001
 	ld	a,(BMAP)
-	jr	z,DTME2			; Konami5
+;	jr	z,DTME2			; Konami5
+	jr	nz,DTME2		; Konami5
 
 	ld	b,4			; AsCII 16
 	cp	%00001010		; 6000h 7000h
-	jr	z,DTME1		
-	cp	%00000010		; Zanax-EX
-	jr	z,DTME1
+	jp	z,DTME1		
+;	cp	%00000010		; Zanax-EX
+;	jr	z,DTME1
 
 	ld	b,1			; Konami (4)
 	cp	%10100010		; 6000h 8000h A000h
-	jr	z,DTME1
+	jp	z,DTME1
 	cp	%10100000		; Aleste
-	jr	z,DTME1
+	jp	z,DTME1
+	cp	%00100010		; 6000h 8000h
+	jp	z,DTME1			;
+	cp	%00100000		; 8000h
+	jp	z,DTME1
+
 
 	ld	b,3			; ASCII 8
 	cp	%00011110		; 6000h,6800h,7000h,8700h
 	jr	z,DTME1
 	cp	%00011100
 	jr	z,DTME1
+	cp	%00011000		; 0018
+	jr	z,DTME1
 
 DTME3:					; Mapper not detected
+					; second portion ?
+					; next block file read
+	ld      c,_SDMA
+	ld      de,BUFTOP
+	call    DOS
+	ld	hl,#8000
+	ld      c,_RBREAD
+	ld	de,FCB
+	call    DOS
+	ld	a,l
+	or	h
+	ld	de,(BMAP)		; load previos bitmask
+	jp	z,DTME5
+	set	7,d			; bit second seach
+	jp	DTME6			; next analise search
 
+DTME5:					; fihish file
+	ld	a,e
+	ld	b,4
+	cp	%00000010		; 0002 = ASCII 16 ZanacEX
+	jr	z,DTME1
+	cp	%00001000		; 0008 = ASCII 16
+	jr	z,DTME1
+	cp	%01001000		; 0048 = ASCII 16
+	jr	z,DTME1
+	ld	b,3
+	cp	%00001110		; 000E = ASCII 8
+	jr	z,DTME1
+	cp	%00000100		; 0004 = ASCII 8
+	jr	z,DTME1
+	cp	%00100000		; 0010 = ASCII 8
+	jr	z,DTME1
 	ld	b,0
 	jr	DTME1
 DTME2:
@@ -1110,8 +1165,17 @@ DTME2:
 	jr	z,DTME1
 	cp	%01001000		; 5000h,7000h
 	jr	z,DTME1
-	cp	%01101001
+	cp	%01101001		; 
 	jr	z,DTME1
+	cp	%11101001		; 01E9
+	jr	z,DTME1
+	cp	%01101000		; 0168
+	jr	z,DTME1
+	cp	%11001000		; 01C8
+	jr	z,DTME1
+	cp	%01000000		; 0140
+	jr	z,DTME1
+
 	ld	b,3
 	cp	%00011000
 	jr	z,DTME1
@@ -1156,20 +1220,14 @@ DTME21:
 	ld	(SRSize),a
 
 DTME22:
-	ld	a,(F_V)			; verbose mode?
-	or	a
-	jr	z,DTME23
 
-; print bitmask
-	ld	a,(BMAP+1)
-	call	HEXOUT
-	ld	a,(BMAP)
-	call	HEXOUT	
-	ld	e," "
-	ld	c,_CONOUT
+					; file close
+	ld	de,FCB
+	ld	c,_FCLOSE
 	call	DOS
 
-DTME23:	ld	a,(DMAP)
+
+	ld	a,(DMAP)
 	ld	b,a
 	call	TTAB
 	inc	hl
@@ -7042,7 +7100,7 @@ BUFTOP:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge Manager v1.0",13,10
+	db	"Carnivore2 MultiFunctional Cartridge Manager v1.13",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
