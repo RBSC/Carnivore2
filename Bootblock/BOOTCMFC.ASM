@@ -1,8 +1,13 @@
 ;
-; Carnivore2 MultiFunctional Cartridge's Boot Block
+; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.0
+; Version 1.09
 ;
+
+; !COMPILATION OPTIONS!
+CV	equ	2		; 1 = Canivore
+				; 2 = Canivore2
+; !COMPILATION OPTIONS!
 
 ; Bios Calls
 ENASLT	equ	#0024
@@ -46,7 +51,11 @@ L_STR	equ	16
 	dw	0	; DEVICE
 	dw	0	; TEXT
 	db	0,0,0,0,0,0
+  if CV=2
 	db	"CMFCCFRC"
+  else
+	db	"CSCCFRC"
+  endif
 
 ;	Frames ASCII codes
 ;	
@@ -185,13 +194,21 @@ Menu1:
 	ld	hl,#1701
 	ld	bc,#040D
 	call	FadeOut		; fade out background
+  if CV=2
 	ld	de,#4301
+  else
+	ld	de,#1304
+  endif
 	ld	hl,#1101
 	ld	bc,#040D
 	call	FadeIn		; fade in background
 	pop	de
 	ld	a,15
+  if CV=2
 	ld	hl,#4301
+  else
+	ld	hl,#1304
+  endif
 	call	PALETTE
 
 Pagep:	
@@ -294,7 +311,11 @@ dRec:
 
 	push	de
 	ld	de,#7707
+  if CV=2
 	ld	hl,#4301
+  else
+	ld	hl,#1304
+  endif
 	ld	bc,#0F0D
 	call	FadeIn		; fade in text
 	pop	de
@@ -392,7 +413,11 @@ P_F:
 
 	push	de
 	ld	hl,#7707
+  if CV=2
 	ld	de,#4301
+  else
+	ld	de,#1304
+  endif
 	ld	bc,#0F0D
 	call	FadeOut		; fade out text
 	pop	de
@@ -437,7 +462,11 @@ P_B:
 
 	push	de
 	ld	hl,#7707
+  if CV=2
 	ld	de,#4301
+  else
+	ld	de,#1304
+  endif
 	ld	bc,#0F0D
 	call	FadeOut		; fade out text
 	pop	de
@@ -494,14 +523,22 @@ RUN_CT:
 
 RUN_CT1:
 	ld	hl,#7707
+  if CV=2
 	ld	de,#4301
+  else
+	ld	de,#1304
+  endif
 	ld	bc,#0F0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
 	ld	de,#1101
+  if CV=2
 	ld	hl,#4301
+  else
+	ld	hl,#1304
+  endif
 	ld	bc,#040D
 	call	FadeOut		; fade out background
 
@@ -563,14 +600,22 @@ RUN_CR:
 
 RUN_CR1:
 	ld	hl,#7707
+  if CV=2
 	ld	de,#4301
+  else
+	ld	de,#1304
+  endif
 	ld	bc,#0F0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
 	ld	de,#1101
+  if CV=2
 	ld	hl,#4301
+  else
+	ld	hl,#1304
+  endif
 	ld	bc,#040D
 	call	FadeOut		; fade out background
 
@@ -636,14 +681,22 @@ RUN_CJ:
 
 RUN_CJ1:
 	ld	hl,#7707
+  if CV=2
 	ld	de,#4301
+  else
+	ld	de,#1304
+  endif
 	ld	bc,#0F0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
 	ld	de,#1101
+  if CV=2
 	ld	hl,#4301
+  else
+	ld	hl,#1304
+  endif
 	ld	bc,#040D
 	call	FadeOut		; fade out background
 
@@ -904,7 +957,11 @@ RAMEE
 
 ; Print help information page
 Help:
+  if CV=2
 	ld	de,#4301
+  else
+	ld	de,#1304
+  endif
 	ld	hl,#7707
 	ld	bc,#0F0D
 	call	FadeOut		; fade out text
@@ -912,7 +969,11 @@ Help:
 	call	CLS
 
 	ld	de,#1101
+  if CV=2
 	ld	hl,#4301
+  else
+	ld	hl,#1304
+  endif
 	ld	bc,#040D
 	call	FadeOut		; fade out background
 
@@ -960,13 +1021,21 @@ Help:
 	ld	bc,#040D
 	call	FadeOut		; fade out background
 
+  if CV=2
 	ld	de,#4301
+  else
+	ld	de,#1304
+  endif
 	ld	hl,#1101
 	ld	bc,#040D
 	call	FadeIn		; fade in background
 
 	ld	a,15
+  if CV=2
 	ld	hl,#4301
+  else
+	ld	hl,#1304
+  endif
 	call	PALETTE
 
 	jp	Pagep
@@ -974,7 +1043,11 @@ Help:
 
 ; Exit from boot block
 Exit:
+  if CV=2
 	ld	de,#4301
+  else
+	ld	de,#1304
+  endif
 	ld	hl,#7707
 	ld	bc,#0F0D
 	call	FadeOut		; fade out text
@@ -982,7 +1055,11 @@ Exit:
 	call	CLS
 
 	ld	de,#1101
+  if CV=2
 	ld	hl,#4301
+  else
+	ld	hl,#1304
+  endif
 	ld	bc,#040D
 	call	FadeOut		; fade out background
 
@@ -1385,8 +1462,13 @@ PrintPN:
 
 StMSG_S:
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
+  if CV=2
 	db	#8C," Carnivore2 MultiFunctional Cartridge ",#8D
 	db	#8C,"  (C) 2017 RBSC.  Press '?' for Help  ",#8D
+  else
+	db	#8C,"  Carnivore MultiFlash SCC Cartridge  ",#8D
+	db	#8C,"  (C) 2016 RBSC.  Press '?' for Help  ",#8D
+  endif
 	db	#8C,"                                      ",#8D
 	db	#8C,"  Entry selected for autostart: [  ]  ",#8D
 	db	#8C,"                                      ",#8D
@@ -1412,12 +1494,20 @@ StMSG_S:
 helpmsg:
 	db	#01,#58,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59
 	db	#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#5A
+  if CV=2
 	db	#01,#5B,"  Carnivore2 Cartridge's Help Screen  ",#01,#5F
+  else
+	db	#01,#5B,"  Carnivore Cartridge's Help Screen   ",#01,#5F
+  endif
 	db	#01,#5B,"                                      ",#01,#5F
 	db	#01,#5B," Menu Navigation and Action Keys:     ",#01,#5F
 	db	#01,#5B,"                                      ",#01,#5F
 	db	#01,#5B,#20,#01,#50,"[ESC] - boot MSX using the default  ",#01,#5F
+  if CV=2
 	db	#01,#5B,#20,#01,#57,"        configuration: all enabled  ",#01,#5F
+  else
+	db	#01,#5B,#20,#01,#57,"        configuration               ",#01,#5F
+  endif
 	db	#01,#5B,#20,#01,#57,"                                    ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[LEFT],[RIGHT] - previous/next page ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[UP],[DOWN] - select ROM/CFG entry  ",#01,#5F
