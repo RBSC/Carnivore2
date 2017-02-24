@@ -1,15 +1,20 @@
 ;
-; Carnivore2 MultiFunctional Cartridge's FlashROM Manager
+; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.13
+; Version 1.15
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
 ; WARNING!!
 ;
 
+; !COMPILATION OPTIONS!
+CV	equ	2		; 1 = Canivore
+				; 2 = Canivore2
+; !COMPILATION OPTIONS!
 
-;--- Macro for printing a $-finished string
+
+;--- Macro for printing a $-terminated string
 
 print	macro	
 	ld	de,\1
@@ -18,7 +23,7 @@ print	macro
 	endm
 
 
-	;--- System variables and routines
+;--- System calls and variables
 
 DOS:	equ	#0005		; DOS function calls entry point
 ENASLT:	equ	#0024		; BIOS Enable Slot
@@ -76,31 +81,33 @@ CardMDR2: equ   #4F80+31
 ConfFl:	equ	#4F80+32
 ADESCR:	equ	#4010
 
-L_STR:	equ	16 	; 
+;--- Important constants
 
+L_STR:	equ	16	 	; number of entries on the screen
+MAPPN:	equ	5		; max number of currently supported mappers
 
-	;--- DOS function calls
+;--- DOS function calls
 
-_TERM0:	equ	#00		;Program terminate
-_CONIN:	equ	#01		;Console input with echo
-_CONOUT:	equ	#02	;Console output
-_DIRIO:	equ	#06		;Direct console I/O
-_INNOE:	equ	#08		;Console input without echo
-_STROUT:	equ	#09	;String output
-_BUFIN:	equ	#0A		;Buffered line input
+_TERM0:	equ	#00		; Program terminate
+_CONIN:	equ	#01		; Console input with echo
+_CONOUT:	equ	#02	; Console output
+_DIRIO:	equ	#06		; Direct console I/O
+_INNOE:	equ	#08		; Console input without echo
+_STROUT:	equ	#09	; String output
+_BUFIN:	equ	#0A		; Buffered line input
 
-_CONST:	equ	#0B		;Console status
-_FOPEN: equ	#0F		;Open file
-_FCLOSE	equ	#10		;Close file
-_FSEARCHF	equ	#11	;File Search First
-_FSEARCHN	equ	#12	;File Search Next
-_FCREATE	equ	#16	;File Create
-_SDMA:	equ	#1A		;Set DMA address
-_RBWRITE	equ	#26	;Random block write
-_RBREAD:	equ	#27	;Random block read
-_TERM:	equ	#62		;Terminate with error code
-_DEFAB:	equ	#63		;Define abort exit routine
-_DOSVER:	equ	#6F	;Get DOS version
+_CONST:	equ	#0B		; Console status
+_FOPEN: equ	#0F		; Open file
+_FCLOSE	equ	#10		; Close file
+_FSEARCHF	equ	#11	; File Search First
+_FSEARCHN	equ	#12	; File Search Next
+_FCREATE	equ	#16	; File Create
+_SDMA:	equ	#1A		; Set DMA address
+_RBWRITE	equ	#26	; Random block write
+_RBREAD:	equ	#27	; Random block read
+_TERM:	equ	#62		; Terminate with error code
+_DEFAB:	equ	#63		; Define abort exit routine
+_DOSVER:	equ	#6F	; Get DOS version
 
 
 ;************************
@@ -109,7 +116,7 @@ _DOSVER:	equ	#6F	;Get DOS version
 ;***                  ***
 ;************************
 
-	org	#100			;Needed for programs running under MSX-DOS
+	org	#100			; Needed for programs running under MSX-DOS
 
 ;------------------------
 ;---  Initialization  ---
@@ -137,7 +144,7 @@ PRGSTART:
 PRTITLE:
 	print	PRESENT_S
 
-; Flags processing
+; Command line options processing
 	ld	a,1
 	call	F_Key			; C- no parameter; NZ- not flag; S(M)-ilegal flag
 	jr	c,Stfp01
@@ -196,14 +203,29 @@ Stfp08:
 	or	a
 	jr	nz,Stfp09
 
-; Find slot and make shadow copy
+; Find used slot and make shadow copy
 	call	FindSlot
 	jp	c,Exit
+	call	Testslot
+	jp	z,Stfp30
 
+; print warning for incompatible or uninit cartridge
+	print	M_Wnvc
+	ld	c,_INNOE
+	call	DOS
+	cp	"y"
+	jr	z,Stfp30
+	cp	"Y"
+	jr	z,Stfp30
+	jp	Exit
+
+Stfp30:       	
+  if CV=2
 	call	Shadow
 	jr	nz,Stfp29
 	print	M_Shad	
 Stfp29: 
+  endif
 	ld	a,(p1e)
 	or	a
 	jr	z,MainM			; no file parameter
@@ -232,13 +254,16 @@ Ma01:	ld	c,_INNOE
 	jp	z,UTIL
 	cp	"1"
 	jp	z,ADDimage
+
+  if CV=2
 	cp	"2"
 	jp	z,AddConfig
+  endif
 	cp	"3"
 	jp	z,ListRec
 	jr	Ma01
 
-
+  if CV=2
 ;
 ; Add new configuration entry
 ;
@@ -388,6 +413,8 @@ ADCQ12:	or	a			; nothing enabled?
 	jr	nz,ADC01
 	print	NothingE
 	jp	MainM
+
+  endif
 
 ADC01:
 	call	FrDIR
@@ -615,11 +642,11 @@ opf3:	push	bc
 	jp	MainM		
 	
 Fpo:
-; File was opened
+; set DMA
 	ld      c,_SDMA
 	ld      de,BUFTOP
 	call    DOS
-; Get File Size
+; get file size
 	ld	hl,FCB+#10
 	ld	bc,4
 	ld	de,Size
@@ -1289,32 +1316,46 @@ MTC1:
 	print	Num_S
 
 MTC3:		
-	ld	de,Binpsl		; input 2 digit number
-	ld	c,_BUFIN
-	call	DOS
-	ld	b,0
-	ld	a,(Binpsl+1)
-	cp	1
-	jr	z,MTC4
-	cp	2
-	jr	z,MTC5	
-	jr	MTC
-MTC4:	ld	a,(Binpsl+2)
+	ld	c,_INNOE
+	call	DOS			; input one character
+	cp	"1"
+	jr	c,MTC3
+	cp	MAPPN + "1"		; number of supported mappers + 1
+	jr	nc,MTC3
+	push	af
+	ld	e,a
+	ld	c,_CONOUT
+	call	DOS			; print selection
+	print	ONE_NL_S
+	pop	af
 	sub	a,"0"
-	jr	MTC6
-MTC5:	ld	a,(Binpsl+2)
-	sub	a,"0"
-	inc	a
-	xor	a
-	ld	b,a
-MTC7:	dec	b
-	jr	z,MTC8
-	add	a,10
-	jr	MTC7
-MTC8:	ld	b,a
-	ld	a,(Binpsl+3)
-	sub	a,"0"
-	add	b
+
+;	ld	de,Binpsl		; input 2 digit number
+;	ld	c,_BUFIN
+;	call	DOS
+;	ld	b,0
+;	ld	a,(Binpsl+1)
+;	cp	1
+;	jr	z,MTC4
+;	cp	2
+;	jr	z,MTC5	
+;	jr	MTC
+;MTC4:	ld	a,(Binpsl+2)
+;	sub	a,"0"
+;	jr	MTC6
+;MTC5:	ld	a,(Binpsl+2)
+;	sub	a,"0"
+;	inc	a
+;	xor	a
+;	ld	b,a
+;MTC7:	dec	b
+;	jr	z,MTC8
+;	add	a,10
+;	jr	MTC7
+;MTC8:	ld	b,a
+;	ld	a,(Binpsl+3)
+;	sub	a,"0"
+;	add	b
 
 MTC6:
 ; chech inp
@@ -1388,7 +1429,7 @@ Csmj4:	ld	a,2
 Csmj8:	ld	a,6
 	jr	Csm05
 
-;;
+;
 Csm04:	cp	6			; =< 16 kB
 	jr	nc,Csm07
 
@@ -1700,12 +1741,13 @@ sfm81:
 DEF01:					; d- block len
 ; search empty space
 ;
-;
 ;	ld	bc,3			; blocks 0,1,2 occupied by the system
-	ld	bc,4			; blocks 0(bios&DIR),
-					; 1,2(IDEROM), 3(FMpacROM)
-					; occupied by the system
 
+  if CV=2
+	ld	bc,4			; Blocks 0 (BB & DIR), 1-2 (IDEROM), 3 (FMPACROM) are reserved for Carnivore2
+  else
+	ld	bc,1			; Block 0 (BB & DIR) is reserved for Carnivore
+  endif
 
 DEF03:	ld	e,c
 	push	de			; save first empty BAT pointer and len
@@ -2235,7 +2277,7 @@ PrEr:
 	pop	af
 	exx
 	ret
-
+  if CV=2
 ; Move BIOS (CF card IDE and FMPAC) to shadow RAM
 Shadow:
 ; Eblock, Eblock0 - block address
@@ -2304,6 +2346,7 @@ Sha02:
         call    ENASLT       		; Select Main-RAM at bank 4000h~7FFFh
 	pop	af
 	ret
+   endif
 
 FBerase:
 ; Flash block erase 
@@ -3103,10 +3146,44 @@ primSlt:
 ASt00	ld	a,(de)
 	cp	(hl)
 	ret	nz
+	inc	hl
+	inc	de
 	djnz	ASt00
 	ld	a,(ERMSlt)
 	ld	(ix),a
 	inc	ix
+	ret
+Testslot:
+	ld	a,(ERMSlt)
+	ld	h,#40
+	call	ENASLT
+
+
+
+	ld	hl,ADESCR
+	ld	de,DESCR
+	ld	b,7
+ASt01:	ld	a,(de)
+	cp	(hl)
+	jr	nz,ASt02
+	inc	hl
+	inc	de
+	djnz	ASt01
+	jr	ASt03
+ASt02:
+	ld	de,DESCR
+	ld	b,7
+ASt04:	ld	a,(de)
+	cp	#FF
+	jr	nz,ASt03
+	inc	de
+	djnz	ASt04
+ASt03:
+	push	af
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT	
+	pop	af
 	ret
 
 ;*********************************************
@@ -3204,10 +3281,12 @@ UT01:	ld	c,_INNOE
 	jp	z,DIRINI
 	cp	"4"
 	jp	z,BootINI
+  if CV=2
 	cp	"5"
 	jp	z,IDE_INI
 	cp	"6"
 	jp	z,FMPAC_INI
+  endif
 	cp	"7"
 	jp	z,ChipErase
 	cp	27
@@ -5201,6 +5280,9 @@ QFYN:
 	print	ONE_NL_S
 	jp	UTIL
 
+
+
+  if CV=2
 IDE_INI:
 	print	IDE_I_S
 	call	QFYN
@@ -5276,6 +5358,8 @@ Ifop1:
 	ld	c,_INNOE
 	call	DOS
 	jp	UTIL
+  endif
+
 
 BootINI:
 	print	Boot_I_S
@@ -5949,8 +6033,13 @@ PRB1:
 	cp	8
 	jr	nz,PRB2	
 	ld	a,c
+   if CV=2
 	cp	13
 	jr	c,PRB2
+   else
+	cp	16
+	jr	nz,PRB2
+   endif
 	ld	a,#FF
 	jr	PRB3
 PRB2:	ld	a,(hl)
@@ -6079,12 +6168,20 @@ fkey05:
 
 DEF_CFG:
 	db	#00,#FF,00,00,"C"
+  if CV=2
 	db	"DefConfig: RAM+IDE+FMPAC+SCC  "
+  else
+	db	"DefConfig: SCC cartridge      "
+  endif
 	db	#F8,#50,#00,#8C,#3F,#40
 	db	#F8,#70,#01,#8C,#3F,#60		
 	db      #F8,#90,#02,#8C,#3F,#80		
 	db	#F8,#B0,#03,#8C,#3F,#A0	
-	db	#FF,#38,#00,#01,#FF			; correction by Alexey: first byte > 01 (all disabled except MLTMAP/SCC)
+  if CV=2
+	db	#FF,#38,#00,#01,#FF
+  else
+	db	#FF,#BC,#00,#00,#FF
+  endif
 
 CFG_TEMPL:
 	db	#00,#FF,00,00,"C"
@@ -6141,7 +6238,7 @@ CRTT5:	db	"M"
 	db	#F8,#78,#03,#08,#3F,#A0			
 	db	#FF,#8C,#07,#01,#FF
 	
-	db	0
+	db	0			; end of mapper table
 
 ; level over #4000
 ; Edit parameter table
@@ -6492,6 +6589,7 @@ Temdi:
 	dw	HBAdrD
 
 ;35 Mconf
+  if CV=2
 	db	20,8
 	dw	BUFFER+2+#3B
 	db	9
@@ -6501,6 +6599,17 @@ Temdi:
 	db	0
 	db	0
 	dw	HMconf
+  else
+	db	20,8
+	dw	BUFFER+2+#3B
+	db	4
+	db	36
+	db	29,0
+	db	34,36
+	db	1
+	db	0
+	dw	HRez
+  endif
 ;36 CardMDR
 	db	20,11
 	dw	BUFFER+2+#3C
@@ -6704,12 +6813,18 @@ EBlock0:
 EBlock:	db	0
 strp:	db	0
 strI:	dw	#8000
+
+  if CV=2
 BootFNam:
 	db	0,"BOOTCMFCBIN"
 IDEFNam:
 	db	0,"BIDECMFCBIN"
 FMPACNam:
 	db	0,"FMPCCMFCBIN"
+  else
+BootFNam:
+	db	0,"BOOTCSCCBIN"
+  endif
 Bi_FNAM db	14,0,"D:FileName.ROM",0
 ;--- File Control Block
 FCB:	db	0
@@ -6779,7 +6894,11 @@ BUFFER:	ds	256
 ; Text strings
 ;
 
+  if CV=2
 DESCR:	db	"CMFCCFRC"
+  else
+DESCR:	db	"CSCCFRC"
+  endif
 
 ABCD:	db	"0123456789ABCDEF"
 
@@ -6787,7 +6906,9 @@ MAIN_S:	db	13,10
 	db	"Main Menu",13,10
 	db	"---------",13,10
 	db	" 1 - Write new ROM image into FlashROM",13,10
+  if CV=2
 	db	" 2 - Create new configuration entry",13,10
+  endif
 	db	" 3 - Browse/edit cartridge's directory",13,10
 	db	" 9 - Open cartridge's Service Menu",13,10
 	db	" 0 - Exit to MSX-DOS",13,10,"$"
@@ -6798,9 +6919,13 @@ UTIL_S:	db	13,10
 	db	" 1 - Show FlashROM chip's block usage",13,10
 	db	" 2 - Optimize directory entries",13,10
 	db	" 3 - Init/Erase all directory entries",13,10
+  if CV=2
 	db	" 4 - Write Boot Block (bootcmfc.bin)",13,10
 	db      " 5 - Write IDE ROM BIOS (bidecmfc.bin)",13,10
 	db	" 6 - Write FMPAC ROM BIOS (fmpcmfc.bin)",13,10
+  else
+	db	" 4 - Write Boot Block (bootcscc.bin)",13,10
+  endif
 	db	" 7 - Fully erase FlashROM chip",13,10
 	db	" 0 - Return to the main menu",13,10,"$"
 
@@ -6817,10 +6942,12 @@ DIRINC_F:
 	db	13,10,"Failed to erase directory!",13,10,"$"
 Boot_I_S:
 	db	10,13,"WARNING! Overwrite Boot Block? (y/n) $"
+  if CV=2
 IDE_I_S:
 	db	10,13,"WARNING! Overwrite IDE BIOS? (y/n) $"
 FMPAC_I_S:
 	db	10,13,"WARNING! Overwrite FMPAC BIOS? (y/n) $"
+  endif
 Flash_C_S:
 	db	13,10,"Operation completed successfully!",13,10,"$"
 ANIK_S:
@@ -6864,11 +6991,11 @@ FR_ERC_S:
 F_EXIST_S:
         db      13,10,"File already exists, overwrite? (y/n)$"
 Analis_S:
-	db 	"Detecting ROM's mapper: ",10,13,"$"
+	db 	"Detecting ROM's mapper type: $"
 SelMapT:
-	db	"Selected ROM's mapper: ",10,13,"$"
+	db	"Selected ROM's mapper type: $"
 NoAnalyze:
-	db	"The ROM's mapper is set to:",10,13,"$"
+	db	"The ROM's mapper type is set to: $"
 MROMD_S:
 	db	"ROM's file size: $" 
 CTC_S:	db	"Do you confirm this mapper type? (y/n)",10,13,"$"
@@ -6906,8 +7033,10 @@ CRD_S:	db	"Directory Editor - Press [ESC] to exit",10,13
 RDELQ_S:
 	db	" - Delete this entry? (y/n)$"
 NODEL:	db	"Entry can't be deleted! Press any key...$"
-LOAD_S: db      "Ready to write the ROM image.",10,13,"Proceed or edit entry (y/n/e)?$"
-MapBL:	db	"Map of FlashROM chip's 64kb blocks",10,13,"(FF = reserved, 00 = empty):",13,10,"$"
+LOAD_S: db      "Ready to write the ROM image.",10,13
+	db	"Proceed or edit entry (y/n/e)?$"
+MapBL:	db	"Map of FlashROM chip's 64kb blocks",10,13
+	db	"(FF = reserved, 00 = empty):",13,10,"$"
 TWO_NL_S:
 	db	13,10
 ONE_NL_S:
@@ -6952,7 +7081,7 @@ ssa01:	db	"> #0000$"
 ssa02:	db	"> #4000$"
 ssa03:	db	"> #8000$"
 SSR_S:	db	"Select ROM's size:$"
-ssrMAP:	db	10,13,"64kb or more (mapper is required)$"
+ssrMAP:	db	"64kb or more (mapper is required)$"
 ssr64:	db	"64kb$"
 ssr48:	db	"48kb$"
 ssr32:	db	"32kb$"
@@ -6966,6 +7095,7 @@ TestRDT:
 
 ConfName:
 	db	10,13,"Input new configuration entry name:",10,13,"$"
+  if CV=2
 ExtSlot:
 	db	10,13,"Extend the slot? (y/n) $"
 MapRAM:
@@ -6976,6 +7106,8 @@ IDEContr:
 	db	10,13,"Enable IDE controller? (y/n) $"
 MultiSCC:
 	db	10,13,"Enable SCC and MultiMapper? (y/n) $"
+  endif
+
 EntryOK:
 	db	10,13,"Configuration entry added successfully!",10,13,"$"
 EntryFAIL:
@@ -7098,14 +7230,43 @@ BUFTOP:
 ;
 	org #C000
 
+   if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge",10,13,"Manager v1.13",13,10
+	db	"Carnivore2 MultiFunctional Cartridge",10,13,"Manager v1.15",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
-	db	"Carnivore2 cartridge was not found.",10,13,"Please specify its slot number - $"
+	db	"Carnivore2 cartridge was not found.",10,13
+	db	"Please specify its slot number - $"
 Findcrt_S:
-	db	"Found Carnivore2 in slot(s): $"
+	db	"Found Carnivore2 cartridge in slot(s): $"
+M_Wnvc:
+	db	10,13,"WARNING!",10,13
+	db	"Uninitialized cartridge or wrong version"
+	db	"of Carnivore cartridge found!",10,13
+	db	"Using this utility with the wrong",10,13
+	db	"cartridge version may damage data on it!"
+	db	"Proceed only if you have an unitialized",10,13
+	db	"Carnivore2 cartridge. Continue? (y/n)",10,13,"$"
+    else
+PRESENT_S:
+	db	3
+	db	"Carnivore MultiFlash SCC Cartridge",10,13,"Manager v1.15",13,10
+	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
+NSFin_S:
+	db	"Carnivore cartridge was not found.",10,13
+	db	"Please specify its slot number - $"
+Findcrt_S:
+	db	"Found Carnivore cartridge in slot(s): $"
+M_Wnvc:
+	db	10,13,"WARNING!",10,13
+	db	"Uninitialized cartridge or wrong version"
+	db	"of Carnivore cartridge found!",10,13
+	db	"Using this utility with the wrong",10,13
+	db	"cartridge version may damage data on it!"
+	db	"Proceed only if you have an unitialized",10,13
+	db	"Carnivore cartridge. Continue? (y/n)",10,13,"$"
+    endif
 FindcrI_S:
 	db	13,10,"Press ENTER for the found slot",10,13,"or input new slot number - $"
 ;USEDOS2_S:
@@ -7134,7 +7295,11 @@ I_MPAR_S:
 	db	"Too many parameters!",13,10,13,10,"$"
 H_PAR_S:
 	db	"Usage:",13,10,13,10
+   if CV=2
 	db	" c2man_40 [file.rom] [/h] [/v] [/a] [/su]",13,10,13,10
+   else
+	db	" cman_40 [file.rom] [/h] [/v] [/a] [/su]",13,10,13,10
+   endif
 	db	"Command line options:",13,10
 	db	" /h  - this help screen",13,10
 	db	" /v  - verbose mode (detailed info)",13,10
@@ -7148,4 +7313,5 @@ BAT:	; BAT table ( 8MB/64kB = 128 )
 	db	0,0,0
 	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000:2017"
 	db	0,0,0
+
 

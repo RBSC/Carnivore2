@@ -128,7 +128,7 @@ You can add a ROM into the chip without user interaction. The following command 
 
  C2MAN file.rom /a
 
-The utility will try to automatically detect the ROM's mapper, check whether any free space is availeble and then it will write the
+The utility will try to automatically detect the ROM's mapper, check whether any free space is available and then it will write the
 selected ROM into the FlashROM chip. If you add the "/v" option, the utility will show additional information about the chip and the
 ROM that is being added as well as the map of the free chip's blocks.
 
@@ -178,8 +178,8 @@ and you will have the possibility to add new ones.
 Notes
 -----
 
-Please don't use the CANFM utility with the Carnivore2 cartridge! It will destroy the IDE and FMPAC BIOSes as it was created for the
-different cartridge and has no idea about the new cartridge's layout.
+When using Nextor's "_fdisk" command to partition the CF card please make sure you create and start from the configuration entry that
+has the expanded slot disabled and the only enabled device there is IDE. Otherwise partitioning will not work.
 
 The audio socket of the Carnivore2 cartridge may not be suitable for connecting the headphones. It's recommended to connect it to the
 speakers or to the amplifier. This socket will only output SCC or FMPAC music and sounds. For the full experience please use the MSX's
