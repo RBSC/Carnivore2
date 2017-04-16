@@ -175,6 +175,27 @@ directory should be optimized. If you select "Yes", then there's a big chance th
 and you will have the possibility to add new ones.
 
 
+Using the cartridge as MegaRAM
+------------------------------
+
+It is possible to use the cartridge as a MegaRAM - for loading ROM images into the cartridge's own RAM and starting them after reboot.
+The "c2ramldr.com" utility allows to copy ROM images up to 1mb into the cartridge's RAM and it also creates a directory entry for the
+copied ROM with the "RAM: " prefix before the name.
+
+This utility is similar to "c2man.com" utility - it has a menu that allows user to select copying the ROM image into RAM with or without
+protection. If the ROM is copied without protection, it will be able to write into its own address space. Some games that have
+copy-protection will corrupt their data and won't work. So it's always recommended to apply protection for the copied ROM image in RAM.
+The utility can be also used from the command line to automatically load the ROM image into RAM without any user interaction.
+
+Please note that the ROM's image exists in the cartridge's RAM only until the next power-off unless there's a battery installed into the
+cartridge to always preserve RAM's data. Don't power-off your MSX if you want to keep the ROM in the cartridge's RAM. If the cartidge's
+RAM is used by some application (for example by "c2man.com") after copying the ROM, the ROM's data may become corrupted. So it's advised
+to reboot the MSX after writing of the ROM image into the cartridge's RAM is complete.
+
+The old directory entries with "RAM: " prefix, created by the "c2ramldr.com" utility can be deleted by the "c2man.com" utility. After
+power-off they become useless anyway.
+
+
 Notes
 -----
 
