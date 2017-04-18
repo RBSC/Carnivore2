@@ -1450,7 +1450,7 @@ sfm81:
 	or	a
 	jr	nz,DEFOver
 	ld	a,(Size+2)
-	cp	#10			; > 1mb?
+	cp	#0C			; < 720kb?
 	jr	c,DEFMR1
 
 DEFOver:
@@ -1461,7 +1461,7 @@ DEFOver:
 	jp	MainM
 
 DEFMR1:
-	xor	a			; RAM first empty block=0, size=0
+	ld	a,4			; start from 4th block in RAM
 	ld	(Record+02),a		; Record+02 - starting block
 	ld	a,(Size+2)
 	or	a
@@ -1621,7 +1621,7 @@ LIFM1:
 	ld	a,#34			; RAM instead of rom, Bank write enabled, 8kb pages, control off
 	ld	(R2Mult),a		; set value for Bank2
 
-	ld	a,(Record+02)		; start block (absolute block 64kB), 0 for RAM
+	ld	a,(Record+02)		; start block (absolute block 64kB), 4 for RAM/Flash
 	ld	(EBlock),a
 	ld	(AddrFR),a
         ld      a,(TPASLOT1)
@@ -1746,6 +1746,9 @@ SaveDIR:
 	call	c_dir			; calc address directory record
 	push	ix
 	pop	de			; set flash destination
+
+	xor	a
+	ld	(Record+03),a		; correct image size for RAM -> 0
 
 	ld	a,(protect)
 	or	a
@@ -3382,6 +3385,7 @@ CoTC_S:	db	10,13,"Manual mapper type selection:",13,10,"$"
 Num_S:	db	"Your selection - $"
 FileOver_S:
 	db	"File is too big to be loaded into the cartridge's RAM!",13,10
+	db	"You can only upload ROM files up to 720kb into RAM.",13,10
 	db	"Please select another file...",13,10,"$"
 MRSQ_S:	db	10,13,"The ROM's size is between 32kb and 64kb. Create Mini ROM entry? (y/n)",13,10,"$"
 Strm_S:	db	"MMROM-CSRM: $"
