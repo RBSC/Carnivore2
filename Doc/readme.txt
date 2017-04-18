@@ -188,9 +188,7 @@ copy-protection will corrupt their data and won't work. So it's always recommend
 The utility can be also used from the command line to automatically load the ROM image into RAM without any user interaction.
 
 Please note that the ROM's image exists in the cartridge's RAM only until the next power-off unless there's a battery installed into the
-cartridge to always preserve RAM's data. Don't power-off your MSX if you want to keep the ROM in the cartridge's RAM. If the cartidge's
-RAM is used by some application (for example by "c2man.com") after copying the ROM, the ROM's data may become corrupted. So it's advised
-to reboot the MSX after writing of the ROM image into the cartridge's RAM is complete.
+cartridge to always preserve RAM's data. Don't power-off your MSX if you want to keep the ROM in the cartridge's RAM.
 
 The old directory entries with "RAM: " prefix, created by the "c2ramldr.com" utility can be deleted by the "c2man.com" utility. After
 power-off they become useless anyway.
