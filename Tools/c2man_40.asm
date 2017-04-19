@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.15
+; Version 1.20
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -221,11 +221,19 @@ Stfp08:
 
 Stfp30:       	
   if CV=2
-	call	Shadow
-	jr	nz,Stfp29
-	print	M_Shad	
-Stfp29: 
+	print	M_Shad
+	call	Shadow			; shadow bios for C2
+	ld	a,(ShadowMDR)
+	cp	#21			; shadowing failed?
+	jr	z,Stfp30a
+	print	Shad_S
+	jr	Stfp30b
+Stfp30a:
+	print	Shad_F
+
+Stfp30b:
   endif
+
 	ld	a,(p1e)
 	or	a
 	jr	z,MainM			; no file parameter
@@ -2277,6 +2285,7 @@ PrEr:
 	pop	af
 	exx
 	ret
+
   if CV=2
 ; Move BIOS (CF card IDE and FMPAC) to shadow RAM
 Shadow:
@@ -2296,12 +2305,12 @@ Shadow:
 	ld	de,CardMDR+#0C		; set Bank 2 3
 	ld	bc,12
 	ldir
-	ld	a,1
+	ld	a,1			; copy from 1st 64kb block
 	ld	(AddrFR),a
 
 	xor	a
 
-; Test RAM
+; Quick test RAM availability
 	ld	hl,#A000
 	ld	a,(hl)
 	ld	b,a
@@ -2318,16 +2327,47 @@ Sha01:
 	ld	hl,#8000
 	ld	de,#A000
 	ld	bc,#2000
+	push	hl
+	push	de
+	push	bc
 	ldir
+	pop	bc
+	pop	de
+	pop	hl
+	push	af
+
+Sha01t: ld	a,(F_A)
+	or	a			; skip testing in auto mode
+	jr	nz,Sha01e
+
+	ld	a,(de)			; test copied data
+	cp	(hl)
+	jr	nz,Sha02		; failed check
+	inc	hl
+	inc	hl
+	inc	de
+	inc	de
+	dec	bc
+	dec	bc			; check every second byte (for performance reasons)
+	ld	a,b
+	or	a
+	jr	nz,Sha01t
+	ld	a,c
+	or	a
+	jr	nz,Sha01t	
+
+Sha01e:
+	pop	af
 	inc	a
 	cp	24 			; 8 * 3 128k+64k 
 	jr	c,Sha01
+
 	ld	a,#23
 	ld	(CardMDR),a
-	ld	(ShadowMDR),a
-	xor	a
-Sha02:
+	ld	(ShadowMDR),a		; shadowing enabled
 	push	af
+
+Sha02:  pop	af
 	xor	a
 	ld	(AddrFR),a	
 	ld	a,#08
@@ -2338,13 +2378,12 @@ Sha02:
 	ldir
 
 	ei
-        ld      a,(TPASLOT2)
+	ld      a,(TPASLOT2)
         ld      h,#80
         call    ENASLT
         ld      a,(TPASLOT1)
         ld      h,#40
         call    ENASLT       		; Select Main-RAM at bank 4000h~7FFFh
-	pop	af
 	ret
    endif
 
@@ -2380,7 +2419,7 @@ FBerase:
 	ld	a,#FF
     	ld	de,DatM0
     	call	CHECK
-;    	save flag CF - erase fail
+; save flag CF - erase fail
 	push	af
 	ld	a,(ShadowMDR)
 	ld	(CardMDR),a
@@ -2390,6 +2429,7 @@ FBerase:
         call    ENASLT          	; Select Main-RAM at bank 4000h~7FFFh
 	pop	af
 	ret
+
 ;**********************
 CHECK:
     	push	bc
@@ -2468,8 +2508,6 @@ SFMR:
 	ld	a,(ERMSlt)		; set 2 page
 	ld	h,#80
 	call	ENASLT
-
-
 
 	ld	d,1
 sfr06:	call	c_dir			; output ix - dir point
@@ -2672,10 +2710,11 @@ CBT03:					; finish CBAT
 	ld	h,#80
 	call	ENASLT
 	ret
+
 B1ON:	db	#F8,#50,#00,#85,#03,#40
 B2ON:	db	#F0,#70,#01,#15,#7F,#80
-B23ON:	db	#F0,#80,#00,#04,#7F,#80
-	db	#F0,#A0,#00,#34,#7F,#A0
+B23ON:	db	#F0,#80,#00,#04,#7F,#80	; for shadow source bank
+	db	#F0,#A0,#00,#34,#7F,#A0	; for shadow destination bank
 
 c_dir:
 ; input d - dir idex num
@@ -2705,6 +2744,7 @@ c_dir:
 	ld	a,(ix+1)
 	or	a			; delete ?
 	ret
+
 ;-------------------------------
 TTAB:
 ;	ld	b,(DMAP)
@@ -5284,6 +5324,19 @@ QFYN:
 
   if CV=2
 IDE_INI:
+	ld	a,(F_SU)
+	or	a			; override flag present?
+	jr	nz,IDE_INI1
+	ld	a,(ShadowMDR)
+	cp	#21			; no shadowing of bioses?
+	jr	nz,IDE_INI1
+	print	NO_B_UPD
+	print	ANIK_S
+	ld	c,_INNOE
+	call	DOS
+	jp	UTIL
+
+IDE_INI1:
 	print	IDE_I_S
 	call	QFYN
 
@@ -5298,6 +5351,19 @@ IDE_INI:
 	jr	Ifop
 
 FMPAC_INI:
+	ld	a,(F_SU)
+	or	a			; override flag present?
+	jr	nz,FMPAC_INI1
+	ld	a,(ShadowMDR)
+	cp	#21			; no shadowing of bioses?
+	jr	nz,FMPAC_INI1
+	print	NO_B_UPD
+	print	ANIK_S
+	ld	c,_INNOE
+	call	DOS
+	jp	UTIL
+
+FMPAC_INI1:
 	print	FMPAC_I_S
 	call	QFYN
 
@@ -6045,7 +6111,7 @@ PRB1:
 PRB2:	ld	a,(hl)
 	and	a,#7F			; remove the "multiple entries" flag
 PRB3:	call	HEXOUT
-;       print   Space                   ; removed for mode 40
+;	print	Space
 	pop	de
 	pop	bc
 	pop	hl
@@ -6182,6 +6248,7 @@ DEF_CFG:
   else
 	db	#FF,#BC,#00,#00,#FF
   endif
+
 
 CFG_TEMPL:
 	db	#00,#FF,00,00,"C"
@@ -6861,7 +6928,7 @@ ZeroB:	db	0
 Space:
 	db	" $"
 Bracket:
-	db	"",124,"$"
+	db	"",124," $"
 
 CPCFN:	db	0
 	db	"        RCP"
@@ -6943,6 +7010,10 @@ DIRINC_F:
 Boot_I_S:
 	db	10,13,"WARNING! Overwrite Boot Block? (y/n) $"
   if CV=2
+NO_B_UPD:
+	db	10,13,"BIOS shadowing failed, so no BIOS"
+	db	10,13,"update is possible! To override, use"
+	db	10,13,"the '/su' option at your own risk...",10,13,"$"
 IDE_I_S:
 	db	10,13,"WARNING! Overwrite IDE BIOS? (y/n) $"
 FMPAC_I_S:
@@ -6991,13 +7062,13 @@ FR_ERC_S:
 F_EXIST_S:
         db      13,10,"File already exists, overwrite? (y/n)$"
 Analis_S:
-	db 	"Detecting ROM's mapper type: $"
+	db 	"Detecting ROM's mapper type:",10,13,"$"
 SelMapT:
-	db	"Selected ROM's mapper type: $"
+	db	"Selected ROM's mapper type:",10,13,"$"
 NoAnalyze:
-	db	"The ROM's mapper type is set to: $"
+	db	"The ROM's mapper type is set to:",10,13,"$"
 MROMD_S:
-	db	"ROM's file size: $" 
+	db	"ROM's file size:",10,13,"$" 
 CTC_S:	db	"Do you confirm this mapper type? (y/n)",10,13,"$"
 CoTC_S:	db	10,13,"Manual mapper type selection:",13,10,"$"
 Num_S:	db	"Your selection - $"
@@ -7233,13 +7304,13 @@ BUFTOP:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge",10,13,"Manager v1.15",13,10
+	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v1.20",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found.",10,13
 	db	"Please specify its slot number - $"
 Findcrt_S:
-	db	"Found Carnivore2 cartridge in slot(s): $"
+	db	"Found Carnivore2 cartridge in slot(s):",10,13,"$"
 M_Wnvc:
 	db	10,13,"WARNING!",10,13
 	db	"Uninitialized cartridge or wrong version"
@@ -7251,7 +7322,7 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC Cartridge",10,13,"Manager v1.15",13,10
+	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v1.20",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found.",10,13
@@ -7273,7 +7344,9 @@ FindcrI_S:
 ;	db	"*** DOS2 has been detected ***",10,13
 SltN_S:	db	13,10,"Using slot - $"
 
-M_Shad:	db	"Copying ROM BIOS to RAM (shadow copy)",10,13,"$"
+M_Shad:	db	"Copying ROM BIOS to RAM (shadow copy):",10,13,"$"
+Shad_S:	db	"OK",10,13,"$"
+Shad_F:	db	"FAILED!",10,13,"$"
 
 M29W640:
         db      "FlashROM chip detected: M29W640G$"
@@ -7296,16 +7369,17 @@ I_MPAR_S:
 H_PAR_S:
 	db	"Usage:",13,10,13,10
    if CV=2
-	db	" c2man_40 [file.rom] [/h] [/v] [/a] [/su]",13,10,13,10
+	db	"c2man_40 [file.rom] [/h] [/v] [/a] [/su]",13,10,13,10
    else
-	db	" cman_40 [file.rom] [/h] [/v] [/a] [/su]",13,10,13,10
+	db	"cman_40 [file.rom] [/h] [/v] [/a] [/su]",13,10,13,10
    endif
 	db	"Command line options:",13,10
 	db	" /h  - this help screen",13,10
 	db	" /v  - verbose mode (detailed info)",13,10
 	db	" /a  - autodetect and write ROM image",13,10
 	db	" /su - enable Super User mode",13,10
-	db	"       (editing all registers = RISKY!)",10,13,"$"
+	db	"      (editing all registers + IDE BIOS",10,13
+	db	"       writing without shadow copy)",10,13,"$"
 
 BAT:	; BAT table ( 8MB/64kB = 128 )
 	ds	128	
@@ -7313,5 +7387,12 @@ BAT:	; BAT table ( 8MB/64kB = 128 )
 	db	0,0,0
 	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000:2017"
 	db	0,0,0
+
+
+
+
+
+
+
 
 

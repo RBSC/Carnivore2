@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.15
+; Version 1.20
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -221,11 +221,19 @@ Stfp08:
 
 Stfp30:       	
   if CV=2
-	call	Shadow
-	jr	nz,Stfp29
-	print	M_Shad	
-Stfp29: 
+	print	M_Shad
+	call	Shadow			; shadow bios for C2
+	ld	a,(ShadowMDR)
+	cp	#21			; shadowing failed?
+	jr	z,Stfp30a
+	print	Shad_S
+	jr	Stfp30b
+Stfp30a:
+	print	Shad_F
+
+Stfp30b:
   endif
+
 	ld	a,(p1e)
 	or	a
 	jr	z,MainM			; no file parameter
@@ -2277,6 +2285,7 @@ PrEr:
 	pop	af
 	exx
 	ret
+
   if CV=2
 ; Move BIOS (CF card IDE and FMPAC) to shadow RAM
 Shadow:
@@ -2296,12 +2305,12 @@ Shadow:
 	ld	de,CardMDR+#0C		; set Bank 2 3
 	ld	bc,12
 	ldir
-	ld	a,1
+	ld	a,1			; copy from 1st 64kb block
 	ld	(AddrFR),a
 
 	xor	a
 
-; Test RAM
+; Quick test RAM availability
 	ld	hl,#A000
 	ld	a,(hl)
 	ld	b,a
@@ -2318,16 +2327,47 @@ Sha01:
 	ld	hl,#8000
 	ld	de,#A000
 	ld	bc,#2000
+	push	hl
+	push	de
+	push	bc
 	ldir
+	pop	bc
+	pop	de
+	pop	hl
+	push	af
+
+Sha01t: ld	a,(F_A)
+	or	a			; skip testing in auto mode
+	jr	nz,Sha01e
+
+	ld	a,(de)			; test copied data
+	cp	(hl)
+	jr	nz,Sha02		; failed check
+	inc	hl
+	inc	hl
+	inc	de
+	inc	de
+	dec	bc
+	dec	bc			; check every second byte (for performance reasons)
+	ld	a,b
+	or	a
+	jr	nz,Sha01t
+	ld	a,c
+	or	a
+	jr	nz,Sha01t	
+
+Sha01e:
+	pop	af
 	inc	a
 	cp	24 			; 8 * 3 128k+64k 
 	jr	c,Sha01
+
 	ld	a,#23
 	ld	(CardMDR),a
-	ld	(ShadowMDR),a
-	xor	a
-Sha02:
+	ld	(ShadowMDR),a		; shadowing enabled
 	push	af
+
+Sha02:  pop	af
 	xor	a
 	ld	(AddrFR),a	
 	ld	a,#08
@@ -2338,13 +2378,12 @@ Sha02:
 	ldir
 
 	ei
-        ld      a,(TPASLOT2)
+	ld      a,(TPASLOT2)
         ld      h,#80
         call    ENASLT
         ld      a,(TPASLOT1)
         ld      h,#40
         call    ENASLT       		; Select Main-RAM at bank 4000h~7FFFh
-	pop	af
 	ret
    endif
 
@@ -2380,7 +2419,7 @@ FBerase:
 	ld	a,#FF
     	ld	de,DatM0
     	call	CHECK
-;    	save flag CF - erase fail
+; save flag CF - erase fail
 	push	af
 	ld	a,(ShadowMDR)
 	ld	(CardMDR),a
@@ -2390,6 +2429,7 @@ FBerase:
         call    ENASLT          	; Select Main-RAM at bank 4000h~7FFFh
 	pop	af
 	ret
+
 ;**********************
 CHECK:
     	push	bc
@@ -2468,8 +2508,6 @@ SFMR:
 	ld	a,(ERMSlt)		; set 2 page
 	ld	h,#80
 	call	ENASLT
-
-
 
 	ld	d,1
 sfr06:	call	c_dir			; output ix - dir point
@@ -2672,10 +2710,11 @@ CBT03:					; finish CBAT
 	ld	h,#80
 	call	ENASLT
 	ret
+
 B1ON:	db	#F8,#50,#00,#85,#03,#40
 B2ON:	db	#F0,#70,#01,#15,#7F,#80
-B23ON:	db	#F0,#80,#00,#04,#7F,#80
-	db	#F0,#A0,#00,#34,#7F,#A0
+B23ON:	db	#F0,#80,#00,#04,#7F,#80	; for shadow source bank
+	db	#F0,#A0,#00,#34,#7F,#A0	; for shadow destination bank
 
 c_dir:
 ; input d - dir idex num
@@ -2705,6 +2744,7 @@ c_dir:
 	ld	a,(ix+1)
 	or	a			; delete ?
 	ret
+
 ;-------------------------------
 TTAB:
 ;	ld	b,(DMAP)
@@ -5284,6 +5324,19 @@ QFYN:
 
   if CV=2
 IDE_INI:
+	ld	a,(F_SU)
+	or	a			; override flag present?
+	jr	nz,IDE_INI1
+	ld	a,(ShadowMDR)
+	cp	#21			; no shadowing of bioses?
+	jr	nz,IDE_INI1
+	print	NO_B_UPD
+	print	ANIK_S
+	ld	c,_INNOE
+	call	DOS
+	jp	UTIL
+
+IDE_INI1:
 	print	IDE_I_S
 	call	QFYN
 
@@ -5298,6 +5351,19 @@ IDE_INI:
 	jr	Ifop
 
 FMPAC_INI:
+	ld	a,(F_SU)
+	or	a			; override flag present?
+	jr	nz,FMPAC_INI1
+	ld	a,(ShadowMDR)
+	cp	#21			; no shadowing of bioses?
+	jr	nz,FMPAC_INI1
+	print	NO_B_UPD
+	print	ANIK_S
+	ld	c,_INNOE
+	call	DOS
+	jp	UTIL
+
+FMPAC_INI1:
 	print	FMPAC_I_S
 	call	QFYN
 
@@ -6944,6 +7010,9 @@ DIRINC_F:
 Boot_I_S:
 	db	10,13,"WARNING! The Boot Block will be overwritten! Proceed? (y/n) $"
   if CV=2
+NO_B_UPD:
+	db	10,13,"BIOS shadowing failed, so no BIOS update is possible!"
+	db	10,13,"To override, use the '/su' option at your own risk...",10,13,"$"
 IDE_I_S:
 	db	10,13,"WARNING! The IDE BIOS will be overwritten! Proceed? (y/n) $"
 FMPAC_I_S:
@@ -7231,7 +7300,7 @@ BUFTOP:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge Manager v1.15",13,10
+	db	"Carnivore2 MultiFunctional Cartridge Manager v1.20",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -7245,7 +7314,7 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC Cartridge Manager v1.15",13,10
+	db	"Carnivore MultiFlash SCC Cartridge Manager v1.20",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found. Please specify its slot number - $"
@@ -7263,7 +7332,9 @@ FindcrI_S:
 ;	db	"*** DOS2 has been detected ***",10,13
 SltN_S:	db	13,10,"Using slot - $"
 
-M_Shad:	db	"Copying ROM BIOS to RAM (shadow copy)",10,13,"$"
+M_Shad:	db	"Copying ROM BIOS to RAM (shadow copy): $"
+Shad_S:	db	"OK",10,13,"$"
+Shad_F:	db	"FAILED!",10,13,"$"
 
 M29W640:
         db      "FlashROM chip detected: M29W640G$"
@@ -7295,7 +7366,7 @@ H_PAR_S:
 	db	" /v  - verbose mode (detailed information)",13,10
 	db	" /a  - autodetect and write ROM image (no user interaction)",13,10
 	db	" /su - enable Super User mode",13,10
-	db	"       (allows editing all registers = RISKY!)",10,13,"$"
+	db	"       (editing all registers + IDE BIOS writing without shadow copy)",10,13,"$"
 
 BAT:	; BAT table ( 8MB/64kB = 128 )
 	ds	128	
