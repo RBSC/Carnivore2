@@ -97,7 +97,7 @@ The utility supports the following command line options:
  /h  - help screen
  /v  - verbose mode (show detailed information)
  /a  - automatically detect and write ROM image (no user interaction needed)
- /su - enable Super User mode (allows editing all registers: this is RISKY!)
+ /su - enable Super User mode (allows editing all registers and overriding IDE BIOS write lock when BIOS shadowing is off)
 
 The utility is normally able to find the inserted cartridge by itself. If the utility can't find the cartridge, you will need
 to input the slot number manually and press Enter. The slot number is "10" for first slot, "20" for second slot, and so on.
