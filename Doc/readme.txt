@@ -175,6 +175,21 @@ directory should be optimized. If you select "Yes", then there's a big chance th
 and you will have the possibility to add new ones.
 
 
+Loading and saving RCP files
+----------------------------
+
+When a ROM file doesn't start properly after being detected by the "c2man" utility, there may be a need to adjust its configuration.
+This can be done either manually - by editing the configuration registers or by loading an RCP (Register Configuration Preset) file.
+We are providing a few RCP files for the ROM files that are not working correctly with default configuration. To load the RCP file
+you need to run the "c2man" utility, enter the directory editor and start editing the selected ROM entry. When editing, select the
+"Save/load register preset" option and then use "Load register preset file". When asked, enter the preset's file name and it will
+be loaded for the entry you are editing. Just save the entry with the new settings and your ROM will start working correctly.
+
+When you are making your own configuration settings for a selected ROM file, you can always save them into RCP file. You need to
+select the "Save/load register preset" option and then use "Save register preset file". When asked, entry the name of the RCP file
+and it will be saved for future use.
+
+
 Using the cartridge as MegaRAM
 ------------------------------
 

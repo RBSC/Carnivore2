@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.20
+; Version 1.25
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -4372,7 +4372,7 @@ gcn02:
 ; !!! Please comment the lines between this and the same text line above !!!
 
 	ld	hl,FCB2+1
-	ld	b,8+3
+	ld	b,8
 gcn06:	push	hl
 	push	bc
 	ld	e,(hl)
@@ -4382,6 +4382,23 @@ gcn06:	push	hl
 	pop	hl
 	inc	hl
 	djnz	gcn06
+
+	ld	e,"."
+	ld	c,_CONOUT
+	call	DOS
+
+	ld	hl,FCB2+9
+	ld	b,3
+gcn07:	push	hl
+	push	bc
+	ld	e,(hl)
+	ld	c,_CONOUT
+	call	DOS
+	pop	bc
+	pop	hl
+	inc	hl
+	djnz	gcn07
+
 ;
 	ld	a,1
 	or	a
@@ -6299,7 +6316,7 @@ CRTT4:	db	"A"
 	db	#FF,#8C,#00,#01,#FF
 CRTT5:	db	"M"
 	db	"Mini ROM (without mapper)        $"		
-	db	#F8,#60,#00,#16,#7F,#40			
+	db	#F8,#60,#00,#06,#7F,#40			
 	db	#F8,#70,#01,#08,#7F,#80				
 	db      #F8,#70,#02,#08,#3F,#C0				
 	db	#F8,#78,#03,#08,#3F,#A0			
@@ -7300,7 +7317,7 @@ BUFTOP:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge Manager v1.20",13,10
+	db	"Carnivore2 MultiFunctional Cartridge Manager v1.25",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -7314,7 +7331,7 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC Cartridge Manager v1.20",13,10
+	db	"Carnivore MultiFlash SCC Cartridge Manager v1.25",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found. Please specify its slot number - $"
