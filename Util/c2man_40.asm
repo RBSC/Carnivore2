@@ -1408,7 +1408,7 @@ DE_F1:
 	jr	nc,Csm04
 
 	ld	a,#84			; set size 8kB no Ch.reg
-	ld	(Record+#26),a		; Bank 1
+	ld	(Record+#26),a		; Bank 0
 	ld	a,#8C			; set Bank off
 	ld	(Record+#2C),a		; Bank 1
 	ld	(Record+#32),a		; Bank 2
@@ -1442,7 +1442,7 @@ Csm04:	cp	6			; =< 16 kB
 	jr	nc,Csm07
 
 	ld	a,#85			; set size 16kB noCh.reg
-	ld	(Record+#26),a		; Bank 1
+	ld	(Record+#26),a		; Bank 0
 	ld	a,#8D			; set Bank off
 	ld	(Record+#2C),a		; Bank 1
 	ld	(Record+#32),a		; Bank 2
@@ -1452,10 +1452,10 @@ Csm04:	cp	6			; =< 16 kB
 Csm07:	cp	7			; =< 32 kb
 	jr	nc,Csm09
 	ld	a,#85			; set size 16kB noCh.reg
-	ld	(Record+#26),a		; Bank 1
+	ld	(Record+#26),a		; Bank 0
 	ld	a,#85			; set size 16kB noCh.reg
 	ld	(Record+#2C),a		; Bank 1
-	ld	a,#8d			; set Bank off
+	ld	a,#8D			; set Bank off
 	ld	(Record+#32),a		; Bank 2
 	ld	(Record+#38),a		; Bank 3
 	ld	a,(ix)
@@ -1499,7 +1499,7 @@ Csm09:
 	cp	7			; 64 kB ROM
 	jr	nz,Csm10
 	ld	a,#87			; set size 64kB noCh.reg
-	ld	(Record+#26),a		; Bank 1
+	ld	(Record+#26),a		; Bank 0
 	ld	a,#8D			; set Bank off
 	ld	(Record+#2C),a		; Bank 1
 	ld	(Record+#32),a		; Bank 2
@@ -1526,15 +1526,15 @@ Csm11:	ld	a,(ix+2)
 Csm10:
 ;                               	; %00001110 48 kB
 	ld	a,#85			; set size 16kB noCh.reg
-	ld	(Record+#26),a		; Bank 1
+	ld	(Record+#26),a		; Bank 0
 	ld	a,#85			; set size 16kB noCh.reg
 	ld	(Record+#2C),a		; Bank 1
 	ld	a,#85			; set size 16kB noCh.reg
 	ld	(Record+#32),a		; Bank 2
 	ld	a,#8D			; set Bank off
 	ld	(Record+#38),a		; Bank 3
-	ld	a,2
-	ld	(Record+#2B),a
+	ld	a,1
+	ld	(Record+#2B),a		; correction for bank 1
 	ld	a,(ix)
 	or	a			
 	jr	z,Csm12
@@ -2345,10 +2345,16 @@ Sha01t: ld	a,(F_A)
 	jr	nz,Sha02		; failed check
 	inc	hl
 	inc	hl
+	inc	hl
+	inc	hl
+	inc	de
+	inc	de
 	inc	de
 	inc	de
 	dec	bc
-	dec	bc			; check every second byte (for performance reasons)
+	dec	bc
+	dec	bc
+	dec	bc			; check every forth byte (for performance reasons)
 	ld	a,b
 	or	a
 	jr	nz,Sha01t

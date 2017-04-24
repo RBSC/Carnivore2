@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's ROM->RAM Loader
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.00
+; Version 1.05
 ;
 
 
@@ -1274,8 +1274,8 @@ Csm10:
 	ld	(Record+#32),a		; Bank 2
 	ld	a,#AD			; set Bank off
 	ld	(Record+#38),a		; Bank 3
-	ld	a,2
-	ld	(Record+#2B),a
+	ld	a,1
+	ld	(Record+#2B),a		; correction for bank 1
 	ld	a,(ix)
 	or	a			
 	jr	z,Csm12
@@ -3422,7 +3422,7 @@ TestRDT:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.00",13,10
+	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.05",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
