@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.25
+; Version 1.30
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -2743,12 +2743,12 @@ c_dir:
 	ld	c,a
 	ld	ix,#8000
 	add	ix,bc			; 8000h + b*64
-; test empty/delete
+; test empty/deleted
 	ld	a,(ix)
 	cp	#FF			; empty ?
-	ret	z			; RET Z=1
+	ret	z
 	ld	a,(ix+1)
-	or	a			; delete ?
+	or	a			; deleted ?
 	ret
 
 ;-------------------------------
@@ -3546,9 +3546,8 @@ ListRec:
 ; set 2 page - directory
 	call	SET2PD
 	xor	a
-	ld	(strp),a		; record num for 1st str
+	ld	(strp),a	; record num for 1st str
 
-DirCnt:
 	ld	hl,0
 	ld	(DIRCNT),hl	; zero dir entry count
 	ld	d,0		; first entry
@@ -3565,8 +3564,11 @@ DirC0:
 	jr	DirC0
 
 DirC1:	inc	d
+	ld	a,d
+	or	a		; 255+1 limit
+	jr	z,DirC2
 	ld	hl,DIRCNT
-	ld	(hl),d		; save increased counter
+	inc	(hl)		; add one entry
 	jr	DirC0
 
 DirC2:  ld	hl,DIRCNT
@@ -5440,12 +5442,15 @@ Ifop0:
 	call	LoadImage
 	jr	c,Ifop1			; if failed, C flag is set
 	print	Flash_C_S
-
-Ifop1:
+Ifop0a:
 	print	ANIK_S
 	ld	c,_INNOE
 	call	DOS
 	jp	UTIL
+
+Ifop1:
+	print	FL_er_S
+	jr	Ifop0a
   endif
 
 
@@ -5505,6 +5510,7 @@ Boot04:
 		
 Boot05:
 ;Erase Boot Block		
+	print	BootWrit
 	xor	a
 	ld	(EBlock),a
 	ld	a,#00			; 1st 1/2 Boot Block
@@ -7043,6 +7049,8 @@ FMPAC_I_S:
   endif
 Flash_C_S:
 	db	13,10,"Operation completed successfully!",13,10,"$"
+BootWrit:
+	db	"Writing Boot Block into FlashROM...$"
 ANIK_S:
 	db	"Press any key to continue",13,10,"$"
 EraseWRN1:
@@ -7326,7 +7334,7 @@ BUFTOP:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v1.25",13,10
+	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v1.30",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found.",10,13
@@ -7344,7 +7352,7 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v1.25",13,10
+	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v1.30",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found.",10,13

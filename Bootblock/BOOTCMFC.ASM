@@ -1,12 +1,15 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.09
+; Version 1.15
 ;
 
 ; !COMPILATION OPTIONS!
 CV	equ	2		; 1 = Canivore
 				; 2 = Canivore2
+EFF	equ	1		; 1 = effects (fade, palette) enabled
+				; 0 = effects disabled
+
 ; !COMPILATION OPTIONS!
 
 ; Bios Calls
@@ -160,8 +163,11 @@ DirC0:
 	jr	DirC0
 
 DirC1:	inc	d
+	ld	a,d
+	or	a		; 255+1 limit
+	jr	z,DirC2
 	ld	hl,DIRCNT
-	ld	(hl),d		; save increased counter
+	inc	(hl)		; add one entry
 	jr	DirC0
 
 DirC2:  ld	hl,DIRCNT
@@ -507,7 +513,8 @@ PB02:	ld	d,0
 ; Run selected record
 RUN_CT:
 ; Start and autostart
-; ix - point dir entry
+; ix - point entry pointer
+
 	ld	a,(ix+#3E)
 	bit	0,a
 	jp	nz,RUN_CR
@@ -575,6 +582,7 @@ RUN_CT2:
 	ld	de,CardMDR+#06
 	ld	bc,26
 	ldir
+
 ;	ld	a,(hl)
 ;	or	%00001100
 ;	ld	(de),a
@@ -648,26 +656,53 @@ RUN_CR1:
 ; ix - point dir entry
 ; 
 RUN_CR2:
-	ld	a,%00101100
+	ld	a,%00101000
 	ld	(CardMDR),a
 	ld	a,(ix+2)
 	ld	(CardMDR+#05),a	; set start block
 	push	ix
 	pop	hl
 	ld	bc,#23
-	add	hl,bc	; config data
+	add	hl,bc		; config data for registers
 	ld	de,CardMDR+#06
-	ld	bc,26
+	ld	bc,24
 	ldir
+
+	ld	a,(ix+3)
+	cp	1		; only one block long?
+	jr	nz,RUN_CR3
+	ld	a, (hl)
+	and	%00000001
+	or	1
+	ld	(de),a		; disable extended slot for small games
+	inc	hl
+	inc	de
+	ld	a,(hl)
+	and	%11111011
+	ld	(de),a		; set reconfig after jp 0
+	jr	RUN_CR4
 
 ; !!! Check the reset flag for F4 port from the directory entry!
 ; Support for this flag is pending, may be not implemented after all
+RUN_CR3:
+	ld	a,(hl)
+	ld	(de),a
+	inc	hl
+	inc	de
+	ld	a,(hl)
+	ld	(de),a
 
+RUN_CR4:
 	in	a,(#F4)
 	or	#80
 	out	(#F4),a		; avoid "warm" reset on MSX2+
 
+Reset:
+	ld	hl,ResetMSG	; print rebooting message
+	call	print	
+
 	jp	0000		; reset system
+;	db	#F7,#80,#00,#00	; RST #30 = reset if previous fails
 
 
 ; Run selected record directly (using the ROM's start adddress
@@ -728,6 +763,7 @@ RUN_CJ1:
 RUN_CJ2:
 ; Configure cart register and start ROM
 ; ix - point dir entry
+
 	ld	a,%00101100
 	ld	(CardMDR),a
 	ld	a,(ix+2)
@@ -739,6 +775,7 @@ RUN_CJ2:
 	ld	de,CardMDR+#06
 	ld	bc,26
 	ldir
+
 ;	ld	a,(hl)		; corr
 ;	or	%00001100	; corr
 ;	ld	(de),a		; corr
@@ -753,6 +790,7 @@ RUN_CJ2:
 	ld	a,#80
 	ld	(R_Base+5),a
 	jp	R_Base
+
 RJP:
 	ld	a,(#4000)
 	ld	hl,(#4002)
@@ -1095,6 +1133,14 @@ Exit:
 ; In: hl (current palette)
 ; In: bc (foreground/background colors)
 FadeIn:
+  if EFF=0
+	ld	a,b
+	push	de
+	pop	hl
+	call	PALETTE		; set target palette without fade effect
+	ret
+  endif
+
 	ld	a,b
 	call	PALETTE		; initial palette set for color
 
@@ -1152,6 +1198,14 @@ FadeL3:
 ; In: hl (current palette)
 ; In: bc (foreground/background colors)
 FadeOut:
+  if EFF=0
+	ld	a,b
+	push	de
+	pop	hl
+	call	PALETTE		; set target palette without fade effect
+	ret
+  endif
+
 	ld	a,b
 	call	PALETTE		; initial palette set for foreground color
 
@@ -1253,6 +1307,7 @@ Setfnt:	push	af
 	push	hl
 	push	de
 	push	bc
+
 ;	ld	hl,#0F84
 ;	ld	(#4F81),hl
 ;	xor	a
@@ -1260,6 +1315,7 @@ Setfnt:	push	af
 ;	ld	a,(#4F80)
 ;	or	1
 ;	ld	(#4F80),a	; disable 'holes' in ROM
+
 	ld	a,(CHSETS)
 	ld	(BSLT),a	; save bios font's slot
 	ld	hl,(CHSETA)
@@ -1285,7 +1341,8 @@ Setfnt:	push	af
 ; Set palette for a color
 ; In: a - color
 ; In: hl = palette in BRG format
-PALETTE:out	(#99),a
+PALETTE:
+	out	(#99),a
 	ld	a,#90
 	out	(#99),a
 	ei
@@ -1365,9 +1422,10 @@ sldet1:	ld	c,a
 
 ; Find position of the entry in the directory
 c_dir:
-; input d - dir idex num
-; outut	ix - dir point enter
-; output Z - empty/deleted
+; input d - dir index num
+; outut	ix - dir entry pointer
+; output Z - empty/deleted entry
+
  	ld	b,0
 	or	a 
 	ld	a,d
@@ -1386,12 +1444,13 @@ c_dir:
 	ld	c,a
 	ld	ix,#8000
 	add	ix,bc		; 8000h + b*64
+
 ; test empty/delete
 	ld	a,(ix)
-	cp	#FF		; empty?
-	ret	z		; RET Z=1
+	cp	#FF		; empty record?
+	ret	z
 	ld	a,(ix+1)
-	or	a		; deleted/empty?
+	or	a		; deleted/empty record?
 	ret
 
 
@@ -1529,6 +1588,8 @@ helpmsg:
 
 Spaces:	db	"  ",0
 
+ResetMSG:
+	db	"Rebooting MSX...",0
 PageNum:
 	db	" Page: [  ] ",0
 
