@@ -209,6 +209,7 @@ Menu1:
 	ld	bc,#040D
 	call	FadeIn		; fade in background
 	pop	de
+
 	ld	a,15
   if CV=2
 	ld	hl,#4301
@@ -225,7 +226,9 @@ Pagep:
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors (foreground=background)
 
+  if EFF=1
 	call	CLS
+  endif
 	ld	hl,#0101
 	call    POSIT
 	ld	hl,StMSG_S	; print main screen messages
@@ -314,7 +317,6 @@ dRec:
 	ld	a,d
 	exx
 	ld	d,a		; restore dir entries to top page
-
 	push	de
 	ld	de,#7707
   if CV=2
@@ -417,6 +419,7 @@ P_F:
 	cp	(hl)		; current page = max pages?
 	jp	z,CH01
 
+  if EFF=1
 	push	de
 	ld	hl,#7707
   if CV=2
@@ -427,7 +430,7 @@ P_F:
 	ld	bc,#0F0D
 	call	FadeOut		; fade out text
 	pop	de
-
+  endif
 	exx
 	ld	a,d
 	exx
@@ -466,6 +469,7 @@ P_B:
 	cp	1		; current page = first page?
 	jp	z,CH01
 
+  if EFF=1
 	push	de
 	ld	hl,#7707
   if CV=2
@@ -476,6 +480,7 @@ P_B:
 	ld	bc,#0F0D
 	call	FadeOut		; fade out text
 	pop	de
+  endif
 
 	exx
 	ld	a,d
