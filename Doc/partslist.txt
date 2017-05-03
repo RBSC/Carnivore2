@@ -3,7 +3,7 @@ Partslist for Carnivore2 MultiFunctional Cartridge
 
 ==- Microchips SMD -==
 U1 		- EP2C5Q208C8 Altera CYCLONE II (PQFP208)
-U2		- M29W640 Flash ROM (TSOP48)
+U2		- M29W640GB Flash ROM (TSOP48)
 U3		- CY62167DV30 RAM (TSOP48)
 U4		- EPCS4SI8 Altera config eeprom (SOIC8)
 U5              - YAC516-E DAC 16 Stereo (SSOP24)
