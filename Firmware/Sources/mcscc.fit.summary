@@ -1,0 +1,16 @@
+Fitter Status : Successful - Fri Feb 10 21:47:08 2017
+Quartus II Version : 9.0 Build 132 02/25/2009 SJ Full Version
+Revision Name : mcscc
+Top-level Entity Name : mcscc
+Family : Cyclone II
+Device : EP2C5Q208C8
+Timing Models : Final
+Total logic elements : 3,731 / 4,608 ( 81 % )
+    Total combinational functions : 3,380 / 4,608 ( 73 % )
+    Dedicated logic registers : 1,687 / 4,608 ( 37 % )
+Total registers : 1687
+Total pins : 138 / 142 ( 97 % )
+Total virtual pins : 0
+Total memory bits : 9,426 / 119,808 ( 8 % )
+Embedded Multiplier 9-bit elements : 1 / 26 ( 4 % )
+Total PLLs : 1 / 2 ( 50 % )
