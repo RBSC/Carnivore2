@@ -1,5 +1,8 @@
-Partslist for Carnivore2 MultiFunctional Cartridge
---------------------------------------------------
+Carnivore2 MultiFunctional Cartridge version 2.2
+Copyright (c) 2017 RBSC
+
+Partslist
+---------
 
 ==- Microchips SMD -==
 U1 		- EP2C5Q208C8 Altera CYCLONE II (PQFP208)
