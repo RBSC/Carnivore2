@@ -1,7 +1,8 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.15
+; Portions (c) Grauw
+; Version 1.20
 ;
 
 ; !COMPILATION OPTIONS!
@@ -9,6 +10,7 @@ CV	equ	2		; 1 = Canivore
 				; 2 = Canivore2
 EFF	equ	1		; 1 = effects (fade, palette) enabled
 				; 0 = effects disabled
+
 
 ; !COMPILATION OPTIONS!
 
@@ -37,6 +39,7 @@ BFNT	equ	#F562
 DIRCNT	equ	#F564
 DIRPAG	equ	#F566
 CURPAG	equ	#F568
+VDPVER	equ	#F56A
 
 ; Card configuration registers
 CardMDR equ	#4F80
@@ -137,6 +140,10 @@ Menu:
 ; !!! check for incompatible systems and skip font loading
         call	Setfnt		; set font
 
+	xor	a
+	ld	(VDPVER),a	; VDP is 9918 by default	
+	call	DetVDP		; Detect actual VDP
+
 	ld	c,d
 	exx
 	ld	a,1
@@ -209,7 +216,6 @@ Menu1:
 	ld	bc,#040D
 	call	FadeIn		; fade in background
 	pop	de
-
 	ld	a,15
   if CV=2
 	ld	hl,#4301
@@ -226,9 +232,7 @@ Pagep:
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors (foreground=background)
 
-  if EFF=1
 	call	CLS
-  endif
 	ld	hl,#0101
 	call    POSIT
 	ld	hl,StMSG_S	; print main screen messages
@@ -317,6 +321,7 @@ dRec:
 	ld	a,d
 	exx
 	ld	d,a		; restore dir entries to top page
+
 	push	de
 	ld	de,#7707
   if CV=2
@@ -419,7 +424,6 @@ P_F:
 	cp	(hl)		; current page = max pages?
 	jp	z,CH01
 
-  if EFF=1
 	push	de
 	ld	hl,#7707
   if CV=2
@@ -430,7 +434,7 @@ P_F:
 	ld	bc,#0F0D
 	call	FadeOut		; fade out text
 	pop	de
-  endif
+
 	exx
 	ld	a,d
 	exx
@@ -469,7 +473,6 @@ P_B:
 	cp	1		; current page = first page?
 	jp	z,CH01
 
-  if EFF=1
 	push	de
 	ld	hl,#7707
   if CV=2
@@ -480,7 +483,6 @@ P_B:
 	ld	bc,#0F0D
 	call	FadeOut		; fade out text
 	pop	de
-  endif
 
 	exx
 	ld	a,d
@@ -1347,6 +1349,12 @@ Setfnt:	push	af
 ; In: a - color
 ; In: hl = palette in BRG format
 PALETTE:
+	push	af
+	ld	a,(VDPVER)	; detect if 9918 is used, skip pallette operations then
+	or	a
+	jr	z,PALEND
+	di
+	pop	af
 	out	(#99),a
 	ld	a,#90
 	out	(#99),a
@@ -1357,6 +1365,9 @@ PALETTE:
         out	(#9A),a
         ld	a,l
         out	(#9A),a
+	push	af
+PALEND:
+	pop	af
 	ret
 
 
@@ -1516,6 +1527,58 @@ PrintPN:
 	pop	hl
 	ret
 
+
+; Test if the VDP is a TMS9918A
+; Out A: 0=9918, 1=9938, 2=9958
+;
+DetVDP:
+	in	a,(#99)		; read s#0, make sure interrupt flag is reset
+	di
+DetVDPW:
+	in	a,(#99)		; read s#0
+	and	a		; wait until interrupt flag is set
+	jp	p,DetVDPW
+	ld	a,2		; select s#2 on V9938
+	out	(#99),a
+	ld	a,15+128
+	out	(#99),a
+	nop
+	nop
+	in	a,(#99)		; read s#2 / s#0
+	ex	af,af'
+	xor	a		; select s#0 as required by BIOS
+	out	(#99),a
+	ld	a,15+128
+	ei
+	out	(#99),a
+	ex	af,af'
+	and	%01000000	; check if bit 6 was 0 (s#0 5S) or 1 (s#2 VR)
+	or	a
+	ret	z
+
+	ld	a,1		; select s#1
+	di
+	out	(#99),a
+	ld	a,15+128
+	out	(#99),a
+	nop
+	nop
+	in	a,(#99)		; read s#1
+	and	%00111110	; get VDP ID
+	rrca
+	ex	af,af'
+	xor	a		; select s#0 as required by BIOS
+	out	(#99),a
+	ld	a,15+128
+	ei
+	out	(#99),a
+	ex	af,af'
+	jr	z,DetVDPE	; VDP = 9938?
+	inc	a
+DetVDPE:
+	inc	a
+	ld	(VDPVER),a
+	ret
 
 ;
 ; DATA AREA
