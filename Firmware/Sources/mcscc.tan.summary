@@ -5,9 +5,9 @@ Timing Analyzer Summary
 Type           : Worst-case tsu
 Slack          : N/A
 Required Time  : None
-Actual Time    : 18.313 ns
-From           : pSltAdr[3]
-To             : B2MaskR[3]
+Actual Time    : 19.273 ns
+From           : pSltAdr[1]
+To             : R4Addr[6]
 From Clock     : --
 To Clock       : pSltClk
 Failed Paths   : 0
@@ -15,9 +15,9 @@ Failed Paths   : 0
 Type           : Worst-case tco
 Slack          : N/A
 Required Time  : None
-Actual Time    : 36.486 ns
-From           : ExpSltReg[3]
-To             : pSltDat[5]
+Actual Time    : 44.249 ns
+From           : ExpSltReg[4]
+To             : pSltDat[0]
 From Clock     : pSltWr_n
 To Clock       : --
 Failed Paths   : 0
@@ -25,9 +25,9 @@ Failed Paths   : 0
 Type           : Worst-case tpd
 Slack          : N/A
 Required Time  : None
-Actual Time    : 39.912 ns
-From           : pSltAdr[0]
-To             : pSltDat[2]
+Actual Time    : 47.281 ns
+From           : pSltAdr[13]
+To             : pSltDat[0]
 From Clock     : --
 To Clock       : --
 Failed Paths   : 0
@@ -35,19 +35,19 @@ Failed Paths   : 0
 Type           : Worst-case th
 Slack          : N/A
 Required Time  : None
-Actual Time    : 9.428 ns
+Actual Time    : 9.785 ns
 From           : pSltClk
-To             : R_AOUT[0]
+To             : L_AOUT[1]
 From Clock     : --
 To Clock       : pSltClk
 Failed Paths   : 0
 
 Type           : Clock Setup: 'MPLL1:U2|altpll:altpll_component|_clk0'
-Slack          : 40.674 ns
+Slack          : 38.944 ns
 Required Time  : 11.29 MHz ( period = 88.571 ns )
-Actual Time    : 138.43 MHz ( period = 7.224 ns )
-From           : ADACDiv[5]
-To             : ABDAC[10]
+Actual Time    : 93.60 MHz ( period = 10.684 ns )
+From           : ADACDiv[7]
+To             : ABDAC[0]
 From Clock     : MPLL1:U2|altpll:altpll_component|_clk0
 To Clock       : MPLL1:U2|altpll:altpll_component|_clk0
 Failed Paths   : 0
@@ -55,9 +55,9 @@ Failed Paths   : 0
 Type           : Clock Setup: 'pSltClk'
 Slack          : N/A
 Required Time  : None
-Actual Time    : 31.75 MHz ( period = 31.496 ns )
+Actual Time    : 30.35 MHz ( period = 32.948 ns )
 From           : pSltSltslt_n
-To             : opll:U1|oplldat[2]
+To             : scc_wave:SccCh|SccVolChB[0]
 From Clock     : pSltClk
 To Clock       : pSltClk
 Failed Paths   : 0
@@ -76,11 +76,11 @@ Type           : Clock Hold: 'pSltClk'
 Slack          : Not operational: Clock Skew > Data Delay
 Required Time  : None
 Actual Time    : N/A
-From           : ACR[10]
-To             : R_AOUT[6]
+From           : R1Reg[3]
+To             : Maddr[15]
 From Clock     : pSltClk
 To Clock       : pSltClk
-Failed Paths   : 511
+Failed Paths   : 668
 
 Type           : Total number of failed paths
 Slack          : 
@@ -90,7 +90,7 @@ From           :
 To             : 
 From Clock     : 
 To Clock       : 
-Failed Paths   : 511
+Failed Paths   : 668
 
 --------------------------------------------------------------------------------------
 

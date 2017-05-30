@@ -251,9 +251,7 @@ architecture RTL of mcscc is
   signal RloadEn     : std_logic;
 -- Expend Slot signals  
   signal aMconf      : std_logic_vector(7 downto 0);
-  signal Mconf       : std_logic_vector(7 downto 0);
-  signal NSReg		 : std_logic_vector(7 downto 0);
-  signal aNSReg      : std_logic_vector(7 downto 0);
+  signal Mconf       : std_logic_vector(7 downto 0);  
   signal ExpSltReg   : std_logic_vector(7 downto 0);
   signal ExpSltEna   : std_logic;
   
@@ -297,7 +295,6 @@ architecture RTL of mcscc is
   signal DEC_PFF	   : std_logic;
   signal DEC_P3C	   : std_logic; 
   signal DEC_P		   : std_logic; 
-  signal MAP_S		   : std_logic;
 
 -- FM Pack
   signal clk21m  : std_logic;
@@ -362,29 +359,26 @@ begin
   ----------------------------------------------------------------
   ExpSltEna <= '1' when Mconf(7) = '1'
 	               else '0';
-  Sltsl_C_n <= '0' when pSltSltsl_n = '0' and ExpSltEna = '0' and Mconf(0) = '1'
+  Sltsl_C_n <= '0' when pSltSltsl_n = '0' and ExpSltEna = '0'
 		  else '0' when pSltSltsl_n = '0' and Mconf(0) = '1' and ( 
 						(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = "00") or
 						(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = "00") or
 						(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = "00") or
 						(pSltAdr(15 downto 14) = "11" and ExpSltReg(7 downto 6) = "00") )
                    else '1';
-  Sltsl_D_n <= '0' when pSltSltsl_n = '0' and ExpSltEna = '0' and Mconf(1 downto 0) = "10"
-		  else '0' when	pSltSltsl_n = '0' and Mconf(1) = '1' and  ExpSltEna = '1' and (
+  Sltsl_D_n <= '0' when pSltSltsl_n = '0' and Mconf(1) = '1' and  ExpSltEna = '1' and (
 						(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = "01") or
 						(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = "01") or
 						(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = "01") or
 						(pSltAdr(15 downto 14) = "11" and ExpSltReg(7 downto 6) = "01") )
                    else '1';
-  Sltsl_M_n <= '0' when pSltSltsl_n = '0' and ExpSltEna = '0' and Mconf(2 downto 0) = "100"
-		  else '0' when	pSltSltsl_n = '0' and Mconf(2) = '1' and  ExpSltEna = '1' and (
+  Sltsl_M_n <= '0' when pSltSltsl_n = '0' and Mconf(2) = '1' and  ExpSltEna = '1' and (
 						(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = "10") or
 						(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = "10") or
 						(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = "10") or
 						(pSltAdr(15 downto 14) = "11" and ExpSltReg(7 downto 6) = "10") )
                    else '1';
-  Sltsl_F_n <= '0' when pSltSltsl_n = '0' and ExpSltEna = '0' and Mconf(3 downto 0) = "1000"
-		  else '0' when	pSltSltsl_n = '0' and Mconf(3) = '1' and  ExpSltEna = '1' and (
+  Sltsl_F_n <= '0' when pSltSltsl_n = '0' and Mconf(3) = '1' and  ExpSltEna = '1' and (
 						(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = "11") or
 						(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = "11") or
 						(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = "11") or
@@ -409,7 +403,6 @@ begin
   DOutEn_n	<= '0' 	when pFlOE_nt = '0'  -- Cartridge read
 						 or (pSltSltsl_n = '0' and pSltAdr(15 downto 0) = "1111111111111111" and
 							ExpSltEna = '1' and pSltRd_n = '0') -- Expand Slot Register read
-						 or (DecMDR = '1' and CardMDR(0) = '0' and pSltRd_n = '0') -- MDR registers read				 
 						 or (IDEROMCs_n = '0' and pSltRd_n = '0') -- IDE ROM read
 						 or (IDEReg = '1' and pSltRd_n = '0') -- IDE Register read
 						 or ((DEC_PFC ='1' or  DEC_PFD ='1' or DEC_PFE ='1' or DEC_PFF ='1' or DEC_P3C ='1')
@@ -438,65 +431,16 @@ begin
   
   -- MAPPER register read
 	        else "Z" & MAP_FC(6 downto 0) when ((pSltAdr(7 downto 0) = "11111100" and pSltIorq_n = '0' and Port3C(5) = '0') -- MAP reg FC
-                                                or DEC_PFC ='1') and pSltRd_n = '0' and MAP_S = '1'
- 	        else "ZZ" & MAP_FC(5 downto 0) when ((pSltAdr(7 downto 0) = "11111100" and pSltIorq_n = '0' and Port3C(5) = '0') -- MAP reg FC
-                                                or DEC_PFC ='1') and pSltRd_n = '0' and MAP_S = '0'
+                                                or DEC_PFC ='1') and pSltRd_n = '0'
             else "Z" & MAP_FD(6 downto 0) when ((pSltAdr(7 downto 0) = "11111101" and pSltIorq_n = '0' and Port3C(5) = '0') -- MAP reg FD
-                                                or DEC_PFD ='1') and pSltRd_n = '0' and MAP_S = '1'
-            else "ZZ" & MAP_FD(5 downto 0) when ((pSltAdr(7 downto 0) = "11111101" and pSltIorq_n = '0' and Port3C(5) = '0') -- MAP reg FD
-                                                or DEC_PFD ='1') and pSltRd_n = '0' and MAP_S = '0'
+                                                or DEC_PFD ='1') and pSltRd_n = '0'
             else "Z" & MAP_FE(6 downto 0) when ((pSltAdr(7 downto 0) = "11111110" and pSltIorq_n = '0' and Port3C(5) = '0') -- MAP reg FE
-                                                or DEC_PFE ='1') and pSltRd_n = '0' and MAP_S = '1'
-            else "ZZ" & MAP_FE(5 downto 0) when ((pSltAdr(7 downto 0) = "11111110" and pSltIorq_n = '0' and Port3C(5) = '0') -- MAP reg FE
-                                                or DEC_PFE ='1') and pSltRd_n = '0' and MAP_S = '0'                                                                                                                                              
+                                                or DEC_PFE ='1') and pSltRd_n = '0' 
             else "Z" & MAP_FF(6 downto 0) when ((pSltAdr(7 downto 0) = "11111111" and pSltIorq_n = '0' and Port3C(5) = '0') -- MAP reg FF
-                                                or DEC_PFF ='1') and pSltRd_n = '0' and MAP_S = '1'
-            else "ZZ" & MAP_FF(5 downto 0) when ((pSltAdr(7 downto 0) = "11111111" and pSltIorq_n = '0' and Port3C(5) = '0') -- MAP reg FF
-                                                or DEC_PFF ='1') and pSltRd_n = '0' and MAP_S = '0'
+                                                or DEC_PFF ='1') and pSltRd_n = '0'
             else Port3C when DEC_P3C ='1' and pSltRd_n = '0'    
             
---			MDRregister				
-			else CardMDR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "000000" 
-			else AddrM0  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "000001"
-			else AddrM1  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "000010"
-			else "0"&AddrM2  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "000011" 			
---						 when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "000100"
-			else "0"&aAddrFR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "000101"
-			
-			else aR1Mask when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "000110"
-			else aR1Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "000111"
-			else aR1Reg  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001000"
-			else aR1Mult when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001001"
-			else aB1MaskR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001010"
-			else aR1Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001011" 
-			
-			else aR2Mask when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001100"
-			else aR2Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001101"
-			else aR2Reg  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001110"
-			else aR2Mult when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001111"
-			else aB2MaskR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010000"
-			else aR2Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010001"
-			
-			else aR3Mask when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010010"
-			else aR3Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010011"
-			else aR3Reg  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010100"
-			else aR3Mult when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010101"
-			else aB3MaskR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010110"
-			else aR3Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010111"
-			
-			else aR4Mask when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011000"
-			else aR4Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011001"
-			else aR4Reg  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011010"
-			else aR4Mult when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011011"
-			else aB4MaskR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011100"
-			else aR4Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011101"
-			
-			else aMconf when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011110"
-			else CardMDR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011111"
-			else "00000"&ConfFl when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100000"
-			else aNSReg  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100001"
-
---	          				   					
+            				   					
 					else pFlDat ;
   
 
@@ -591,17 +535,14 @@ begin
     if (pSltRst_n = '0') then
  --     R1Reg <= aR1Reg; R2Reg <= aR2Reg; R3Reg <= aR3Reg; R4Reg <= aR4Reg;
        
-         CardMDR   <= "00110000"; -- 7b - disable is conf.regs; 
+         CardMDR   <= "00100011"; -- 7b - disable is conf.regs; 
 							   -- 6,5b - addr r.conf=0F80/4F80/8F80/CF80
                                -- 4b - enable SCC, 
                                -- 3b - delayed reconfiguration (bank registers only)
                                -- 2b - select activate bank configurations 0=of start/jmp0/rst0 1= read(400Xh)
-                               -- 1b - Shadow BIOS ( to RAM )
+                               -- 1b - Rez
                                -- 0b - Rez  
-         ConfFl    <= "010";    
-         AddrM0	<= "00000000";
-         AddrM1 <= "00000000";
-         AddrM2 <= "0000000";
+         ConfFl    <= "010";      
          AddrFR    <= "0000000";  -- shift  addr Flash Rom x 64κα
          aAddrFR    <= "0000000";
          R1Mult    <= "10000101"; -- 7b - enable page register bank 1
@@ -646,9 +587,7 @@ begin
 									-- 2 bit - enable x2 Expand slot MMM RAM mapper
 									-- 1 bit - enable x1 Expand slot CF card disk interface
 									-- 0 bit - enable x0 Expand slot SCC Cartridge
-		 MAP_S <= '0' ; -- MAP size 1 MB
-		 NSReg <= "00000000" ; -- NonStandartRegister
-		 aNSReg <= "00000000" ;
+								
        
     elsif (pSltClk_n'event and pSltClk_n = '1') then
 
@@ -686,11 +625,11 @@ begin
         if (pSltAdr(5 downto 0) = "011100") then aB4MaskR <= pSltDat ; end if;
         if (pSltAdr(5 downto 0) = "011101") then aB4AdrD  <= pSltDat ; end if;
  
-        if (pSltAdr(5 downto 0) = "011110" and (pSltDat(7) = '1' or pSltDat(3 downto 0) /= "1111" )) then aMconf    <= pSltDat ; end if;
+        if (pSltAdr(5 downto 0) = "011110") then aMconf    <= pSltDat ; end if;
         if (pSltAdr(5 downto 0) = "011111") then CardMDR <= pSltDat ; end if;
  ---------------------------------------------------------------------------------------       
         if (pSltAdr(5 downto 0) = "100000") then ConfFl  <= pSltDat(2 downto 0); end if;
-        if (pSltAdr(5 downto 0) = "100001") then aNSReg  <= pSltDat(7 downto 0); end if;
+        
       end if;
  -- delayed reconfiguration
      if RloadEn = '1' then
@@ -724,8 +663,7 @@ begin
       B4MaskR <= aB4MaskR;
       B4AdrD  <= aB4AdrD;   
       
-      Mconf   <= aMconf; 
-      NSReg   <= aNSReg;  
+      Mconf   <= aMconf;   
       end if;
     
               -- Mapped I/O port access on R1 Bank resister write
@@ -800,8 +738,8 @@ begin
 					 		             or (MR2A(3) = '0' and R2Mult(5) = '0')
 					 		             or (MR3A(3) = '0' and R3Mult(5) = '0')
 					 		             or (MR4A(3) = '0' and R4Mult(5) = '0') )
-		 else '0' when IDEROMCs_n = '0' and CardMDR(1) = '0' -- IDE ROM read
-		 else '0' when Sltsl_F_n = '0'  and CardMDR(1) = '0' and pSltAdr(15 downto 14) = "01" and CsRAM8k = '0'  -- FM Pack ROM read
+		 else '0' when IDEROMCs_n = '0' -- IDE ROM read
+		 else '0' when Sltsl_F_n = '0' and pSltAdr(15 downto 14) = "01" and CsRAM8k = '0'  -- FM Pack ROM read
 		 else '1';
 
   -- RAM -ChipSelect
@@ -814,8 +752,6 @@ begin
 					   or (MR3A(3) = '0' and R3Mult(5) = '1')
 					   or (MR4A(3) = '0' and R4Mult(5) = '1'))
 		 else '0' when Sltsl_F_n = '0' and pSltAdr(15 downto 13) = "010" and CsRAM8k = '1'  -- FM Pack RAM
-		 else '0' when IDEROMCs_n = '0' and CardMDR(1) = '1' -- Shadow IDE ROM read
-		 else '0' when Sltsl_F_n = '0'  and CardMDR(1) = '1' and pSltAdr(15 downto 14) = "01" -- Shadow FM Pack ROM read
   		 else '1';
              
   -- Flash -OutputEnable (-Gate)
@@ -851,11 +787,11 @@ begin
   -- Adress Flash/ROM mapping          
   pFlAdr(22 downto 0) <=  ("000000" & IDEROMADDR(16) + "0000001") & IDEROMADDR(15 downto 0) when Sltsl_D_n = '0' -- IDE ROM Addr 10000h-2FFFFh
 			else   "0000011" & R7FF7 & pSltAdr(13 downto 0) when SltSl_F_n = '0' and CsRAM8k = '0'-- FM Pack ROM 30000h-3FFFFh
-			else   "0001111" & "111" & pSltAdr(12 downto 0) when SltSl_F_n = '0' and CsRAM8k = '1'-- FM Pack RAM8Kb 
-			else   "01" & (AddrMAP(6) or (not MAP_S)) & AddrMAP(5 downto 0) & pSltAdr(13 downto 0) when SltSl_M_n = '0' -- Mapper RAM 
+			else   "0111111" & "111" & pSltAdr(12 downto 0) when SltSl_F_n = '0' and CsRAM8k = '1'-- FM Pack RAM8Kb 
+			else   "00" & AddrMAP & pSltAdr(13 downto 0) when SltSl_M_n = '0' -- Mapper RAM 
     
 			else   AddrM2(6 downto 0) & AddrM1(7 downto 0) & AddrM0(7 downto 0) 
-                         when (DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "000100") -- Direct card vector port
+                         when (DecMDR = '1' and pSltAdr(5 downto 0) = "000100") -- Direct card vector port
                                    
 			else  (AddrFR(6 downto 0) + Maddr(22 downto 16)) & Maddr(15 downto 0); -- Cartridge 
   
@@ -1360,7 +1296,7 @@ begin
 -- Sltsl_F_n
 --	7FF4h: write YM-2413 register port (write only)
 --	7FF5h: write YM-2413 data port (write only)
---	7FF6h: activate OPLL I/O ports (read/write)
+--	7FF6h: activate OPLL (read/write)
 --	7FF7h: ROM page (read/write)
 --  4Dh to 5FFEh and 69h to 5FFFh. Now 8kB SRAM is active in 4000h - 5FFFh 
 
@@ -1403,10 +1339,8 @@ begin
   pYM2413_A <= pSltAdr(0);
   xena <=  '1';
   pYM2413_We_n <= not WRh1;-- pSltWr_n;
-  pYM2413_Cs_n <= '0' when pSltAdr(7 downto 1) = "0111110" and pSltIorq_n = '0' and ( R7FF6b0 = '1' or Mconf(5) = '1')  -- processor port address (7C,7D)
-  			 else '0' when CsOPLL = '1' -- and R7FF6b0 = '1'
---pYM2413_Cs_n <= '0' when pSltAdr(7 downto 1) = "0111110" and pSltIorq_n = '0' and R7FF6b4 = '1' and Mconf(5) = '1'  -- processor port address (7C,7D)
---			 else '0' when CsOPLL = '1' and R7FF6b0 = '1'
+  pYM2413_Cs_n <= '0' when pSltAdr(7 downto 1) = "0111110" and pSltIorq_n = '0' and R7FF6b4 = '1' and Mconf(5) = '1'  -- processor port address (7C,7D)
+  			 else '0' when CsOPLL = '1' and R7FF6b0 = '1'
              else '1';
 
 --       mix := ('0'&MO) + ('0'&RO) - "010 0000 0000";
