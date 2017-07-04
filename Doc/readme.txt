@@ -1,6 +1,11 @@
 Carnivore2 MultiFunctional Cartridge version 2.2
 Copyright (c) 2017 RBSC
 
+
+WARNING! To avoid damage to the Carnivore2 cartridge and your MSX computer hardware never insert or remove the cartridge
+when a computer is powered on! Always power off your computer before inserting or removing of any cartridge!
+
+
 The Setup
 ---------
 
