@@ -1,6 +1,12 @@
 Carnivore2 MultiFunctional Cartridge version 2.2
 Copyright (c) 2017 RBSC
 
+
+NOTE:
+On the boards version 2.0 and 2.1 the resistor R49 should be treated as R46. Also the resistor
+R47's label is on the other side of the board.
+
+
 Partslist
 ---------
 
@@ -48,7 +54,7 @@ R65,R66,
 R60,R101,R201	- 10 kOhm 				- 10
 R51,R106,R206,
 R57-R59,
-R53,R61-63	- 1 kOhm				- 10
+R53,R61-R63	- 1 kOhm				- 10
 R102,R103
 R202,R203 	- 4.7 kOhm				- 4
 R105,R205	- 1.8 kOhm				- 2
