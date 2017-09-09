@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
 ; Portions (c) Grauw
-; Version 1.20
+; Version 1.30
 ;
 
 ; !COMPILATION OPTIONS!
@@ -62,6 +62,7 @@ L_STR	equ	16
   else
 	db	"CSCCFRC"
   endif
+	db	"v1.30"
 
 ;	Frames ASCII codes
 ;	
@@ -377,6 +378,12 @@ CH01:
 	jp	z,Help
 	cp	"H"
 	jp	z,Help
+   if CV=2
+	cp	"V"
+	jp	z,SetVolume
+	cp	"v"
+	jp	z,SetVolume
+   endif
 	jr	CH01
 
 
@@ -1086,6 +1093,234 @@ Help:
 	jp	Pagep
 
 
+; Set volume screen
+  if CV=2
+SetVolume:
+	ld	de,#4301
+	ld	hl,#7707
+	ld	bc,#0F0D
+	call	FadeOut		; fade out text
+
+	call	CLS
+
+	ld	de,#1101
+	ld	hl,#4301
+	ld	bc,#040D
+	call	FadeOut		; fade out background
+
+	ld	a,4
+	ld	hl,#1101
+	call	PALETTE
+	ld	a,15
+	ld	(FORCLR),a
+	ld	a,4
+	ld	(BAKCLR),a
+	ld	(BDRCLR),a
+	call	CHCOLOR		; set screen colors (foreground=background)
+
+	ld	a,15
+	ld	hl,#1304
+	call	PALETTE
+
+	ld	de,#1304
+	ld	hl,#1101
+	ld	bc,#040D
+	call	FadeIn		; fade in background
+
+	ld	hl,VolumeScr	; print volume control screen
+	call	print
+
+	ld	de,#7707
+	ld	hl,#1304
+	ld	bc,#0F04
+	call	FadeIn		; fade in text
+
+VolPrint:
+	ld	hl,#110D	; position cursor for FMPAC volume printing
+	call    POSIT
+	ld	a,(CardMDR+#22)
+	rra
+	rra
+	rra
+	and	7
+	ld	b,a
+	inc	b
+	add	"1"
+	call	CHPUT
+
+	ld	hl,#050F	; FMPAC indicator position 1
+	call	POSIT
+	ld	hl,IndEmpty
+	call	print
+	ld	hl,#0510	; FMPAC indicator position 2
+	call	POSIT
+	ld	hl,IndEmpty
+	call	print
+	ld	hl,#050F	; FMPAC indicator position 1
+IndPrn1:
+	call	POSIT
+	push	hl
+	push	hl
+	ld	hl,VolumeInd	; output current volume
+	call	print
+	pop	hl
+	inc	l
+	call	POSIT
+	ld	hl,VolumeInd	; output current volume
+	call	print
+	pop	hl
+	inc	h
+	inc	h
+	inc	h
+	inc	h
+	djnz	IndPrn1
+
+	ld	hl,#1412	; position cursor for SCC volume printing
+	call	POSIT
+	ld	a,(CardMDR+#22)
+	and	7
+	ld	b,a
+	inc	b
+	add	"1"
+	call	CHPUT
+
+	ld	hl,#0514	; SCC indicator position 1
+	call	POSIT
+	ld	hl,IndEmpty
+	call	print
+	ld	hl,#0515	; SCC indicator position 2
+	call	POSIT
+	ld	hl,IndEmpty
+	call	print
+	ld	hl,#0514	; SCC indicator position 1
+IndPrn2:
+	call	POSIT
+	push	hl
+	push	hl
+	ld	hl,VolumeInd	; output current volume
+	call	print
+	pop	hl
+	inc	l
+	call	POSIT
+	ld	hl,VolumeInd	; output current volume
+	call	print
+	pop	hl
+	inc	h
+	inc	h
+	inc	h
+	inc	h
+	djnz	IndPrn2
+
+	ld	hl,#1804	; position cursor
+	call    POSIT
+
+VolLoop:
+	call	KILBUF
+	call	CHGET		; wait for a key
+
+	cp	27		; ESC
+	jp	z,VolEnd
+	cp	30		; UP
+	jr	z,VFM_UP
+	cp	31		; DOWN
+	jr	z,VFM_DOWN
+	cp	28		; LEFT
+	jr	z,VSCC_UP
+	cp	29		; RIGTH
+	jr	z,VSCC_DOWN
+	cp	11		; HOME
+	jr	z,VolReset
+	jr	VolLoop
+
+VFM_UP:
+	ld	a,(CardMDR+#22)
+	rra
+	rra
+	rra
+	inc	a
+	rla
+	rla
+	rla
+	and	%00111000
+	ld	b,a
+	ld	a,(CardMDR+#22)
+	and	%11000111
+	or	b
+	ld	(CardMDR+#22),a
+	jp	VolPrint
+
+VFM_DOWN:
+	ld	a,(CardMDR+#22)
+	rra
+	rra
+	rra
+	dec	a
+	rla
+	rla
+	rla
+	and	%00111000
+	ld	b,a
+	ld	a,(CardMDR+#22)
+	and	%11000111
+	or	b
+	ld	(CardMDR+#22),a
+	jp	VolPrint
+
+VSCC_UP:
+	ld	a,(CardMDR+#22)
+	inc	a
+	and	%00000111
+	ld	b,a
+	ld	a,(CardMDR+#22)
+	and	%11111000
+	or	b
+	ld	(CardMDR+#22),a
+	jp	VolPrint
+
+VSCC_DOWN:
+	ld	a,(CardMDR+#22)
+	dec	a
+	and	%00000111
+	ld	b,a
+	ld	a,(CardMDR+#22)
+	and	%11111000
+	or	b
+	ld	(CardMDR+#22),a
+	jp	VolPrint
+
+VolReset:
+        ld	hl,DefVol	; default volume for FMPAC and SCC
+	ld	a,(hl)
+	ld	(CardMDR+#22),a
+	jp      VolPrint
+
+
+VolEnd:
+	ld	de,#1304
+	ld	hl,#7707
+	ld	bc,#0F04
+	call	FadeOut		; fade out text
+
+	call	CLS
+
+	ld	de,#1101
+	ld	hl,#1304
+	ld	bc,#040D
+	call	FadeOut		; fade out background
+
+	ld	de,#4301
+	ld	hl,#1101
+	ld	bc,#040D
+	call	FadeIn		; fade in background
+
+	ld	a,15
+	ld	hl,#4301
+	call	PALETTE
+
+	jp	Pagep
+  endif
+
+
 ; Exit from boot block
 Exit:
   if CV=2
@@ -1580,6 +1815,7 @@ DetVDPE:
 	ld	(VDPVER),a
 	ret
 
+
 ;
 ; DATA AREA
 ; The data area must start above the registers (#4F80...)
@@ -1591,7 +1827,7 @@ StMSG_S:
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
   if CV=2
 	db	#8C," Carnivore2 MultiFunctional Cartridge ",#8D
-	db	#8C,"  (C) 2017 RBSC.  Press '?' for Help  ",#8D
+	db	#8C," (C) 2017 RBSC. Help: '?' Volume: 'V' ",#8D
   else
 	db	#8C,"  Carnivore MultiFlash SCC Cartridge  ",#8D
 	db	#8C,"  (C) 2016 RBSC.  Press '?' for Help  ",#8D
@@ -1617,6 +1853,34 @@ StMSG_S:
 	db	#8C,#01,#56,"                                    ",#01,#54,#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 	db	0
+
+  if CV=2
+VolumeScr:
+	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
+	db	#8C," Carnivore2 Cartridge's Volume Screen ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C," Volume Control Keys:                 ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C,#20,#01,#50,"[ESC]   - exit to the main menu     ",#8D
+	db	#8C,#20,#01,#57,"[UP]    - increase FMPAC volume     ",#8D
+	db	#8C,#20,#01,#57,"[DOWN]  - decrease FMPAC volume     ",#8D
+	db	#8C,#20,#01,#57,"[RIGHT] - increase SCC/SCC+ volume  ",#8D
+	db	#8C,#20,#01,#57,"[LEFT]  - decrease SCC/SCC+ volume  ",#8D
+	db	#8C,#20,#01,#56,"[HOME]  - reset to default volume   ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C," FMPAC Volume:                        ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C,#20,#20,#01,#50,"--------------------------------",#01,#52,#20,#20,#8D
+	db	#8C,#20,#20,#01,#56,"--------------------------------",#01,#54,#20,#20,#8D
+	db	#8C,"                                      ",#8D
+	db	#8C," SCC/SCC+ Volume:                     ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C,#20,#20,#01,#50,"--------------------------------",#01,#52,#20,#20,#8D
+	db	#8C,#20,#20,#01,#56,"--------------------------------",#01,#54,#20,#20,#8D
+	db	#8C,"                                      ",#8D
+	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
+	db	0
+  endif
 
 helpmsg:
 	db	#01,#58,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59
@@ -1660,8 +1924,14 @@ ResetMSG:
 	db	"Rebooting MSX...",0
 PageNum:
 	db	" Page: [  ] ",0
-
-B2ON:	db	#F0,#70,#01,#15,#7F,#80
+VolumeInd:
+	db	">>>>",0
+IndEmpty:
+	db	"--------------------------------",0
+DefVol:
+	db	#1B
+B2ON:
+	db	#F0,#70,#01,#15,#7F,#80
 
 fontdat:db	0
 

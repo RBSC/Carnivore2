@@ -71,18 +71,18 @@ Pin Name/Usage               : Location  : Dir.   : I/O Standard      : Voltage 
 ~ASDO~ / RESERVED_INPUT_WITH_WEAK_PULLUP : 1         : input  : 3.3-V LVTTL       :         : 1         : N              
 ~nCSO~ / RESERVED_INPUT_WITH_WEAK_PULLUP : 2         : input  : 3.3-V LVTTL       :         : 1         : N              
 MAPpEn                       : 3         : input  : 3.3-V LVTTL       :         : 1         : Y              
-wav[0]                       : 4         : output : 3.3-V LVTTL       :         : 1         : N              
-wav[6]                       : 5         : output : 3.3-V LVTTL       :         : 1         : N              
-pFlDatH[0]                   : 6         : input  : 3.3-V LVTTL       :         : 1         : N              
+pFlDatH[7]                   : 4         : input  : 3.3-V LVTTL       :         : 1         : N              
+wav[8]                       : 5         : output : 3.3-V LVTTL       :         : 1         : N              
+mCLC                         : 6         : output : 3.3-V LVTTL       :         : 1         : N              
 VCCIO1                       : 7         : power  :                   : 3.3V    : 1         :                
-wav[8]                       : 8         : output : 3.3-V LVTTL       :         : 1         : N              
+wav[4]                       : 8         : output : 3.3-V LVTTL       :         : 1         : N              
 GND                          : 9         : gnd    :                   :         :           :                
-pSltSound                    : 10        : output : 3.3-V LVTTL       :         : 1         : N              
-wav[3]                       : 11        : output : 3.3-V LVTTL       :         : 1         : N              
-pSltSndR                     : 12        : output : 3.3-V LVTTL       :         : 1         : N              
-RESERVED_INPUT_WITH_WEAK_PULLUP : 13        :        :                   :         : 1         :                
-pFlBYTE_n                    : 14        : output : 3.3-V LVTTL       :         : 1         : N              
-wav[4]                       : 15        : output : 3.3-V LVTTL       :         : 1         : N              
+wav[3]                       : 10        : output : 3.3-V LVTTL       :         : 1         : N              
+wav[0]                       : 11        : output : 3.3-V LVTTL       :         : 1         : N              
+pSltSndL                     : 12        : output : 3.3-V LVTTL       :         : 1         : N              
+wav[6]                       : 13        : output : 3.3-V LVTTL       :         : 1         : N              
+wav[7]                       : 14        : output : 3.3-V LVTTL       :         : 1         : N              
+pSltSndR                     : 15        : output : 3.3-V LVTTL       :         : 1         : N              
 TDO                          : 16        : output :                   :         : 1         :                
 TMS                          : 17        : input  :                   :         : 1         :                
 TCK                          : 18        : input  :                   :         : 1         :                
@@ -103,19 +103,19 @@ BICK                         : 32        : output : 3.3-V LVTTL       :         
 CKS                          : 33        : output : 3.3-V LVTTL       :         : 1         : Y              
 MCLK                         : 34        : output : 3.3-V LVTTL       :         : 1         : Y              
 IC_n                         : 35        : output : 3.3-V LVTTL       :         : 1         : Y              
-RESERVED_INPUT_WITH_WEAK_PULLUP : 36        :        :                   :         : 1         :                
-pFlDatH[7]                   : 37        : input  : 3.3-V LVTTL       :         : 1         : N              
+wav[1]                       : 36        : output : 3.3-V LVTTL       :         : 1         : N              
+pFlDatH[0]                   : 37        : input  : 3.3-V LVTTL       :         : 1         : N              
 GND                          : 38        : gnd    :                   :         :           :                
 pFlAdr[20]                   : 39        : output : 3.3-V LVCMOS      :         : 1         : Y              
-wav[5]                       : 40        : output : 3.3-V LVTTL       :         : 1         : N              
-wav[7]                       : 41        : output : 3.3-V LVTTL       :         : 1         : N              
+pFlBYTE_n                    : 40        : output : 3.3-V LVTTL       :         : 1         : N              
+wav[5]                       : 41        : output : 3.3-V LVTTL       :         : 1         : N              
 VCCIO1                       : 42        : power  :                   : 3.3V    : 1         :                
 CLK50                        : 43        : input  : 3.3-V LVTTL       :         : 1         : Y              
-wav[2]                       : 44        : output : 3.3-V LVTTL       :         : 1         : N              
+RESERVED_INPUT_WITH_WEAK_PULLUP : 44        :        :                   :         : 1         :                
 pFlVpp                       : 45        : output : 3.3-V LVTTL       :         : 1         : Y              
-mCLC                         : 46        : output : 3.3-V LVTTL       :         : 1         : N              
-wav[1]                       : 47        : output : 3.3-V LVTTL       :         : 1         : N              
-pSltSndL                     : 48        : output : 3.3-V LVTTL       :         : 1         : N              
+iFsts                        : 46        : bidir  : 3.3-V LVTTL       :         : 1         : N              
+wav[2]                       : 47        : output : 3.3-V LVTTL       :         : 1         : N              
+wav[9]                       : 48        : output : 3.3-V LVTTL       :         : 1         : N              
 GND                          : 49        : gnd    :                   :         :           :                
 GND_PLL1                     : 50        : gnd    :                   :         :           :                
 VCCD_PLL1                    : 51        : power  :                   : 1.2V    :           :                
@@ -174,7 +174,7 @@ pSltRsv5                     : 103       : output : 3.3-V LVTTL       :         
 pSltRfsh_n                   : 104       : input  : 3.3-V LVTTL       :         : 4         : Y              
 pSltCs12                     : 105       : input  : 3.3-V LVTTL       :         : 3         : Y              
 pSltSltsls_n                 : 106       : input  : 3.3-V LVTTL       :         : 3         : Y              
-wav[9]                       : 107       : output : 3.3-V LVTTL       :         : 3         : N              
+pSltSound                    : 107       : output : 3.3-V LVTTL       :         : 3         : N              
 pFlW_n                       : 108       : output : 3.3-V LVCMOS      :         : 3         : Y              
 VCCIO3                       : 109       : power  :                   : 3.3V    : 3         :                
 pSltCs1                      : 110       : input  : 3.3-V LVTTL       :         : 3         : Y              
@@ -256,7 +256,7 @@ pIDE_Rst_n                   : 185       : output : 3.3-V LVTTL       :         
 GND                          : 186       : gnd    :                   :         :           :                
 pRAMCS_n                     : 187       : output : 3.3-V LVCMOS      :         : 2         : Y              
 pIDEWR_n                     : 188       : output : 3.3-V LVTTL       :         : 2         : Y              
-iFsts                        : 189       : bidir  : 3.3-V LVTTL       :         : 2         : N              
+SDOpo                        : 189       : bidir  : 3.3-V LVTTL       :         : 2         : Y              
 VCCINT                       : 190       : power  :                   : 1.2V    :           :                
 pIDERD_n                     : 191       : output : 3.3-V LVTTL       :         : 2         : Y              
 pIDECS3_n                    : 192       : output : 3.3-V LVTTL       :         : 2         : Y              

@@ -4,7 +4,7 @@ JedecChain;
 	DefaultMfr(6E);
 
 	P ActionCode(Cfg)
-		Device PartName(EPCS4) Path("K:/msx/ALTERA_S_MSX/aa/mcscc/") File("mcscc.pof") MfrSpec(OpMask(7) Child_OpMask(1 7));
+		Device PartName(EPCS4) Path("K:/msx/ALTERA_S_MSX/aa/mcscc/") File("mcscc.pof") MfrSpec(OpMask(3) Child_OpMask(1 0));
 
 ChainEnd;
 

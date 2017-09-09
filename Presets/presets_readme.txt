@@ -14,3 +14,6 @@ SM_WORLD.RCP	- RCP file for "Super Mario World" game
 SPYVBSPY.RCP	- RCP file for "Spy vs Spy" game (any version)
 DONKKONG.RCP	- RCP file for "Donkey Kong" game (both 49 and 64kb versions)
 GBERET.RCP	- RCP file for "Green Beret" game
+
+Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
+more information about this file.
