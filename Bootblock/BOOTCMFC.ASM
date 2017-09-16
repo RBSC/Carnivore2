@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
 ; Portions (c) Grauw
-; Version 1.30
+; Version 1.40
 ;
 
 ; !COMPILATION OPTIONS!
@@ -62,7 +62,7 @@ L_STR	equ	16
   else
 	db	"CSCCFRC"
   endif
-	db	"v1.30"
+	db	"v1.40"  ; 
 
 ;	Frames ASCII codes
 ;	
@@ -89,7 +89,7 @@ L_STR	equ	16
 
 Boot:
 	ld	a,(#FBEC)
-	and	%00000010	; F5 - don't start cartridge
+	and	%00000010	; F5 - don't start boot block
 	ret	z
 
 ; set slot
@@ -103,7 +103,20 @@ Boot:
 	ld	bc,6
 	ldir
 
-; check for autostart
+; Load audio volume data from small EEPROM
+  if CV=2
+	ld	a,1
+	call	EERD
+	ld	b,a
+	and	%11000000
+	cp	%10000000	; volume was set from boot block? (bit 7 = 1, bit 6 = 0)
+	jr	nz,TA_0
+	ld	a,b
+	ld	(CardMDR+#22),a	; set the previously stored volume
+TA_0:
+  endif
+
+; Check for autostart
 	ld	d,#FF
 	ld	a,2
 	ld	(CardMDR+#0E),a ; set 2nd bank to autostart map
@@ -117,7 +130,7 @@ TA_00:	ld	a,(hl)
 	cp	#FF
 	jp	z,Menu		; deselected autostart
 
-; autostart entry found!
+; Autostart entry found!
 	ld	a,1
 	ld	(CardMDR+#0E),a ; set 2nd bank to directory map		
 	call 	c_dir
@@ -1296,6 +1309,15 @@ VolReset:
 
 
 VolEnd:
+	ld	a,%01100000	; write enable
+	call	EEWEN
+	ld	a,(CardMDR+#22)
+	and	%10111111
+	or	%10000000	; set flag for manually set volume (bit 7 = 1 while bit 6 = 0)
+	ld	e,a             ; data
+	ld	a,1		; address
+	call	EEWR		; save volume data to EEPROM
+
 	ld	de,#1304
 	ld	hl,#7707
 	ld	bc,#0F04
@@ -1705,6 +1727,215 @@ c_dir:
 	ret
 
 
+  if CV=2
+; Read 1 byte from EEPROM
+; input A - address
+; outut A - data
+EERD:
+	push	hl
+	ld	hl,CardMDR+#23
+	ld	c,a
+; one CLK pulse
+	ld	a,%00000100
+	ld	(hl),a
+	ld	a,%00000000	
+	ld	(hl),a
+; start bit
+	ld	a,%00000010
+	ld	(hl),a
+	ld	a,%00001010
+	ld	(hl),a
+	ld	a,%00001110
+	ld	(hl),a
+; opcode "10"
+	ld	a,%00001010
+	ld	(hl),a
+	ld	a,%00001110
+	ld	(hl),a
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+; address A6-A0
+	ld	b,7
+	rrc	c
+	rrc	c
+	rrc	c
+	rrc	c
+	rrc	c
+EERDa1:
+	ld	a,c
+	and	%00001010
+	or	%00001000
+	ld	(hl),a
+	or	%00001100
+	ld	(hl),a
+	rlc	c
+	djnz	EERDa1
+; 
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+; Read Data D7-D0
+	ld	c,0
+	ld	b,8
+EERDd1:
+	rlc	c
+	ld	a,(hl)
+	and	%00000001
+	or	c
+	ld	c,a
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+ 	djnz	EERDd1
+; and read data
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00000000
+	ld	(hl),a
+; return data A	
+	ld	a,c
+	pop	hl
+	ret
+
+
+; Write 1 byte to EEPROM
+; E - data
+; A - address
+EEWR:
+	push	hl
+	ld	hl,CardMDR+#23
+	ld	c,a
+; one CLK pulse
+	ld	a,%00000100
+	ld	(hl),a
+	ld	a,%00000000	
+	ld	(hl),a
+; start bit
+	ld	a,%00000010
+	ld	(hl),a
+	ld	a,%00001010
+	ld	(hl),a
+	ld	a,%00001110
+	ld	(hl),a
+; opcode "01"
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+	ld	a,%00001010
+	ld	(hl),a
+	ld	a,%00001110
+	ld	(hl),a
+; address A6-A0
+	ld	b,7
+	rrc	c
+	rrc	c
+	rrc	c
+	rrc	c
+	rrc	c
+EEWRa1:
+	ld	a,c
+	and	%00001010
+	or	%00001000
+	ld	(hl),a
+	or	%00001100
+	ld	(hl),a
+	rlc	c
+	djnz	EEWRa1
+; Write Data
+	rlc	e
+	ld	b,8
+EEWRd1:
+	rlc	e
+	ld	a,e
+	and	%00001010
+	or	%00001000
+	ld	(hl),a
+	or	%00001100
+	ld	(hl),a
+	djnz	EEWRd1
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00000000
+	ld	(hl),a
+; write cycle
+EEWRwc:
+        ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+	ld	a,(hl)
+	and	%00000001
+	jr	nz,EERWce
+	djnz	EEWRwc
+EERWce:
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00000000
+	ld	(hl),a
+	pop	hl
+        ret
+
+
+;Write enable/disable EEPROM
+;A = %01100000 Write Enable
+;A = %00000000 Write Disable
+;A = %01000000 Erase All! 
+EEWEN:
+	push	hl
+	ld	hl,CardMDR+#23
+	ld	c,a
+; one CLK pulse
+	ld	a,%00000100
+	ld	(hl),a
+	ld	a,%00000000	
+	ld	(hl),a
+; start bit
+	ld	a,%00000010
+	ld	(hl),a
+	ld	a,%00001010
+	ld	(hl),a
+	ld	a,%00001110
+	ld	(hl),a
+; opcode "00"
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+; address A6-A0
+	ld	b,7
+	rrc	c
+	rrc	c
+	rrc	c
+	rrc	c
+	rrc	c
+EEENa1:
+	ld	a,c
+	and	%00001010
+	or	%00001000
+	ld	(hl),a
+	or	%00001100
+	ld	(hl),a
+	rlc	c
+	djnz	EEENa1
+
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00000000
+	ld	(hl),a
+	pop	hl
+	ret
+  endif
+
+
 ; Print HEX number
 hexout:	push	af
 	rrc     a
@@ -1866,7 +2097,7 @@ VolumeScr:
 	db	#8C,#20,#01,#57,"[DOWN]  - decrease FMPAC volume     ",#8D
 	db	#8C,#20,#01,#57,"[RIGHT] - increase SCC/SCC+ volume  ",#8D
 	db	#8C,#20,#01,#57,"[LEFT]  - decrease SCC/SCC+ volume  ",#8D
-	db	#8C,#20,#01,#56,"[HOME]  - reset to default volume   ",#8D
+	db	#8C,#20,#01,#56,"[HOME]  - reset to default value    ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," FMPAC Volume:                        ",#8D
 	db	#8C,"                                      ",#8D

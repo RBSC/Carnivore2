@@ -29,12 +29,12 @@ entity mcscc is
     pSltMerq_n  : IN std_logic;
 
     pSltClk2    : IN std_logic;
-    pSltRsv5    : OUT std_logic;
-    pSltRsv16   : OUT std_logic;
+    pSltRsv5    : IN std_logic;
+    pSltRsv16   : IN std_logic;
 
-    pSltSndL    : OUT std_logic;
-    pSltSndR    : OUT std_logic;
-    pSltSound   : OUT std_logic;
+ --   pSltSndL    : OUT std_logic;
+ --   pSltSndR    : OUT std_logic;
+ --   pSltSound   : OUT std_logic;
     
 -- FLASH ROM interface
 	pFlAdr		: OUT std_logic_vector(22 downto 0);
@@ -53,7 +53,7 @@ entity mcscc is
 
 
 -- First start after power on detected
-	iFsts		: INOUT std_logic;
+--	iFsts		: INOUT std_logic;
 --	iFsts		: IN std_logic
 
 -- CF card interface
@@ -69,7 +69,8 @@ entity mcscc is
 	
 -- Mapper port register read enable	
 	MAPpEn		: IN std_logic;
-	wav			: OUT std_logic_vector(9 downto 0);
+
+--	wav			: OUT std_logic_vector(9 downto 0);
 -- Key
     Key1_n		: IN std_logic;
 	
@@ -84,7 +85,12 @@ entity mcscc is
 	CKS		: OUT std_logic;
 	IC_n	: OUT std_logic;
 --	PDIN_n
-    SDOpo	: INOUT std_logic
+--   SDOpo	: INOUT std_logic;
+--  EEPROM
+    EECS	: OUT std_logic;
+    EECK	: OUT std_logic;
+    EEDI	: OUT std_logic;
+    EEDO	: in std_logic
 
 );
 end mcscc;
@@ -373,6 +379,10 @@ architecture RTL of mcscc is
 -- Not Standart
   signal NSC : std_logic;
   signal NSC_SCCP : std_logic;
+-- EEPROM
+  signal EECS1 : std_logic;
+  signal EECK1 : std_logic;
+  signal EEDI1 : std_logic;
   
 begin
   ----------------------------------------------------------------
@@ -529,6 +539,8 @@ begin
 			else "00000"&ConfFl when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100000"
 			else aNSReg  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100001"
 			else LVL  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100010"
+			else "0000" & EECS1 & EECK1 & EEDI1 & EEDO 
+			          when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100011"
 
 --	          				   					
 					else pFlDat ;
@@ -539,8 +551,8 @@ begin
   ----------------------------------------------------------------
   -- Dummy pin
   ----------------------------------------------------------------
-  pSltRsv5  <= '1';
-  pSltRsv16 <= '1';
+  --pSltRsv5  <= '1';
+  --pSltRsv16 <= '1';
 
   pSltClk_n <= not pSltClk;
 
@@ -610,7 +622,7 @@ begin
                       or (CardMDR(2) = '0' and pSltAdr(15 downto 0) = "0000000000000000" and pSltM1_n = '0' and pSltRd_n = '0')
                       or (CardMDR(2) = '1' and pSltAdr(15 downto 4) = "010000000000" and pSltRd_n = '0')
                  else '0';
-  iFsts	 <= CardMDR(0) when CardMDR(1)  = '1' and Sltsl_C_n = '1' else ('Z');
+  -- iFsts	 <= CardMDR(0) when CardMDR(1)  = '1' and Sltsl_C_n = '1' else ('Z');
 
   
 
@@ -684,6 +696,7 @@ begin
 		 NSReg <= "00000000" ; -- NonStandartRegister
 		 aNSReg <= "00000000" ;
 --		 LVL <= "00011011"; 
+		 EECS1 <= '0'; EECK1 <= '0'; EEDI1 <= '0';
        
     elsif (pSltClk_n'event and pSltClk_n = '1') then
 
@@ -727,6 +740,10 @@ begin
         if (pSltAdr(5 downto 0) = "100000") then ConfFl  <= pSltDat(2 downto 0); end if;
         if (pSltAdr(5 downto 0) = "100001") then aNSReg  <= pSltDat(7 downto 0); end if;
         if (pSltAdr(5 downto 0) = "100010") then LVL     <= pSltDat(7 downto 0); end if;
+        if (pSltAdr(5 downto 0) = "100011") then EECS1 <= pSltDat(3);
+                                                 EECK1 <= pSltDat(2);
+                                                 EEDI1 <= pSltDat(1);  end if;
+               
       end if;
  -- delayed reconfiguration
      if RloadEn = '1' then
@@ -1505,19 +1522,19 @@ begin
     end if;
   end process;
 -- problem detector (test) :)
-  SDOpo <= '0' when SDOp = '1' or Key1_n = '0' else '1';
-  SDOp <= '1' when SDOc /= "0000111111111111"  else '0';
+--  SDOpo <= '0' when SDOp = '1' or Key1_n = '0' else '1';
+--  SDOp <= '1' when SDOc /= "0000111111111111"  else '0';
  
-  process (ADACDiv(7),SDO)
-    begin
-    if SDO = '1' then
-	  SDOc <= (others =>'0');
-    elsif ADACDiv(7)'event and ADACDiv(7) = '1' then
-      if SDOp = '1'  then
-        SDOc <= SDOc + 1;  
-      end if;
-    end if;
-  end process;
+---  process (ADACDiv(7),SDO)
+---    begin
+---    if SDO = '1' then
+---	  SDOc <= (others =>'0');
+---    elsif ADACDiv(7)'event and ADACDiv(7) = '1' then
+---      if SDOp = '1'  then
+---        SDOc <= SDOc + 1;  
+---      end if;
+---    end if;
+---  end process;
 --  filter SCC (alternate)
 --  process (pSltClk_n,pSltRst_n)
 --  begin 
@@ -1537,11 +1554,11 @@ begin
  --     ACL <= ACL + ("00000000"&SCL) ;   -- (19-0)       
  --     ACR <= ACR + ("00000000"&SCR) ; SCL(11-0)
       ACL <= ACL + (not SCL(11) & not SCL(11) & not SCL(11) & not SCL(11) & 
-                              not SCL(11) & not SCL(11) & not SCL(11) & not SCL(11) & 
-                              not SCR(11) & SCL(10 downto 0) ) ;   -- (19-0)       
+                    not SCL(11) & not SCL(11) & not SCL(11) & not SCL(11) & 
+                    not SCR(11) & SCL(10 downto 0) ) ;   -- (19-0)       
     --  ACR <= ACR + (not SCR(11) & not SCR(11) & not SCR(11) & not SCR(11) & 
-    --                          not SCR(11) & not SCR(11) & not SCR(11) & not SCR(11) & 
-    --                          not SCR(11) & SCR(10 downto 0) ) ;   -- (19-0)    
+    --                not SCR(11) & not SCR(11) & not SCR(11) & not SCR(11) & 
+    --                not SCR(11) & SCR(10 downto 0) ) ;   -- (19-0)    
     end if;
   end process;
   process (FDIV(7),FDIV(0))
@@ -1585,7 +1602,7 @@ begin
 --     L_AOUT <= (BCMO(15)&BCMO(15 downto 1)) + (ACL(19)&ACL(19 downto 5));
 --     R_AOUT <= (BCRO(15)&BCRO(15 downto 1)) + (ACR(19)&ACR(19 downto 5));
      L_AOUT <= MFL + MSL;
-     R_AOUT <= MFR + MSR;
+     R_AOUT <= MFR + MSL; -- MSR;
    end if;
  end process;  
 ----------------------------------------------------------------
@@ -1594,7 +1611,7 @@ begin
   VMFL : mv16 port map (BCMO, MFL, LVF);
   VMFR : mv16 port map (BCRO, MFR, LVF);
   VMSL : mv16 port map (MACL, MSL, LVS);
-  VMSR : mv16 port map (MACR, MSR, LVS);
+--  VMSR : mv16 port map (MACR, MSR, LVS);
 --  MACL <= (not ACL(19)) & ACL(18 downto 4);
 --  MACR <= (not ACR(19)) & ACR(18 downto 4);
   LVF <= LVL(5 downto 3);
@@ -1646,7 +1663,12 @@ begin
   SDATA <= ABDAC(15);
   IC_n <= pSltRst_n;
   CKS <= '0';
-  
+----------------------------------------------------------------
+-- EEPROM Output
+----------------------------------------------------------------
+  EECS <= '1' when EECS1 = '1' else '0';
+  EECK <= '1' when EECK1 = '1' else '0';
+  EEDI <= '1' when EEDI1 = '1' else '0';
   
 end RTL;
 

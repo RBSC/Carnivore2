@@ -90,14 +90,15 @@ MSX has to be started with the cartridge's pushbutton pressed down. When the DOS
 The latest Boot Block supports volume changing for the FMPAC and SCC modules. Use the 'V' key to enter the volume control screen
 from the main menu. The following keys can be used in this screen:
 
-	[ESC]   - exit to the main menu
+	[ESC]   - save & exit to main menu
 	[UP]    - increase FMPAC volume
 	[DOWN]  - decrease FMPAC volume
 	[RIGHT] - increase SCC/SCC+ volume
 	[LEFT]  - decrease SCC/SCC+ volume
-	[HOME]  - reset to default volume
+	[HOME]  - reset to default value
 
-The volume's value is stored within the cartridge until the computer is powered off, but it survives the reboot. So setting the
+The volume's value is stored within the small EEPROM on the cartridge board. The value is saved when ESC key is used to return to
+the main menu. If the small EEPROM is not present, then the volume setting is only preserved until the power-off. So setting the
 volume once allows to play games and listening to the music until the computer is completely switched off.
 
 
