@@ -16,7 +16,7 @@ U2		- M29W640GB Flash ROM (TSOP48)
 U3		- CY62167DV30 RAM (TSOP48)
 U4		- EPCS4SI8 Altera config eeprom (SOIC8)
 U5              - YAC516-E DAC 16 Stereo (SSOP24)
-U6		- M93C46MN1 (SOP8) EEPROM 		- (optional)
+U6		- M93C46MN1 (SOP8) EEPROM
 
 ==- Amplifiers -==
 AU1,AU2		- 4558D 				- 2
