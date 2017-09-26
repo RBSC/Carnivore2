@@ -25,17 +25,17 @@ How to upload the firmware
 Before uploading the firmware please make sure that the CF card is not inserted!
 
  1. Solder jumper pins to the "+5v" and "GND" soldering points (or solder wires to both sides of C1 capacitor)
- 2. Prepare the ByteBlaster 2 programmer, open the Quartus II software
- 3. In the Quartus user interface select "Active Serial" mode for your ByteBlaster 2
+ 2. Prepare the Byte Blaster or USB Blaster programmer, open the Quartus II software
+ 3. In the Quartus user interface select "Active Serial" mode for your programmer
  4. Use "Add Device" button to add a new device and select "EPCS4" device
  5. Rightclick on the added device's string and select "Change File"
  6. Select the .POF file from the "Firmware" directory
  7. Enable the checkboxes: "Program/Configure", "Verify" and "Blank Check"
  8. Supply 5v power to the cartridge board (mind the correct polarity!)
- 9. Connect the ByteBlaster's cable to the AS socket of the cartridge (make sure you connect the cable correctly!)
+ 9. Connect the Byte Blaster's or USB Blaster's cable to the AS socket of the cartridge (make sure you connect the cable correctly!)
 10. Click "Start" and monitor the programming and verification process
 
-If the programming completed successfully, disconnect the ByteBlaster's cable and 5v power from the board.
+If the programming completed successfully, disconnect the Byte Blaster's or USB Blaster's cable and 5v power from the board.
 
 
 How to enable the cartridge and install ROMs
