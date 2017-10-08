@@ -65,6 +65,7 @@ After MSX shows its boot logo, the cartridge's boot block should start and you s
 easy. Here are the key assignments:
 
 	[ESC] - boot MSX using the default configuration: all enabled
+	[F] - select 50Hz or 60Hz frequency for VDP
 	[LEFT],[RIGHT] - previous/next directory page
 	[UP],[DOWN] - select ROM/CFG entry
 	[SPACE]     - start entry normally

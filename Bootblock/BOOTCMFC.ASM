@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
 ; Portions (c) Grauw
-; Version 1.40
+; Version 1.60
 ;
 
 ; !COMPILATION OPTIONS!
@@ -27,6 +27,7 @@ CHCOLOR	equ	#0062
 ENAKEYS	equ	#00CF
 DISKEYS	equ	#00CC
 KILBUF	equ	#0156
+WRITVDP	equ	#0047
 
 FORCLR 	equ	#F3E9
 BAKCLR 	equ	#F3EA
@@ -40,6 +41,8 @@ DIRCNT	equ	#F564
 DIRPAG	equ	#F566
 CURPAG	equ	#F568
 VDPVER	equ	#F56A
+PALNTSC	equ	#F56C
+VDPR10	equ	#FFE8
 
 ; Card configuration registers
 CardMDR equ	#4F80
@@ -62,7 +65,7 @@ L_STR	equ	16
   else
 	db	"CSCCFRC"
   endif
-	db	"v1.40"  ; 
+	db	"v1.60"  ; 
 
 ;	Frames ASCII codes
 ;	
@@ -106,14 +109,38 @@ Boot:
 ; Load audio volume data from small EEPROM
   if CV=2
 	ld	a,1
-	call	EERD
+	call	EERD		; read volume setting from EEPROM
 	ld	b,a
 	and	%11000000
 	cp	%10000000	; volume was set from boot block? (bit 7 = 1, bit 6 = 0)
-	jr	nz,TA_0
+	jr	nz,TA_0A
 	ld	a,b
 	ld	(CardMDR+#22),a	; set the previously stored volume
-TA_0:
+
+; Read 50/60Hz status from EEPROM
+TA_0A:
+	ld	a,(VDPR10)	; read vdp register 10
+	ld	(PALNTSC),a	; save current mode
+	xor	a
+	ld	(VDPVER),a	; VDP is 9918 by default	
+	call	DetVDP		; Detect actual VDP
+	ld	(VDPVER),a	; save vdp verison (0=9918, 1=9938, 2=9958)
+	or	a
+	jr	z,TA_0B		; don't use frequency change on MSX1
+
+	ld	a,2
+	call	EERD		; read PAL/NTSC setting from EEPROM
+	and	%00000011
+	cp	3		; illegal value?
+	jr	z,TA_0B
+	cp	1		; illegal value?
+	jr	z,TA_0B
+	ld	(PALNTSC),a
+	ld	b,a
+	ld	a,9
+	ld	c,a
+	call	WRITVDP		; write to VDP register (set 50 or 60 HZ mode)
+TA_0B:
   endif
 
 ; Check for autostart
@@ -153,10 +180,6 @@ TA_01:	inc	hl		; next auto
 Menu:
 ; !!! check for incompatible systems and skip font loading
         call	Setfnt		; set font
-
-	xor	a
-	ld	(VDPVER),a	; VDP is 9918 by default	
-	call	DetVDP		; Detect actual VDP
 
 	ld	c,d
 	exx
@@ -252,7 +275,9 @@ Pagep:
 	ld	hl,StMSG_S	; print main screen messages
 	call	print	
 
-	call	PrintPN		; Print page number
+	call	PrintInf	; print page number and frequency
+	call	PrintFrq	; print frequency of the display (50/60)
+	call	PrintVol	; print volumes
 
 ; Print autostarted entry
 	ld	hl,#2305
@@ -396,6 +421,10 @@ CH01:
 	jp	z,SetVolume
 	cp	"v"
 	jp	z,SetVolume
+	cp	"F"
+	jp	z,ChangeFreq
+	cp	"f"
+	jp	z,ChangeFreq
    endif
 	jr	CH01
 
@@ -1968,30 +1997,98 @@ CLS:	push	af
 	ret
 
 
-; Print page number
-PrintPN:
-	push	hl
-	ld	hl,DIRPAG
-	ld	a,(hl)
-	cp	1		; only one page?
-	pop	hl
-	ret	z
+; Print page number and max pages
+PrintInf:
+;	push	hl
+;	ld	hl,DIRPAG
+;	ld	a,(hl)
+;	cp	1		; only one page?
+;	pop	hl
+;	ret	z
+
 	push	hl
 	push	de
 	push	bc
-	ld	hl,#1B17
+
+	ld	hl,#1C18
 	call    POSIT
 	ld	hl,PageNum	; print page number string
 	call	print	
-	ld	hl,#2317
+
+	ld	hl,#2218
 	call    POSIT
 	ld	hl,CURPAG
 	ld	a,(hl)
 	call	hexout		; print current directory page
+
+	ld	hl,#2518
+	call    POSIT
+	ld	hl,DIRPAG
+	ld	a,(hl)
+	call	hexout		; print max directory pages
+
 	pop	bc
 	pop	de
 	pop	hl
 	ret
+
+
+; Print current frequency display
+  if CV=2
+PrintFrq:
+	push	hl
+	push	de
+	push	bc
+	ld	hl,#218
+	call    POSIT
+	ld	hl,PALmsg	; print PAL
+	ld	a,(PALNTSC)
+	bit	1,a
+	jr	nz,PrintHZ
+	ld	hl,NTSCmsg	; print NTSC
+PrintHZ:
+	call	print		; print current mode
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+  endif
+
+
+; Print current volumes
+  if CV=2
+PrintVol:
+	push	hl
+	push	de
+	push	bc
+
+	ld	hl,#0A18
+	call    POSIT
+	ld	hl,VolumeL	; print volume
+	call	print
+
+	ld	hl,#1118
+	call    POSIT
+	ld	a,(CardMDR+#22)
+	rra
+	rra
+	rra
+	and	7
+	inc	a
+	call	hexout		; print fmpac volume
+
+	ld	hl,#1818
+	call    POSIT
+	ld	a,(CardMDR+#22)
+	and	7
+	inc	a
+	call	hexout		; print scc volume
+
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+  endif
 
 
 ; Test if the VDP is a TMS9918A
@@ -2045,6 +2142,86 @@ DetVDPE:
 	inc	a
 	ld	(VDPVER),a
 	ret
+
+
+  if CV=2
+; Change frequency to 50 or 60 Hz
+ChangeFreq:
+	ld	a,(VDPVER)	; get vdp verison (0=9918, 1=9938, 2=9958)
+	or	a
+	jr	nz,Change0	; don't use frequency change on MSX1
+	jp	CH01
+Change0:
+	ld	a,(PALNTSC)
+	bit	1,a
+	jr	nz,Change1
+	set	1,a		; set to PAL
+	jr	Change2
+Change1:
+	res	1,a		; set to NTSC
+Change2:
+	ld	(PALNTSC),a
+	push	af
+	push	af
+
+; Fade out font and background
+  if CV=2
+	ld	de,#4301
+  else
+	ld	de,#1304
+  endif
+	ld	hl,#7707
+	ld	bc,#0F0D
+	call	FadeOut		; fade out text
+	call	CLS
+	ld	de,#1101
+  if CV=2
+	ld	hl,#4301
+  else
+	ld	hl,#1304
+  endif
+	ld	bc,#040D
+	call	FadeOut		; fade out background
+
+	pop	af
+	ld	b,a
+	ld	a,9
+	ld	c,a
+	call	WRITVDP		; write to VDP register (set 50 or 60 HZ mode)
+
+	ld	a,%01100000	; write enable
+	call	EEWEN
+	pop	af
+	ld	e,a             ; data
+	ld	a,2		; address
+	call	EEWR		; save vdp register 10 value to EEPROM
+
+; Set screen after change of frequency
+	ld	a,40
+	ld	(SCR0WID),a	; set default width of screen0
+	xor	a
+	call	SSCREEN
+	call	MODE40A
+	call	CLS
+
+  if CV=2
+	ld	de,#4301
+  else
+	ld	de,#1304
+  endif
+	ld	hl,#1101
+	ld	bc,#040D
+	call	FadeIn		; fade in background
+
+	ld	a,15
+  if CV=2
+	ld	hl,#4301
+  else
+	ld	hl,#1304
+  endif
+	call	PALETTE
+	jp	Pagep
+  endif
 
 
 ;
@@ -2127,10 +2304,11 @@ helpmsg:
 	db	#01,#5B,#20,#01,#50,"[ESC] - boot MSX using the default  ",#01,#5F
   if CV=2
 	db	#01,#5B,#20,#01,#57,"        configuration: all enabled  ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[F] - select 50Hz or 60Hz frequency ",#01,#5F
   else
 	db	#01,#5B,#20,#01,#57,"        configuration               ",#01,#5F
-  endif
 	db	#01,#5B,#20,#01,#57,"                                    ",#01,#5F
+  endif
 	db	#01,#5B,#20,#01,#57,"[LEFT],[RIGHT] - previous/next page ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[UP],[DOWN] - select ROM/CFG entry  ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[SPACE]     - start entry normally  ",#01,#5F
@@ -2151,10 +2329,16 @@ helpmsg:
 
 Spaces:	db	"  ",0
 
+PALmsg:
+	db	"[50 Hz]",0
+NTSCmsg:
+	db	"[60 Hz]",0
 ResetMSG:
 	db	"Rebooting MSX...",0
 PageNum:
-	db	" Page: [  ] ",0
+	db	"[PAGE:  /  ]",0
+VolumeL:
+	db	"[FMPAC:  /SCC:  ]",0
 VolumeInd:
 	db	">>>>",0
 IndEmpty:
