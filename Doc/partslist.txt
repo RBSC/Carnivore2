@@ -31,7 +31,7 @@ UCT2,UCT3	- AMS1117-3.3v (LM1117-3.3v) (SOT223)	- 2
 ==- Capacitors SMD 1210 -==
 C1-C4,C22,C23,
 C26,C28 	- 10uF 10v				- 8
-C20,C21		- 100uF 16v				- 2
+C20,C21		- 47uF 16v				- 2
 C29		- 22-47uF 6v				- 1
 
 ==- Capacitors SMD 1206 -==
@@ -70,8 +70,8 @@ CF card socket	- CFC-PW40BE111-50			- 1
 ==- Transistors -==
 T1		- 2SC945 SOT23 NPN			- 1 (optional)
 T2		- 2SA733 SOT23 PNP			- 1 (optional) 
-T3,T4,T5	- 2SC945 SOT23				- 3
-T6		- 2SA733 SOT23				- 1
+T3,T4,T5	- 2SC945 SOT23 NPN			- 3
+T6		- 2SA733 SOT23 PNP			- 1
 
 ==- Miscellaneous -==
 LED1		- any SMD or normal LED			- 1
