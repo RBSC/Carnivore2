@@ -28,6 +28,8 @@ ENAKEYS	equ	#00CF
 DISKEYS	equ	#00CC
 KILBUF	equ	#0156
 WRITVDP	equ	#0047
+ENADISP	equ	#0044
+DISDISP	equ	#0041
 
 FORCLR 	equ	#F3E9
 BAKCLR 	equ	#F3EA
@@ -77,10 +79,10 @@ L_STR	equ	16
 ; Third value - background color
 ; Fourth value - background color palette
 
-C2FCOLM	equ	#15
+C2FCOLM	equ	15
 C2FPALM	equ	#7707
 
-C2BCOLM	equ	#4
+C2BCOLM	equ	13
 C2BPALM	equ	#4301
 
 ; Colors for volume screen -------------
@@ -89,10 +91,10 @@ C2BPALM	equ	#4301
 ; Third value - background color
 ; Fourth value - background color palette
 
-C2FCOLV	equ	#15
+C2FCOLV	equ	15
 C2FPALV	equ	#7707
 
-C2BCOLV	equ	#4
+C2BCOLV	equ	12
 C2BPALV	equ	#1304
 
 ; Colors for help screen -------------
@@ -101,10 +103,10 @@ C2BPALV	equ	#1304
 ; Third value - background color
 ; Fourth value - background color palette
 
-C2FCOLH	equ	#15
+C2FCOLH	equ	15
 C2FPALH	equ	#7707
 
-C2BCOLH	equ	#4
+C2BCOLH	equ	4
 C2BPALH	equ	#1401
 
 
@@ -134,7 +136,6 @@ C2BPALH	equ	#1401
 ;
 ;	#90
 ;
-
 ;	Cursor (2 bytes)
 ;
 CURS1	equ	#94
@@ -315,6 +316,12 @@ Menu1:
 	call	PALETTE
 
 Pagep:	
+	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
+	or	a
+	jr	nz,Pagep0
+	call	DISDISP		; disable display
+
+Pagep0:
 	ld	a,C2FCOLM
 	ld	(FORCLR),a
 	ld	a,C2BCOLM
@@ -444,6 +451,8 @@ CH00:
 	call	POSIT		; move cursor to edge of screen
 
 CH01:
+	call	ENADISP		; enable display
+
 	ld	bc,#0000	; no autostart - effects enabled
 	call	KILBUF
 	call	CHGET
@@ -1128,6 +1137,12 @@ RAMEE
 
 ; Print help information page
 Help:
+	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
+	or	a
+	jr	nz,Help1
+	call	DISDISP		; disable display
+
+Help1:
   if CV=2
 	ld	de,C2BPALM
   else
@@ -1166,7 +1181,7 @@ Help:
 
 	ld	de,C2BPALH
 	ld	hl,#1101
-	ld	b,C2BCOLM
+	ld	b,C2BCOLH
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
@@ -1181,6 +1196,8 @@ Help:
 	ld	b,C2FCOLH
 	ld	c,#0D
 	call	FadeIn		; fade in text
+
+	call	ENADISP		; enable display
 
 	call	KILBUF
 	call	CHGET		; wait for a key
@@ -1223,7 +1240,17 @@ Help:
 ; Set volume screen
   if CV=2
 SetVolume:
+	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
+	or	a
+	jr	nz,SetVol1
+	call	DISDISP		; disable display
+
+SetVol1:
+  if CV=2
 	ld	de,C2BPALM
+  else
+	ld	de,#1304
+  endif
 	ld	hl,C2FPALM
 	ld	b,C2FCOLM
 	ld	c,#0D
@@ -1346,6 +1373,8 @@ IndPrn2:
 	call    POSIT
 
 VolLoop:
+	call	ENADISP		; enable display
+
 	call	KILBUF
 	call	CHGET		; wait for a key
 
