@@ -81,8 +81,11 @@ When you enable the autostart for an entry, it will be always activated after MS
 shown and the ROM or configuration entry will be started automatically. In order to disable the autostart or to skip the boot
 block completely the following keys should be used:
 
-	[TAB] - disable autostart option
-	[F5]  - disable startup menu
+	[F4] - disable autostart option
+	[F5] - disable startup menu
+
+In addition to F4 key, the ESC and TAB keys can be used to disable the autostart entry. If any of those keys are pressed, the
+autostart entry is ignored and the main menu is shown
 
 The cartridge has a pushbutton to completely disable its functionality if something goes wrong. If the cartridge stops working
 correctly, you may need to reinitialize it like described in the "How to enable the cartridge and install ROMs" section. The

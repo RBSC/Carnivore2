@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
 ; Portions (c) Grauw
-; Version 1.60
+; Version 1.70
 ;
 
 ; !COMPILATION OPTIONS!
@@ -42,6 +42,7 @@ DIRPAG	equ	#F566
 CURPAG	equ	#F568
 VDPVER	equ	#F56A
 PALNTSC	equ	#F56C
+XYPOS	equ	#F56E
 VDPR10	equ	#FFE8
 
 ; Card configuration registers
@@ -65,7 +66,47 @@ L_STR	equ	16
   else
 	db	"CSCCFRC"
   endif
-	db	"v1.60"  ; 
+	db	0
+	db	"v1.70"  ; Version
+	db	0
+
+
+; Colors for main menu screen -------------
+; First value - foreground color
+; Second value - foreground color palette
+; Third value - background color
+; Fourth value - background color palette
+
+C2FCOLM	equ	#15
+C2FPALM	equ	#7707
+
+C2BCOLM	equ	#4
+C2BPALM	equ	#4301
+
+; Colors for volume screen -------------
+; First value - foreground color
+; Second value - foreground color palette
+; Third value - background color
+; Fourth value - background color palette
+
+C2FCOLV	equ	#15
+C2FPALV	equ	#7707
+
+C2BCOLV	equ	#4
+C2BPALV	equ	#1304
+
+; Colors for help screen -------------
+; First value - foreground color
+; Second value - foreground color palette
+; Third value - background color
+; Fourth value - background color palette
+
+C2FCOLH	equ	#15
+C2FPALH	equ	#7707
+
+C2BCOLH	equ	#4
+C2BPALH	equ	#1401
+
 
 ;	Frames ASCII codes
 ;	
@@ -89,6 +130,16 @@ L_STR	equ	16
 ;	#01,#5B,#20,#20,#01,#5F
 ;	#01,#5E,#01,#5D,#01,#5D,#01,#5C
 ;	
+;	Copyright sign
+;
+;	#90
+;
+
+;	Cursor (2 bytes)
+;
+CURS1	equ	#94
+CURS2	equ	#95
+
 
 Boot:
 	ld	a,(#FBEC)
@@ -227,44 +278,46 @@ DirC3:
 
 ; Set screen for menu
 Menu1:
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	hl,#1701
 	call	PALETTE
-	ld	a,4
+	ld	a,C2BCOLM
 	ld	hl,#1701
 	call	PALETTE
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	(FORCLR),a
-	ld	a,4
+	ld	a,C2BCOLM
 	ld	(BAKCLR),a
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors (foreground=background)
 	push	de
 	ld	de,#1101
 	ld	hl,#1701
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out background
   if CV=2
-	ld	de,#4301
+	ld	de,C2BPALM
   else
 	ld	de,#1304
   endif
 	ld	hl,#1101
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeIn		; fade in background
 	pop	de
-	ld	a,15
+	ld	a,C2FCOLM
   if CV=2
-	ld	hl,#4301
+	ld	hl,C2BPALM
   else
 	ld	hl,#1304
   endif
 	call	PALETTE
 
 Pagep:	
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	(FORCLR),a
-	ld	a,4
+	ld	a,C2BCOLM
 	ld	(BAKCLR),a
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors (foreground=background)
@@ -362,13 +415,14 @@ dRec:
 	ld	d,a		; restore dir entries to top page
 
 	push	de
-	ld	de,#7707
+	ld	de,C2FPALM
   if CV=2
-	ld	hl,#4301
+	ld	hl,C2BPALM
   else
 	ld	hl,#1304
   endif
-	ld	bc,#0F0D
+	ld	b,C2FCOLM
+	ld	c,#0D
 	call	FadeIn		; fade in text
 	pop	de
 
@@ -379,12 +433,15 @@ CH00:
 	ld	a,e
 	add	a,7
 	ld	l,a
+	ld	(XYPOS),hl
 	call	POSIT
-
-	ld	a,">"		; print cursor
+	ld	a,CURS1		; print cursor symbol 1
+	call	CHPUT
+	ld	a,CURS2		; print cursor symbol 2
 	call	CHPUT
 
-	call	POSIT
+	ld	hl,#2705
+	call	POSIT		; move cursor to edge of screen
 
 CH01:
 	ld	bc,#0000	; no autostart - effects enabled
@@ -434,7 +491,11 @@ C_UP:
 	ld	a,e
 	or	a
 	jr	z,CH01		; 1-st string?
-	ld	a," "
+	ld	hl,(XYPOS)
+	call	POSIT
+	ld	a,' '
+	call	CHPUT		; clear cursor
+	ld	a,' '
 	call	CHPUT		; clear cursor
 C_U00:	dec	e
 C_U01:	dec	d
@@ -451,7 +512,11 @@ C_DOWN:
 	ld	a,e
 	cp	L_STR-1
 	jp	nc,CH01		; last str
-	ld	a," "	
+	ld	hl,(XYPOS)
+	call	POSIT
+	ld	a,' '	
+	call	CHPUT		; clear cursor
+	ld	a,' '
 	call	CHPUT		; clear cursor
 C_D00:	inc	e
 C_D01:	inc	d
@@ -474,13 +539,14 @@ P_F:
 	jp	z,CH01
 
 	push	de
-	ld	hl,#7707
+	ld	hl,C2FPALM
   if CV=2
-	ld	de,#4301
+	ld	de,C2BPALM
   else
 	ld	de,#1304
   endif
-	ld	bc,#0F0D
+	ld	b,C2FCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out text
 	pop	de
 
@@ -523,13 +589,14 @@ P_B:
 	jp	z,CH01
 
 	push	de
-	ld	hl,#7707
+	ld	hl,C2FPALM
   if CV=2
-	ld	de,#4301
+	ld	de,C2BPALM
   else
 	ld	de,#1304
   endif
-	ld	bc,#0F0D
+	ld	b,C2FCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out text
 	pop	de
 
@@ -585,43 +652,46 @@ RUN_CT:
 	jr	z,RUN_CT2
 
 RUN_CT1:
-	ld	hl,#7707
+	ld	hl,C2FPALM
   if CV=2
-	ld	de,#4301
+	ld	de,C2BPALM
   else
 	ld	de,#1304
   endif
-	ld	bc,#0F0D
+	ld	b,C2FCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
 	ld	de,#1101
   if CV=2
-	ld	hl,#4301
+	ld	hl,C2BPALM
   else
 	ld	hl,#1304
   endif
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	hl,#1101
 	call	PALETTE
-	ld	a,4
+	ld	a,C2BCOLM
 	ld	hl,#1101
 	call	PALETTE
 
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	(FORCLR),a
-	ld	a,4
+	ld	a,C2BCOLM
 	ld	(BAKCLR),a
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors (foreground=background)
 
 	ld	de,#1701
 	ld	hl,#1101
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeIn		; fade in background
 
 	call	Restfnt		; restore font
@@ -663,46 +733,50 @@ RUN_CR:
 	jr	z,RUN_CR2
 
 RUN_CR1:
-	ld	hl,#7707
+	ld	hl,C2FPALM
   if CV=2
-	ld	de,#4301
+	ld	de,C2BPALM
   else
 	ld	de,#1304
   endif
-	ld	bc,#0F0D
+	ld	b,C2FCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
 	ld	de,#1101
   if CV=2
-	ld	hl,#4301
+	ld	hl,C2BPALM
   else
 	ld	hl,#1304
   endif
-	ld	bc,#040D
+
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	hl,#1101
 	call	PALETTE
-	ld	a,4
+	ld	a,C2BCOLM
 	ld	hl,#1101
 	call	PALETTE
 
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	(FORCLR),a
-	ld	a,4
+	ld	a,C2BCOLM
 	ld	(BAKCLR),a
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors (foreground=background)
 
 	ld	de,#1701
 	ld	hl,#1101
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeIn		; fade in background
 
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	hl,#1701
 	call	PALETTE
 
@@ -771,46 +845,49 @@ RUN_CJ:
 	jr	z,RUN_CJ2
 
 RUN_CJ1:
-	ld	hl,#7707
+	ld	hl,C2FPALM
   if CV=2
-	ld	de,#4301
+	ld	de,C2BPALM
   else
 	ld	de,#1304
   endif
-	ld	bc,#0F0D
+	ld	b,C2FCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
 	ld	de,#1101
   if CV=2
-	ld	hl,#4301
+	ld	hl,C2BPALM
   else
 	ld	hl,#1304
   endif
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	hl,#1101
 	call	PALETTE
-	ld	a,4
+	ld	a,C2BCOLM
 	ld	hl,#1101
 	call	PALETTE
 
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	(FORCLR),a
-	ld	a,4
+	ld	a,C2BCOLM
 	ld	(BAKCLR),a
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors (foreground=background)
 
 	ld	de,#1701
 	ld	hl,#1101
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeIn		; fade in background
 
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	hl,#1701
 	call	PALETTE
 
@@ -930,7 +1007,7 @@ ATR_04:	exx
 	cp	#FF
 	jr	nz,ATR_03
 
-	ld	hl,Spaces	; print spaces instead of #FF
+	ld	hl,Spaces	; clear autostart record are
 	call	print	
 	jp	CH00
 
@@ -1052,81 +1129,89 @@ RAMEE
 ; Print help information page
 Help:
   if CV=2
-	ld	de,#4301
+	ld	de,C2BPALM
   else
 	ld	de,#1304
   endif
-	ld	hl,#7707
-	ld	bc,#0F0D
+	ld	hl,C2FPALM
+	ld	b,C2FCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
 	ld	de,#1101
   if CV=2
-	ld	hl,#4301
+	ld	hl,C2BPALM
   else
 	ld	hl,#1304
   endif
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	a,4
+	ld	a,C2BCOLH
 	ld	hl,#1101
 	call	PALETTE
-	ld	a,15
+	ld	a,C2FCOLH
 	ld	(FORCLR),a
-	ld	a,4
+	ld	a,C2BCOLH
 	ld	(BAKCLR),a
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors (foreground=background)
 
-	ld	a,15
-	ld	hl,#1401
+	ld	a,C2FCOLH
+	ld	hl,C2BPALH
 	call	PALETTE
 
-	ld	de,#1401
+	ld	de,C2BPALH
 	ld	hl,#1101
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeIn		; fade in background
 
 	ld	hl,helpmsg
 	call	print
-	ld	hl,#1D16	; position cursor after "Press any key"
+
+	ld	hl,#2404	; position cursor
 	call    POSIT
 
-	ld	de,#7707
-	ld	hl,#1401
-	ld	bc,#0F04
+	ld	de,C2FPALH
+	ld	hl,C2BPALH
+	ld	b,C2FCOLH
+	ld	c,#0D
 	call	FadeIn		; fade in text
 
 	call	KILBUF
 	call	CHGET		; wait for a key
 
-	ld	de,#1401
-	ld	hl,#7707
-	ld	bc,#0F04
+	ld	de,C2BPALH
+	ld	hl,C2FPALH
+	ld	b,C2FCOLH
+	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
 	ld	de,#1101
-	ld	hl,#1401
-	ld	bc,#040D
+	ld	hl,C2BPALH
+	ld	b,C2BCOLH
+	ld	c,#0D
 	call	FadeOut		; fade out background
 
   if CV=2
-	ld	de,#4301
+	ld	de,C2BPALM
   else
 	ld	de,#1304
   endif
 	ld	hl,#1101
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeIn		; fade in background
 
-	ld	a,15
+	ld	a,C2FCOLM
   if CV=2
-	ld	hl,#4301
+	ld	hl,C2BPALM
   else
 	ld	hl,#1304
   endif
@@ -1138,43 +1223,47 @@ Help:
 ; Set volume screen
   if CV=2
 SetVolume:
-	ld	de,#4301
-	ld	hl,#7707
-	ld	bc,#0F0D
+	ld	de,C2BPALM
+	ld	hl,C2FPALM
+	ld	b,C2FCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
 	ld	de,#1101
-	ld	hl,#4301
-	ld	bc,#040D
+	ld	hl,C2BPALM
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	a,4
+	ld	a,C2BCOLV
 	ld	hl,#1101
 	call	PALETTE
-	ld	a,15
+	ld	a,C2FCOLV
 	ld	(FORCLR),a
-	ld	a,4
+	ld	a,C2BCOLV
 	ld	(BAKCLR),a
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors (foreground=background)
 
-	ld	a,15
-	ld	hl,#1304
+	ld	a,C2FCOLV
+	ld	hl,C2BPALV
 	call	PALETTE
 
-	ld	de,#1304
+	ld	de,C2BPALV
 	ld	hl,#1101
-	ld	bc,#040D
+	ld	b,C2BCOLV
+	ld	c,#0D
 	call	FadeIn		; fade in background
 
 	ld	hl,VolumeScr	; print volume control screen
 	call	print
 
-	ld	de,#7707
-	ld	hl,#1304
-	ld	bc,#0F04
+	ld	de,C2FPALV
+	ld	hl,C2BPALV
+	ld	b,C2FCOLV
+	ld	c,#0D
 	call	FadeIn		; fade in text
 
 VolPrint:
@@ -1347,25 +1436,28 @@ VolEnd:
 	ld	a,1		; address
 	call	EEWR		; save volume data to EEPROM
 
-	ld	de,#1304
-	ld	hl,#7707
-	ld	bc,#0F04
+	ld	de,C2BPALV
+	ld	hl,C2FPALV
+	ld	b,C2FCOLV
+	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
 	ld	de,#1101
-	ld	hl,#1304
-	ld	bc,#040D
+	ld	hl,C2BPALV
+	ld	b,C2BCOLV
+	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	de,#4301
+	ld	de,C2BPALM
 	ld	hl,#1101
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeIn		; fade in background
 
-	ld	a,15
-	ld	hl,#4301
+	ld	a,C2FCOLM
+	ld	hl,C2BPALM
 	call	PALETTE
 
 	jp	Pagep
@@ -1375,45 +1467,48 @@ VolEnd:
 ; Exit from boot block
 Exit:
   if CV=2
-	ld	de,#4301
+	ld	de,C2BPALM
   else
 	ld	de,#1304
   endif
-	ld	hl,#7707
-	ld	bc,#0F0D
+	ld	hl,C2FPALM
+	ld	b,C2FCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
 	ld	de,#1101
   if CV=2
-	ld	hl,#4301
+	ld	hl,C2BPALM
   else
 	ld	hl,#1304
   endif
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	hl,#1101
 	call	PALETTE
-	ld	a,4
+	ld	a,C2BCOLM
 	ld	hl,#1101
 	call	PALETTE
 
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	(FORCLR),a
-	ld	a,4
+	ld	a,C2BCOLM
 	ld	(BAKCLR),a
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors (foreground=background)
 
 	ld	de,#1701
 	ld	hl,#1101
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeIn		; fade in background
 
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	hl,#1701
 	call	PALETTE
 
@@ -1572,16 +1667,16 @@ Restfnt:
         ld	(CHSETS),a	; restore bios font's slot
 	ld	hl,(BFNT)
 	ld	(CHSETA),hl	; restore bios font's address
-	ld	a,15
+	ld	a,C2FCOLM
 	ld	(FORCLR),a
-	ld	a,4
+	ld	a,C2BCOLM
 	ld	(BAKCLR),a
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors
-        ld	a,15
-  	ld	hl,#7707
+        ld	a,C2FCOLM
+  	ld	hl,C2FPALM
 	call	PALETTE
-        ld	a,4
+        ld	a,C2BCOLM
   	ld	hl,#1701
 	call	PALETTE
 	xor	a
@@ -2166,21 +2261,23 @@ Change2:
 
 ; Fade out font and background
   if CV=2
-	ld	de,#4301
+	ld	de,C2BPALM
   else
 	ld	de,#1304
   endif
-	ld	hl,#7707
-	ld	bc,#0F0D
+	ld	hl,C2FPALM
+	ld	b,C2FCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out text
 	call	CLS
 	ld	de,#1101
   if CV=2
-	ld	hl,#4301
+	ld	hl,C2BPALM
   else
 	ld	hl,#1304
   endif
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeOut		; fade out background
 
 	pop	af
@@ -2205,17 +2302,18 @@ Change2:
 	call	CLS
 
   if CV=2
-	ld	de,#4301
+	ld	de,C2BPALM
   else
 	ld	de,#1304
   endif
 	ld	hl,#1101
-	ld	bc,#040D
+	ld	b,C2BCOLM
+	ld	c,#0D
 	call	FadeIn		; fade in background
 
-	ld	a,15
+	ld	a,C2FCOLM
   if CV=2
-	ld	hl,#4301
+	ld	hl,C2BPALM
   else
 	ld	hl,#1304
   endif
@@ -2235,10 +2333,10 @@ StMSG_S:
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
   if CV=2
 	db	#8C," Carnivore2 MultiFunctional Cartridge ",#8D
-	db	#8C," (C) 2017 RBSC. Help: '?' Volume: 'V' ",#8D
+	db	#8C,"   ",#90,#91,"2017 RBSC. Help: ",#92,#91," Volume: ",#93,#91,"   ",#8D
   else
 	db	#8C,"  Carnivore MultiFlash SCC Cartridge  ",#8D
-	db	#8C,"  (C) 2016 RBSC.  Press '?' for Help  ",#8D
+	db	#8C,"    ",#90,#91,"2017 RBSC. Press ",#93,#91," for Help    ",#8D
   endif
 	db	#8C,"                                      ",#8D
 	db	#8C,"  Entry selected for autostart: [  ]  ",#8D
@@ -2269,7 +2367,7 @@ VolumeScr:
 	db	#8C,"                                      ",#8D
 	db	#8C," Volume Control Keys:                 ",#8D
 	db	#8C,"                                      ",#8D
-	db	#8C,#20,#01,#50,"[ESC]   - exit to the main menu     ",#8D
+	db	#8C,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#8D
 	db	#8C,#20,#01,#57,"[UP]    - increase FMPAC volume     ",#8D
 	db	#8C,#20,#01,#57,"[DOWN]  - decrease FMPAC volume     ",#8D
 	db	#8C,#20,#01,#57,"[RIGHT] - increase SCC/SCC+ volume  ",#8D
@@ -2278,71 +2376,69 @@ VolumeScr:
 	db	#8C,"                                      ",#8D
 	db	#8C," FMPAC Volume:                        ",#8D
 	db	#8C,"                                      ",#8D
-	db	#8C,#20,#20,#01,#50,"--------------------------------",#01,#52,#20,#20,#8D
-	db	#8C,#20,#20,#01,#56,"--------------------------------",#01,#54,#20,#20,#8D
+	db	#8C,#20,#20,#01,#50,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#52,#20,#20,#8D
+	db	#8C,#20,#20,#01,#56,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#54,#20,#20,#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," SCC/SCC+ Volume:                     ",#8D
 	db	#8C,"                                      ",#8D
-	db	#8C,#20,#20,#01,#50,"--------------------------------",#01,#52,#20,#20,#8D
-	db	#8C,#20,#20,#01,#56,"--------------------------------",#01,#54,#20,#20,#8D
+	db	#8C,#20,#20,#01,#50,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#52,#20,#20,#8D
+	db	#8C,#20,#20,#01,#56,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#54,#20,#20,#8D
 	db	#8C,"                                      ",#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 	db	0
   endif
 
 helpmsg:
-	db	#01,#58,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59
-	db	#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#5A
+	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
   if CV=2
-	db	#01,#5B,"  Carnivore2 Cartridge's Help Screen  ",#01,#5F
+	db	#8C,"  Carnivore2 Cartridge's Help Screen  ",#8D
   else
-	db	#01,#5B,"  Carnivore Cartridge's Help Screen   ",#01,#5F
+	db	#8C,"  Carnivore Cartridge's Help Screen   ",#8D
   endif
-	db	#01,#5B,"                                      ",#01,#5F
-	db	#01,#5B," Menu Navigation and Action Keys:     ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
-	db	#01,#5B,#20,#01,#50,"[ESC] - boot MSX using the default  ",#01,#5F
+	db	#8C,"                                      ",#8D
+	db	#8C," Menu Navigation and Action Keys:     ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C,#20,#01,#50,"[ESC] - boot MSX using the default  ",#8D
   if CV=2
-	db	#01,#5B,#20,#01,#57,"        configuration: all enabled  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[F] - select 50Hz or 60Hz frequency ",#01,#5F
+	db	#8C,#20,#01,#57,"        configuration: all enabled  ",#8D
+	db	#8C,#20,#01,#57,"[F] - select 50Hz or 60Hz frequency ",#8D
   else
-	db	#01,#5B,#20,#01,#57,"        configuration               ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"                                    ",#01,#5F
+	db	#8C,#20,#01,#57,"        configuration               ",#8D
+	db	#8C,#20,#01,#57,"                                    ",#8D
   endif
-	db	#01,#5B,#20,#01,#57,"[LEFT],[RIGHT] - previous/next page ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[UP],[DOWN] - select ROM/CFG entry  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[SPACE]     - start entry normally  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[SHIFT]+[G] - start entry directly  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[SHIFT]+[R] - reset and start entry ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[SHIFT]+[A] - entry's autostart ON  ",#01,#5F
-	db	#01,#5B,#20,#01,#56,"[SHIFT]+[D] - entry's autostart OFF ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
-	db	#01,#5B," Startup Option Keys:                 ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
-	db	#01,#5B,#20,#01,#50,"[TAB] - disable autostart option    ",#01,#5F
-	db	#01,#5B,#20,#01,#56,"[F5]  - disable startup menu        ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
-	db	#01,#5B," Press any key to return...           ",#01,#5F		
-	db	#01,#5E,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D
-	db	#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5C
+	db	#8C,#20,#01,#57,"[LEFT],[RIGHT] - previous/next page ",#8D
+	db	#8C,#20,#01,#57,"[UP],[DOWN] - select ROM/CFG entry  ",#8D
+	db	#8C,#20,#01,#57,"[SPACE]     - start entry normally  ",#8D
+	db	#8C,#20,#01,#57,"[SHIFT]+[G] - start entry directly  ",#8D
+	db	#8C,#20,#01,#57,"[SHIFT]+[R] - reset and start entry ",#8D
+	db	#8C,#20,#01,#57,"[SHIFT]+[A] - entry's autostart ON  ",#8D
+	db	#8C,#20,#01,#56,"[SHIFT]+[D] - entry's autostart OFF ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C," Startup Option Keys:                 ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C,#20,#01,#50,"[F4] - disable autostart option     ",#8D
+	db	#8C,#20,#01,#56,"[F5] - disable startup menu         ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C," Press any key to return...           ",#8D		
+	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 	db	0
 
 Spaces:	db	"  ",0
 
 PALmsg:
-	db	"[50 Hz]",0
+	db	"[50",#96,"Hz]",0
 NTSCmsg:
-	db	"[60 Hz]",0
+	db	"[60",#96,"Hz]",0
 ResetMSG:
 	db	"Rebooting MSX...",0
 PageNum:
-	db	"[PAGE:  /  ]",0
+	db	"[PAGE:  ",#96,"  ]",0
 VolumeL:
-	db	"[FMPAC:  /SCC:  ]",0
+	db	"[FMPAC:  ",#96,"SCC:  ]",0
 VolumeInd:
-	db	">>>>",0
+	db	#98,#98,#98,#98,0
 IndEmpty:
-	db	"--------------------------------",0
+	db	#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,0
 DefVol:
 	db	#1B
 B2ON:
