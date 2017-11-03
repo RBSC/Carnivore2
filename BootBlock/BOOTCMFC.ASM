@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
 ; Portions (c) Grauw
-; Version 1.70
+; Version 1.75
 ;
 
 ; !COMPILATION OPTIONS!
@@ -31,6 +31,7 @@ WRITVDP	equ	#0047
 ENADISP	equ	#0044
 DISDISP	equ	#0041
 
+KEYCLK	equ	#F3DB
 FORCLR 	equ	#F3E9
 BAKCLR 	equ	#F3EA
 BDRCLR 	equ	#F3EB
@@ -69,7 +70,7 @@ L_STR	equ	16
 	db	"CSCCFRC"
   endif
 	db	0
-	db	"v1.70"  ; Version
+	db	"v1.75"  ; Version
 	db	0
 
 
@@ -108,6 +109,14 @@ C2FPALH	equ	#7707
 
 C2BCOLH	equ	4
 C2BPALH	equ	#1401
+
+
+; Default colors and palette on MSX startup
+
+DefFCol	equ	15		; white
+DefWhP	equ	#7707		; 15
+DefBCol	equ	4		; blue
+DefBlP	equ	#1701		; 4
 
 
 ;	Frames ASCII codes
@@ -231,7 +240,7 @@ TA_01:	inc	hl		; next auto
 ; Search records (64b) max - 256
 Menu:
 ; !!! check for incompatible systems and skip font loading
-        call	Setfnt		; set font
+        call	SetEnv		; set environment (screen, colors, fonts)
 
 	ld	c,d
 	exx
@@ -683,27 +692,7 @@ RUN_CT1:
 	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	a,C2FCOLM
-	ld	hl,#1101
-	call	PALETTE
-	ld	a,C2BCOLM
-	ld	hl,#1101
-	call	PALETTE
-
-	ld	a,C2FCOLM
-	ld	(FORCLR),a
-	ld	a,C2BCOLM
-	ld	(BAKCLR),a
-	ld	(BDRCLR),a
-	call	CHCOLOR		; set screen colors (foreground=background)
-
-	ld	de,#1701
-	ld	hl,#1101
-	ld	b,C2BCOLM
-	ld	c,#0D
-	call	FadeIn		; fade in background
-
-	call	Restfnt		; restore font
+	call	RestEnv		; restore environment (font, colors, screen)
 
 RUN_CT2:
 	ld	a,%00101100
@@ -765,31 +754,8 @@ RUN_CR1:
 	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	a,C2FCOLM
-	ld	hl,#1101
-	call	PALETTE
-	ld	a,C2BCOLM
-	ld	hl,#1101
-	call	PALETTE
+	call	RestEnv		; restore environment (font, colors, screen)
 
-	ld	a,C2FCOLM
-	ld	(FORCLR),a
-	ld	a,C2BCOLM
-	ld	(BAKCLR),a
-	ld	(BDRCLR),a
-	call	CHCOLOR		; set screen colors (foreground=background)
-
-	ld	de,#1701
-	ld	hl,#1101
-	ld	b,C2BCOLM
-	ld	c,#0D
-	call	FadeIn		; fade in background
-
-	ld	a,C2FCOLM
-	ld	hl,#1701
-	call	PALETTE
-
-	call	Restfnt		; restore font
 
 ; Configure cart register and restart
 ; ix - point dir entry
@@ -876,31 +842,7 @@ RUN_CJ1:
 	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	a,C2FCOLM
-	ld	hl,#1101
-	call	PALETTE
-	ld	a,C2BCOLM
-	ld	hl,#1101
-	call	PALETTE
-
-	ld	a,C2FCOLM
-	ld	(FORCLR),a
-	ld	a,C2BCOLM
-	ld	(BAKCLR),a
-	ld	(BDRCLR),a
-	call	CHCOLOR		; set screen colors (foreground=background)
-
-	ld	de,#1701
-	ld	hl,#1101
-	ld	b,C2BCOLM
-	ld	c,#0D
-	call	FadeIn		; fade in background
-
-	ld	a,C2FCOLM
-	ld	hl,#1701
-	call	PALETTE
-
-	call	Restfnt		; restore font
+	call	RestEnv		; restore environment (font, colors, screen)
 
 RUN_CJ2:
 ; Configure cart register and start ROM
@@ -1517,31 +1459,8 @@ Exit:
 	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	a,C2FCOLM
-	ld	hl,#1101
-	call	PALETTE
-	ld	a,C2BCOLM
-	ld	hl,#1101
-	call	PALETTE
+	call	RestEnv		; restore environment (font, colors, screen)
 
-	ld	a,C2FCOLM
-	ld	(FORCLR),a
-	ld	a,C2BCOLM
-	ld	(BAKCLR),a
-	ld	(BDRCLR),a
-	call	CHCOLOR		; set screen colors (foreground=background)
-
-	ld	de,#1701
-	ld	hl,#1101
-	ld	b,C2BCOLM
-	ld	c,#0D
-	call	FadeIn		; fade in background
-
-	ld	a,C2FCOLM
-	ld	hl,#1701
-	call	PALETTE
-
-	call	Restfnt		; restore font
 	ret
 
 
@@ -1686,32 +1605,70 @@ Delay:
 	ret
 
 
-; Restore font address and slot
-Restfnt:
+; Restore palette, font address and colors
+RestEnv:
 	push	af
 	push	hl
 	push	de
 	push	bc
+
 	ld	a,(BSLT)
         ld	(CHSETS),a	; restore bios font's slot
 	ld	hl,(BFNT)
 	ld	(CHSETA),hl	; restore bios font's address
+
 	ld	a,C2FCOLM
-	ld	(FORCLR),a
+	ld	hl,#1101
+	call	PALETTE
 	ld	a,C2BCOLM
+	ld	hl,#1101
+	call	PALETTE
+
+	ld	a,DefFCol
+	ld	hl,#1101
+	call	PALETTE
+	ld	a,DefBCol
+	ld	hl,#1101
+	call	PALETTE
+
+	ld	a,DefFCol
+	ld	(FORCLR),a
+	ld	a,DefBCol
 	ld	(BAKCLR),a
 	ld	(BDRCLR),a
-	call	CHCOLOR		; set screen colors
-        ld	a,C2FCOLM
-  	ld	hl,C2FPALM
-	call	PALETTE
-        ld	a,C2BCOLM
-  	ld	hl,#1701
-	call	PALETTE
+	call	CHCOLOR		; set screen colors (foreground=background)
+
+	ld	de,DefBlP
+	ld	hl,#1101
+	ld	b,DefBCol
+	ld	c,#0D
+	call	FadeIn		; fade in background
+
+	xor	a
+  	ld	hl,DefPal
+RestPal:
+	push	af
+	ld	e,(hl)
+	inc	hl
+	ld	d,(hl)
+	inc	hl
+	push	hl
+	push	de
+	pop	hl
+	call	PALETTE		; restore default palette
+	pop	hl
+	pop	af
+	inc	a
+	cp	16
+	jr	nz,RestPal
+
+	ld	a,1
+	ld	(KEYCLK),a	; enable click on keypress
 	xor	a
 	call	SSCREEN
 	call	MODE40A
 	call	CLS
+
 	pop	bc
 	pop	de
 	pop	hl
@@ -1719,35 +1676,31 @@ Restfnt:
 	ret
 
 
-; Set font address and slot
-Setfnt:	push	af
+; Set new font address and screen
+SetEnv:	push	af
 	push	hl
 	push	de
 	push	bc
-
-;	ld	hl,#0F84
-;	ld	(#4F81),hl
-;	xor	a
-;	ld	(#4F83),a	; disable 'hole' in ROM
-;	ld	a,(#4F80)
-;	or	1
-;	ld	(#4F80),a	; disable 'holes' in ROM
 
 	ld	a,(CHSETS)
 	ld	(BSLT),a	; save bios font's slot
 	ld	hl,(CHSETA)
 	ld	(BFNT),hl	; save bios font's address
 	call	SltDet
+
 	ld	(CHSETS),a
 	ld	hl,fontdat+1
 	ld	(CHSETA),hl	; set new font address
 	ld	a,40
 	ld	(SCR0WID),a	; set default width of screen0
+
 	xor	a
+	ld	(KEYCLK),a	; disable click on keypress
 	call	SSCREEN		; set screen 0
 	call	MODE40		; set 40x25 mode
 	call	DISKEYS		; no functional key display
 	call	CLS
+
 	pop	bc
 	pop	de
 	pop	hl
@@ -1777,6 +1730,7 @@ PALETTE:
         out	(#9A),a
 	push	af
 PALEND:
+	ei
 	pop	af
 	ret
 
@@ -2351,6 +2305,7 @@ Change2:
   endif
 
 
+
 ;
 ; DATA AREA
 ; The data area must start above the registers (#4F80...)
@@ -2368,7 +2323,7 @@ StMSG_S:
 	db	#8C,"    ",#90,#91,"2017 RBSC. Press ",#93,#91," for Help    ",#8D
   endif
 	db	#8C,"                                      ",#8D
-	db	#8C,"  Entry selected for autostart: [  ]  ",#8D
+	db	#8C,"  Entry selected for autostart: [  ] ",#9B,#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#01,#50,"                                    ",#01,#52,#8D
 	db	#8C,#01,#57,"                                    ",#01,#53,#8D
@@ -2394,7 +2349,7 @@ VolumeScr:
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
 	db	#8C," Carnivore2 Cartridge's Volume Screen ",#8D
 	db	#8C,"                                      ",#8D
-	db	#8C," Volume Control Keys:                 ",#8D
+	db	#8C," Volume Control Keys: ",#9B,"               ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#8D
 	db	#8C,#20,#01,#57,"[UP]    - increase FMPAC volume     ",#8D
@@ -2408,7 +2363,7 @@ VolumeScr:
 	db	#8C,#20,#20,#01,#50,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#52,#20,#20,#8D
 	db	#8C,#20,#20,#01,#56,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#54,#20,#20,#8D
 	db	#8C,"                                      ",#8D
-	db	#8C," SCC/SCC+ Volume:                     ",#8D
+	db	#8C," SCC",#96,"SCC+ Volume:                     ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#20,#20,#01,#50,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#52,#20,#20,#8D
 	db	#8C,#20,#20,#01,#56,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#54,#20,#20,#8D
@@ -2425,7 +2380,7 @@ helpmsg:
 	db	#8C,"  Carnivore Cartridge's Help Screen   ",#8D
   endif
 	db	#8C,"                                      ",#8D
-	db	#8C," Menu Navigation and Action Keys:     ",#8D
+	db	#8C," Menu Navigation and Action Keys: ",#9B,"   ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#20,#01,#50,"[ESC] - boot MSX using the default  ",#8D
   if CV=2
@@ -2452,8 +2407,28 @@ helpmsg:
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 	db	0
 
-Spaces:	db	"  ",0
 
+; Default palette
+
+DefPal:
+	dw	#0000		; 0
+	dw	#0000		; 1
+	dw	#1106		; 2
+	dw	#3307		; 3
+	dw	#1701		; 4
+	dw	#2703		; 5
+	dw	#5101		; 6
+	dw	#2706		; 7
+	dw	#7101		; 8
+	dw	#7303		; 9
+	dw	#6106		; 10
+	dw	#6406		; 11
+	dw	#1104		; 12
+	dw	#6502		; 13
+	dw	#5505		; 14
+	dw	#7707		; 15
+Spaces:
+	db	"  ",0
 PALmsg:
 	db	"[50",#96,"Hz]",0
 NTSCmsg:
