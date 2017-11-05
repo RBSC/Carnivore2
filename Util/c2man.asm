@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.30
+; Version 1.31
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -33,11 +33,12 @@ SCR0WID	equ	#F3AE		; Screen0 width
 
 TPASLOT1:	equ	#F342
 TPASLOT2:	equ	#F343
+VDPVER	equ	#F56A
 CSRY	equ	#F3DC
 CSRX	equ	#F3DD
 ARG:	equ	#F847
 EXTBIO:	equ	#FFCA
-MNROM:   equ    #FCC1		; Main-ROM Slot number & Secondary slot flags table
+MNROM:	equ    #FCC1		; Main-ROM Slot number & Secondary slot flags table
 
 CardMDR: equ	#4F80
 AddrM0: equ	#4F80+1
@@ -124,21 +125,25 @@ _DOSVER:	equ	#6F	; Get DOS version
 
 PRGSTART:
 ; Set screen
+	call	DetVDP
+	ld	(VDPVER),a
 	call	CLRSCR
 	call	KEYOFF
+
 ;--- Checks the DOS version and sets DOS2 flag
 
 	ld	c,_DOSVER
 	call	DOS
 	or	a
-	jr	nz,PRTITLE
+	jp	nz,PrintNote
 	ld	a,b
 	cp	2
-	jr	c,PRTITLE
+	jp	c,PrintNote
 
 	ld	a,#FF
 	ld	(DOS2),a		; #FF for DOS 2, 0 for DOS 1
 ;	print	USEDOS2_S		; !!! Commented out by Alexey !!!
+	jp	PrintNote
 
 ;--- Prints the title
 PRTITLE:
@@ -6152,10 +6157,22 @@ PRB3:	call	HEXOUT
 	print	ONE_NL_S
 	ret
 
-; Clear screen and set mode 80
+; Clear screen and set mode 40/80 depending on VDP version
 CLRSCR:
-;	ld	a,40			; 40 symbols for screen0
-;	ld	(SCR0WID),a		; set default width of screen0
+	ld	a,(VDPVER)
+	or	a
+	jr	z,Set40
+	ld	a,(SCR0WID)
+	cp	40
+	jr	c,Set40
+	jr	z,Set40
+	ld	a,80			; 80 symbols for screen0
+	ld	(SCR0WID),a		; set default width of screen0
+	jr	SetScr
+Set40:
+	ld	a,40			; 40 symbols for screen0
+	ld	(SCR0WID),a		; set default width of screen0
+SetScr:
 	xor	a
 	ld	ix, #005F
 	ld	iy,0
@@ -7327,10 +7344,95 @@ BUFTOP:
 ;
 	org #C000
 
+; Print note for MSX1 and MSX1 with VDP 9938
+PrintNote:
+	ld	a,(SCR0WID)
+	cp	40
+	jr	c,PrNote1
+	jr	z,PrNote1
+
+	ld	a,(VDPVER)
+	or	a
+	jp	nz,PRTITLE
+
+PrNote1:
+	ld	a,(#80)			; if no command line parameters found
+	or	a
+	jp	nz,PRTITLE
+
+	print	NOTE
+	ld	c,_INNOE
+	call	DOS			; print note and ask for action if VDP < v9938
+	call	SymbOut
+	push	af
+	print	CRLF			; skip 2 lines
+	pop	af
+	cp	"y"
+	jp	z,PRTITLE
+	cp	"Y"
+	jp	z,PRTITLE
+
+	ld	c,_TERM0
+	jp	DOS
+
+
+; Test if the VDP is a TMS9918A
+; Out A: 0=9918, 1=9938, 2=9958
+;
+DetVDP:
+	in	a,(#99)		; read s#0, make sure interrupt flag is reset
+	di
+DetVDPW:
+	in	a,(#99)		; read s#0
+	and	a		; wait until interrupt flag is set
+	jp	p,DetVDPW
+	ld	a,2		; select s#2 on V9938
+	out	(#99),a
+	ld	a,15+128
+	out	(#99),a
+	nop
+	nop
+	in	a,(#99)		; read s#2 / s#0
+	ex	af,af'
+	xor	a		; select s#0 as required by BIOS
+	out	(#99),a
+	ld	a,15+128
+	ei
+	out	(#99),a
+	ex	af,af'
+	and	%01000000	; check if bit 6 was 0 (s#0 5S) or 1 (s#2 VR)
+	or	a
+	ret	z
+
+	ld	a,1		; select s#1
+	di
+	out	(#99),a
+	ld	a,15+128
+	out	(#99),a
+	nop
+	nop
+	in	a,(#99)		; read s#1
+	and	%00111110	; get VDP ID
+	rrca
+	ex	af,af'
+	xor	a		; select s#0 as required by BIOS
+	out	(#99),a
+	ld	a,15+128
+	ei
+	out	(#99),a
+	ex	af,af'
+	jr	z,DetVDPE	; VDP = 9938?
+	inc	a
+DetVDPE:
+	inc	a
+	ld	(VDPVER),a
+	ret
+
+
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge Manager v1.30",13,10
+	db	"Carnivore2 MultiFunctional Cartridge Manager v1.31",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -7344,7 +7446,7 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC Cartridge Manager v1.30",13,10
+	db	"Carnivore MultiFlash SCC Cartridge Manager v1.31",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found. Please specify its slot number - $"
@@ -7400,6 +7502,14 @@ H_PAR_S:
 
 BAT:	; BAT table ( 8MB/64kB = 128 )
 	ds	128	
+
+NOTE:	db	"NOTE:",10,13
+	db	"This program is not optimized to run",10,13
+	db	"in the 40 character mode. You should",10,13
+	db	"use the C2MAN_40.COM utility instead",10,13
+	db	"or set MODE 80 if you are using MSX2.",10,13
+	db	"Do you want to continue? (Y/N) $"
+CRLF:	db	10,13,10,13,"$"
 
 	db	0,0,0
 	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000:2017"

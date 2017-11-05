@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.30
+; Version 1.31
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -6152,10 +6152,10 @@ PRB3:	call	HEXOUT
 	print	ONE_NL_S
 	ret
 
-; Clear screen and set mode 80
+; Clear screen and set mode 40
 CLRSCR:
-;	ld	a,40			; 40 symbols for screen0
-;	ld	(SCR0WID),a		; set default width of screen0
+	ld	a,40			; 40 symbols for screen0
+	ld	(SCR0WID),a		; set default width of screen0
 	xor	a
 	ld	ix, #005F
 	ld	iy,0
@@ -7334,7 +7334,7 @@ BUFTOP:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v1.30",13,10
+	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v1.31",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found.",10,13
@@ -7352,7 +7352,7 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v1.30",13,10
+	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v1.31",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found.",10,13
