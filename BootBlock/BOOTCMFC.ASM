@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
 ; Portions (c) Grauw
-; Version 1.75
+; Version 1.77
 ;
 
 ; !COMPILATION OPTIONS!
@@ -11,8 +11,6 @@ CV	equ	2		; 1 = Canivore
 EFF	equ	1		; 1 = effects (fade, palette) enabled
 				; 0 = effects disabled
 
-
-; !COMPILATION OPTIONS!
 
 ; Bios Calls
 ENASLT	equ	#0024
@@ -30,7 +28,9 @@ KILBUF	equ	#0156
 WRITVDP	equ	#0047
 ENADISP	equ	#0044
 DISDISP	equ	#0041
+CHSNS	equ	#009C
 
+; Variables
 KEYCLK	equ	#F3DB
 FORCLR 	equ	#F3E9
 BAKCLR 	equ	#F3EA
@@ -70,7 +70,7 @@ L_STR	equ	16
 	db	"CSCCFRC"
   endif
 	db	0
-	db	"v1.75"  ; Version
+	db	"v1.77"  ; Version
 	db	0
 
 
@@ -384,12 +384,14 @@ prStr:
 	add	a,7
 	ld	l,a
 	call	POSIT
+
 ; record number
 	ld	a,d
-	call	hexout
+	call	hexout		; print entry number in hex
+
 ; space
-	ld	a,' '
-	call	CHPUT
+;	ld	a,' '
+;	call	CHPUT
 
 ; set hl-point
 	push 	ix
@@ -398,21 +400,77 @@ prStr:
 	inc	hl
 	inc	hl
 	inc	hl
-; mapper symbol
+
+; mapper symbols
 	ld	a,(hl)
+;	call	CHPUT
+	cp	'K'
+	jr	nz,sMap1
+	ld	a,#B8
+	call	CHPUT		; output Konami5 mapper symbol
+	ld	a,#BE
+	jr	sCur
+sMap1:
+	cp	'k'
+	jr	nz,sMap2
+	ld	a,#B8
+	call	CHPUT		; output Konami4 mapper symbol
+	ld	a,#B3
+	jr	sCur
+sMap2:
+	cp	'A'
+	jr	nz,sMap3
+	ld	a,#B4
+	call	CHPUT		; output ASCII16 mapper symbol
+	ld	a,#BA
+	jr	sCur
+sMap3:
+	cp	'a'
+	jr	nz,sMap4
+	ld	a,#BB
+	call	CHPUT		; output ASCII8 mapper symbol
+	ld	a,#B9
+	jr	sCur
+sMap4:
+	cp	'C'
+	jr	nz,sMap5
+	ld	a,#BC
+	call	CHPUT		; output configuration symbol
+	ld	a,#BD
+	jr	sCur
+sMap5:
+	cp	'U'
+	jr	nz,sMap6
+	ld	a,#BF
+	call	CHPUT		; output unknown mapper symbol
+	ld	a,#B7
+	jr	sCur
+sMap6:
+	cp	'M'
+	jr	nz,sMap7
+	ld	a,#B5
+	call	CHPUT		; output multirom mapper symbol
+	ld	a,#B6
+	jr	sCur
+sMap7:
+	ld	a,#B1
+	call	CHPUT		; output unknown entry symbol
+	ld	a,#B2
+
+sCur:
 	call	CHPUT
 	inc	hl
 
 ; spaces
 	ld	a,' '
-	call	CHPUT
+	call	CHPUT		; output space for cursor
 	ld	a,' '
-	call	CHPUT
+	call	CHPUT		; output space for cursor
 
 ; print record name
 	ld	b,30
 sPr:	ld	a,(hl)
-	call	CHPUT
+	call	CHPUT		; output record name
 	inc	hl
 	djnz	sPr
 
@@ -464,6 +522,11 @@ CH01:
 
 	ld	bc,#0000	; no autostart - effects enabled
 	call	KILBUF
+
+Wait0:
+	call	CHSNS		; wait for key and avoid displaying cursor
+	jr	z,Wait0
+
 	call	CHGET
 	cp	27		; ESC
 	jp	z,Exit
@@ -1142,6 +1205,11 @@ Help1:
 	call	ENADISP		; enable display
 
 	call	KILBUF
+
+Wait1:
+	call	CHSNS		; wait for key and avoid displaying cursor
+	jr	z,Wait1
+
 	call	CHGET		; wait for a key
 
 	ld	de,C2BPALH
@@ -1318,8 +1386,12 @@ VolLoop:
 	call	ENADISP		; enable display
 
 	call	KILBUF
-	call	CHGET		; wait for a key
 
+Wait2:
+	call	CHSNS		; wait for key and avoid displaying cursor
+	jr	z,Wait2
+
+	call	CHGET		; wait for a key
 	cp	27		; ESC
 	jp	z,VolEnd
 	cp	30		; UP
@@ -1689,7 +1761,7 @@ SetEnv:	push	af
 	call	SltDet
 
 	ld	(CHSETS),a
-	ld	hl,fontdat+1
+	ld	hl,fontdat+2
 	ld	(CHSETA),hl	; set new font address
 	ld	a,40
 	ld	(SCR0WID),a	; set default width of screen0
@@ -2323,7 +2395,7 @@ StMSG_S:
 	db	#8C,"    ",#90,#91,"2017 RBSC. Press ",#93,#91," for Help    ",#8D
   endif
 	db	#8C,"                                      ",#8D
-	db	#8C,"  Entry selected for autostart: [  ] ",#9B,#8D
+	db	#8C,"  Entry selected for autostart: [  ]  ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#01,#50,"                                    ",#01,#52,#8D
 	db	#8C,#01,#57,"                                    ",#01,#53,#8D
@@ -2349,13 +2421,13 @@ VolumeScr:
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
 	db	#8C," Carnivore2 Cartridge's Volume Screen ",#8D
 	db	#8C,"                                      ",#8D
-	db	#8C," Volume Control Keys: ",#9B,"               ",#8D
+	db	#8C," Volume Control Keys:                 ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#8D
 	db	#8C,#20,#01,#57,"[UP]    - increase FMPAC volume     ",#8D
 	db	#8C,#20,#01,#57,"[DOWN]  - decrease FMPAC volume     ",#8D
-	db	#8C,#20,#01,#57,"[RIGHT] - increase SCC/SCC+ volume  ",#8D
-	db	#8C,#20,#01,#57,"[LEFT]  - decrease SCC/SCC+ volume  ",#8D
+	db	#8C,#20,#01,#57,"[RIGHT] - increase SCC",#96,"SCC+ volume  ",#8D
+	db	#8C,#20,#01,#57,"[LEFT]  - decrease SCC",#96,"SCC+ volume  ",#8D
 	db	#8C,#20,#01,#56,"[HOME]  - reset to default value    ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," FMPAC Volume:                        ",#8D
@@ -2369,6 +2441,7 @@ VolumeScr:
 	db	#8C,#20,#20,#01,#56,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#54,#20,#20,#8D
 	db	#8C,"                                      ",#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
+	db	"              Set the desired volume..."
 	db	0
   endif
 
@@ -2380,12 +2453,12 @@ helpmsg:
 	db	#8C,"  Carnivore Cartridge's Help Screen   ",#8D
   endif
 	db	#8C,"                                      ",#8D
-	db	#8C," Menu Navigation and Action Keys: ",#9B,"   ",#8D
+	db	#8C," Menu Navigation and Action Keys:     ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#20,#01,#50,"[ESC] - boot MSX using the default  ",#8D
   if CV=2
 	db	#8C,#20,#01,#57,"        configuration: all enabled  ",#8D
-	db	#8C,#20,#01,#57,"[F] - select 50Hz or 60Hz frequency ",#8D
+	db	#8C,#20,#01,#57,"                                    ",#8D
   else
 	db	#8C,#20,#01,#57,"        configuration               ",#8D
 	db	#8C,#20,#01,#57,"                                    ",#8D
@@ -2396,20 +2469,20 @@ helpmsg:
 	db	#8C,#20,#01,#57,"[SHIFT]+[G] - start entry directly  ",#8D
 	db	#8C,#20,#01,#57,"[SHIFT]+[R] - reset and start entry ",#8D
 	db	#8C,#20,#01,#57,"[SHIFT]+[A] - entry's autostart ON  ",#8D
-	db	#8C,#20,#01,#56,"[SHIFT]+[D] - entry's autostart OFF ",#8D
+	db	#8C,#20,#01,#57,"[SHIFT]+[D] - entry's autostart OFF ",#8D
+	db	#8C,#20,#01,#56,"[F] - select 50Hz or 60Hz frequency ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," Startup Option Keys:                 ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#20,#01,#50,"[F4] - disable autostart option     ",#8D
 	db	#8C,#20,#01,#56,"[F5] - disable startup menu         ",#8D
 	db	#8C,"                                      ",#8D
-	db	#8C," Press any key to return...           ",#8D		
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
+	db	"             Press any key to return..."
 	db	0
 
 
 ; Default palette
-
 DefPal:
 	dw	#0000		; 0
 	dw	#0000		; 1
@@ -2427,6 +2500,8 @@ DefPal:
 	dw	#6502		; 13
 	dw	#5505		; 14
 	dw	#7707		; 15
+
+; Various text and data
 Spaces:
 	db	"  ",0
 PALmsg:
@@ -2448,6 +2523,8 @@ DefVol:
 B2ON:
 	db	#F0,#70,#01,#15,#7F,#80
 
-fontdat:db	0
+; Font data
+fontdat:
+	dw	0
 
 	include	"font.inc"

@@ -85,7 +85,19 @@ block completely the following keys should be used:
 	[F5] - disable startup menu
 
 In addition to F4 key, the ESC and TAB keys can be used to disable the autostart entry. If any of those keys are pressed, the
-autostart entry is ignored and the main menu is shown
+autostart entry is ignored and the main menu is shown.
+
+The symbols that are displayed near the names of directory entries have certain meaning:
+
+	K5 - Konami 5 SCC
+	K4 - Konami 4
+	A8 - ASCII 8
+	A16 - ASCII 16
+	MR - mini ROM
+	CF - configuration
+	UN - unknown
+
+For any other symbol there will be just 2 dashes.
 
 The cartridge has a pushbutton to completely disable its functionality if something goes wrong. If the cartridge stops working
 correctly, you may need to reinitialize it like described in the "How to enable the cartridge and install ROMs" section. The
@@ -112,6 +124,12 @@ C2MAN and C2MAN_40 utilities
 The C2MAN utility allows to initialize the cartridge, add ROMs into the FlashROM, create custom configuration entries, edit
 the cartridge's directory. The C2MAN_40 utility is for MSX1 computers using the 40 character wide display, the C2MAN utility
 is for MSX2 and later computers.
+
+The C2MAN_40 utility sets the 40 character mode by default, however the C2MAN utility tries to detect the VDP's version and
+the current screen mode. On MSX1 computers, even on those that have v9938 VDP, the C2MAN utility will show a note that it's not
+optimized for the 40 character mode and ask whether it should continue. On MSX2 computers this note will be shown only if
+the screen mode is less or equal 40 symbols. On both MSX1 and MSX2 systems the note will not be shown if a command line is not
+empty, this is done to avoid user interaction during automated adding of ROMs into the cartridge.
 
 The utility supports the following command line options:
 
