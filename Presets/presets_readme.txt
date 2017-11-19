@@ -14,6 +14,30 @@ SM_WORLD.RCP	- RCP file for "Super Mario World" game
 SPYVBSPY.RCP	- RCP file for "Spy vs Spy" game (any version)
 DONKKONG.RCP	- RCP file for "Donkey Kong" game (both 49 and 64kb versions)
 GBERET.RCP	- RCP file for "Green Beret" game
+XANA_RAM.RCP	- RCP file for "Xanadu: Dragon Slayer 2" game in RAM mode (use C2RAMLDR utility)
+MANB2RAM.RCP	- RCP file for "Space Manbow 2" game in RAM mode (use C2RAMLDR utility)
+XEVIOUS.RCP	- RCP file for "Xevious" game
+ALESTE2.RCP	- RCP file for "Aleste 2" game
+MANBOW2.RCP	- RCP file for "Manbow 2" game, R1 and R2 (see the patch note below)
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
 more information about this file.
+
+
+Note for MANBOW2.RCP
+--------------------
+To be able to run the game from FlashROM and to get SCC sound, the ROM must be patched. Below are
+the addresses and the byte values that must be there. Please note that there are Release 1 and 2
+ROMs, so this patch must be done at one of those 2 addresses depending on the ROM's release:
+
+2CBAh: 00 00 (Release 2, the original bytes are 20 FC) 
+..or..
+2CBDh: 00 00 (Release 1, the original bytes are 20 FC)
+
+Some ROMs you find may be already patched to use PSG instead of SCC. So it's recommended to also
+apply this patch to get SCC sound:
+
+07D9h: D3 10
+07DCh: D3 11
+07EDh: DB 12
+0824h: 0E 11

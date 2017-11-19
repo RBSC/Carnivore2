@@ -1,7 +1,7 @@
 ;
-; Carnivore2 Cartridge's ROM->RAM Loader
+; Carnivore2 Cartridge's SRAM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.10
+; Version 1.00
 ;
 
 
@@ -16,25 +16,29 @@ print	macro
 
 ;--- System calls and variables
 
-DOS:	equ	#0005		; DOS function calls entry point
-ENASLT:	equ	#0024		; BIOS Enable Slot
-WRTSLT:	equ	#0014		; BIOS Write to Slot
-CALLSLT:equ	#001C		; Inter-slot call
+DOS	equ	#0005		; DOS function calls entry point
+ENASLT	equ	#0024		; BIOS Enable Slot
+WRTSLT	equ	#0014		; BIOS Write to Slot
+CALLSLT	equ	#001C		; Inter-slot call
 SCR0WID	equ	#F3AE		; Screen0 width
 
-TPASLOT1:	equ	#F342
-TPASLOT2:	equ	#F343
+TPASLOT1	equ	#F342
+TPASLOT2	equ	#F343
+
 CSRY	equ	#F3DC
 CSRX	equ	#F3DD
 ARG:	equ	#F847
 EXTBIO:	equ	#FFCA
-MNROM:   equ    #FCC1		; Main-ROM Slot number & Secondary slot flags table
+MNROM:	equ	#FCC1		; Main-ROM Slot number & Secondary slot flags table
 
-CardMDR: equ	#4F80
+SRAMBLK equ	#0F		; SRAM bank (#0F - last logical block of 1mb of RAM)
+SRAMBNK	equ	#07		; Last 8kb page of the block (#07=#E000)
+
+CardMDR:equ	#4F80
 AddrM0: equ	#4F80+1
 AddrM1: equ	#4F80+2
 AddrM2: equ	#4F80+3
-DatM0: equ	#4F80+4
+DatM0:	equ	#4F80+4
 
 AddrFR: equ	#4F80+5
 
@@ -42,33 +46,33 @@ R1Mask: equ	#4F80+6
 R1Addr: equ	#4F80+7
 R1Reg:  equ	#4F80+8
 R1Mult: equ	#4F80+9
-B1MaskR: equ	#4F80+10
+B1MaskR:equ	#4F80+10
 B1AdrD:	equ	#4F80+11
 
 R2Mask: equ	#4F80+12
 R2Addr: equ	#4F80+13
 R2Reg:  equ	#4F80+14
 R2Mult: equ	#4F80+15
-B2MaskR: equ	#4F80+16
+B2MaskR:equ	#4F80+16
 B2AdrD:	equ	#4F80+17
 
 R3Mask: equ	#4F80+18
 R3Addr: equ	#4F80+19
 R3Reg:  equ	#4F80+20
 R3Mult: equ	#4F80+21
-B3MaskR: equ	#4F80+22
+B3MaskR:equ	#4F80+22
 B3AdrD:	equ	#4F80+23
 
 R4Mask: equ	#4F80+24
 R4Addr: equ	#4F80+25
 R4Reg:  equ	#4F80+26
 R4Mult: equ	#4F80+27
-B4MaskR: equ	#4F80+28
+B4MaskR:equ	#4F80+28
 B4AdrD:	equ	#4F80+29
 
-CardMod: equ	#4F80+30
+CardMod:equ	#4F80+30
 
-CardMDR2: equ   #4F80+31
+CardMDR2:equ   #4F80+31
 ConfFl:	equ	#4F80+32
 ADESCR:	equ	#4010
 
@@ -117,6 +121,7 @@ PRGSTART:
 ; Set screen
 	call	CLRSCR
 	call	KEYOFF
+
 ;--- Checks the DOS version and sets DOS2 flag
 
 	ld	c,_DOSVER
@@ -135,10 +140,13 @@ PRGSTART:
 PRTITLE:
 	print	PRESENT_S
 
+	xor	a
+	ld	(F_A),a			; Automatic flag not active by default
+
 ; Command line options processing
 	ld	a,1
 	call	F_Key			; C- no parameter; NZ- not flag; S(M)-ilegal flag
-	jr	c,Stfp01
+	jr	c,Stfp010
 	jr	nz,Stfp07
 	jp	p,Stfp02
 Stfp03:
@@ -151,7 +159,7 @@ Stfp07:
 Stfp02:
 	ld	a,2
 	call	F_Key
-	jr	c,Stfp01
+	jr	c,Stfp010
 	jp	m,Stfp03
 	jr	z,Stfp04
 Stfp05:
@@ -163,38 +171,27 @@ Stfp04:
 	ld	a,3
 	call	F_Key
 	jr	c,Stfp01
-	jp	m,Stfp03
-	jr	nz,Stfp05
-	ld	a,4
-	call	F_Key
-	jr	c,Stfp01
-	jp	m,Stfp03
-	jr	nz,Stfp05
-	ld	a,5
-	call	F_Key
-	jr	c,Stfp01
-	jp	m,Stfp03
-	jr	nz,Stfp05
 	print	I_MPAR_S
 	jr	Stfp09
 Stfp01:
-	ld	a,(p1e)
-	jr	nz,Stfp06		; if not file parameter
-	xor	a
-	ld	(F_A),a			; Automatic flag not active
-Stfp06:
-	ld	a,(F_P)
-	or	a
-	jr	z,Stfp08
-	ld	a,#FF
-
-Stfp08:	inc	a
-	ld	(protect),a		; set protection status
-
 	ld	a,(F_H)
 	or	a
 	jr	nz,Stfp09
 
+	ld	a,(F_D)
+	or	a
+	jr	z,Stfp08
+	ld	a,1
+	ld	(F_A),a			; Automatic flag active
+	jr	Stfp010
+Stfp08:
+	ld	a,(F_U)
+	or	a
+	jr	z,Stfp010
+	ld	a,1
+	ld	(F_A),a			; Automatic flag active
+
+Stfp010:
 ; Find used slot
 	call	FindSlot
 	jp	c,Exit
@@ -207,10 +204,10 @@ Stfp08:	inc	a
 	call	DOS
 	jp	Exit
 
-Stfp30:       	
+Stfp30:
 	ld	a,(p1e)
 	or	a
-	jr	z,MainM			; no file parameter
+	jr	z,MainM			; no file parameter?
 
 	ld	a,1
 	ld	de,BUFFER
@@ -220,7 +217,21 @@ Stfp30:
 	ld	ix,BUFFER
 	call	FnameP
 
-	jp	ADD_OF			; continue loading ROM image
+	ld	a,(F_U)
+	or	a
+	jp	nz,ADD_OF
+
+Stfp40:
+	ld	a,(F_D)
+	or	a
+	jr	z,MainM
+	ld	hl,FCB
+	ld	de,FCB2
+	ld	bc,1+8+3
+	ldir				; copy prepared fcb to fcb2
+
+
+	jr	rdt921
 
 
 ; Main menu
@@ -233,22 +244,291 @@ Ma01:	ld	c,_INNOE
 	cp	"0"
 	jp	z,Exit
 	cp	"1"
-	jp	z,ADDimage
+	jp	z,DownSRAM
 	cp	"2"
-	jp	nz,Ma01
-	xor 	a
-	jr	ADDimgR
-
+	jp	z,UploadSRAM
+	jr	Ma01
 
 ;
-; ADD ROM image
+; Download SRAM's contents into a file
 ;
-ADDimage:
+DownSRAM:
+        print   SRM_FNM
+	call	GetFname
+	jp	z,MainM
+
+; test if file exists
+	ld	de,FCB2
+	ld	c,_FSEARCHF		; Search First File
+	call	DOS
+	or	a
+	jr	nz,rdt921		; file not found
+
+	ld	a,(F_A)
+	or	a
+	jp	nz,rdt921		; automatic overwrite
+
+	print	F_EXIST_S
+rdt922:	ld	c,_INNOE
+	call	DOS
+	call	SymbOut
+	cp	"y"
+	jp	z,rdt921
+	cp	"Y"
+	jr	z,rdt921
+	print	ONE_NL_S
+	jp	MainM
+	
+rdt921:
+        ld      bc,24         		; Prepare the FCB
+        ld      de,FCB2+13
+        ld      hl,FCB2+12
+        ld      (hl),b
+        ldir 
+
+	ld	de,CrFile_S
+	ld	c,_STROUT
+	call	DOS
+
+	ld	a,(FCB2)
+	or 	a
+	jr	z,opff1			; dp not print device letter
+	add	a,#40			; 1 => "A:"
+	ld	e,a
+	ld	c,_CONOUT
+	call	DOS
+	ld	e,":"
+	ld	c,_CONOUT
+	call	DOS
+opff1:	ld	b,8
+	ld	hl,FCB2+1
+opff2:	push	bc
+	push	hl
+	ld	e,(hl)
+	ld	c,_CONOUT
+	call	DOS
+	pop	hl
+	inc	hl
+	pop	bc
+	djnz	opff2
+	ld	e,"."
+	ld	c,_CONOUT
+	call	DOS
+	ld	b,3
+	ld	hl,FCB2+9
+opff3:	push	bc
+	push	hl
+	ld	e,(hl)
+	ld	c,_CONOUT
+	call	DOS
+	pop	hl
+	inc	hl
+	pop	bc
+	djnz	opff3
+
+	ld	de,FCB2
+	ld	c,_FCREATE
+	call	DOS
+	or	a
+	jr	z,rdt923
+	print	FR_ERC_S
+	print	ONE_NL_S
+
+	ld	a,(F_A)
+	or	a
+	jp	nz,Exit			; automatic exit
+	jp	MainM
+
+rdt923:
+	ld      hl,1
+	ld      (FCB2+14),hl     	; Record size = 1 byte
+
+	print	ONE_NL_S
+
+	ld	a,SRAMBLK
+	ld	(EBlock),a		; shift to the block of RAM where SRAM is located
+	ld	a,SRAMBNK
+	ld	(PreBnk),a		; shift to the address in block where SRAM is located: 0FE000h-0FFFFFh
+
+        ld      a,(ERMSlt)
+        ld      h,#40
+        call    ENASLT
+	ld	a,#34			; RAM instead of ROM, Bank write enabled, 8kb pages, control off
+	ld	(R2Mult),a		; set value for Bank2
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT
+
+	ld	hl,#8000		; source
+	ld	de,BUFTOP		; destination
+	ld	bc,#2000		; size
+	call	RW_RAM			; read SRAM data to BUFTOP
+	jr	nc,rdt997
+
+	print	DATA_ERR
+	print	DL_erd_S
+	jr	rdt999
+
+rdt997:
+	ld      c,_SDMA
+	ld      de,BUFTOP
+	call    DOS			; set DMA
+
+	ld	hl,8192
+	ld	de,FCB2
+	ld	c,_RBWRITE
+	call	DOS			; write 8192 bytes of SRAM contents
+	or	a
+	jp	z,rdt998
+
+	print	FR_ERW_S
+	print	ONE_NL_S
+	jr	rdt999
+
+rdt998:
+	print	Success		; print successful operation
+
+rdt999:
+
+; Restore slot configuration!
+        ld      a,(ERMSlt)
+        ld      h,#40
+        call    ENASLT
+	ld	a,#15
+	ld	(R2Mult),a		; set 16kB Bank write
+	xor	a
+	ld	(EBlock),a
+	ld	(AddrFR),a
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT
+        ld      a,(TPASLOT2)
+        ld      h,#80
+        call    ENASLT          	; Select Main-RAM at bank 8000h~BFFFh
+
+	ld	de,FCB2
+	ld	c,_FCLOSE
+	call	DOS
+
+	ld	a,(F_A)
+	or	a
+	jp	nz,Exit			; automatic exit
+	jp	MainM
+
+GetFname:
+;Bi_FNAM
+	ld	de,Bi_FNAM
+	ld	c,_BUFIN
+	call	DOS
+	ld	a,(Bi_FNAM+1)
+	or	a
+	ret	z
+
+	ld	hl,SRMFN
+	ld	de,FCB2
+	ld	bc,8+3+1
+	ldir
+
+	ld	a,(Bi_FNAM+1)
+	ld	b,a
+	ld	c,8
+	ld	hl,Bi_FNAM+2
+	ld	de,FCB2+1
+	ld	a,(Bi_FNAM+3)
+	cp	":"
+	jr	nz,gcn01		; no drive letter
+	ld	a,(hl)
+	and	%11011111
+	sub	"A"-1
+	ld	(FCB2),a
+	inc	hl
+	inc	hl
+	dec	b
+	ret	z
+	dec	b
+	ret	z
+gcn01:
+	ld	a,(hl)
+	cp	"."
+	jr	z,gcn03			; ext fn detected
+	ld	(de),a
+	inc	hl
+	inc	de
+	dec	b
+	jr	z,gcn02
+	dec	c
+	jr	nz,gcn01
+gcn05:
+	ld	a,(hl)
+	cp	"."
+	jr	z,gcn03
+	inc	hl
+	dec	b
+	jr	nz,gcn05
+	jr	gcn02
+gcn03:
+	ld	de,FCB2+1+8
+	inc	hl
+	ld	a," "
+	ld	(FCB2+1+8),a
+	ld	(FCB2+1+8+1),a
+	ld	(FCB2+1+8+2),a
+	ld	c,3
+gcn04:	dec	b
+	jr	z,gcn02
+	ld	a,(hl)
+	ld	(de),a
+	inc	hl
+	inc	de
+	dec	c
+	jr	nz,gcn04
+
+gcn02:
+        print   SRM_Name
+        ld      bc,24           	; Prepare the FCB
+        ld      de,FCB2+13
+        ld      hl,FCB2+12
+        ld      (hl),b
+        ldir 
+
+	ld	hl,FCB2+1
+	ld	b,8
+gcn06:	push	hl
+	push	bc
+	ld	e,(hl)
+	ld	c,_CONOUT
+	call	DOS
+	pop	bc
+	pop	hl
+	inc	hl
+	djnz	gcn06
+
+	ld	e,"."
+	ld	c,_CONOUT
+	call	DOS
+
+	ld	hl,FCB2+9
+	ld	b,3
+gcn07:	push	hl
+	push	bc
+	ld	e,(hl)
+	ld	c,_CONOUT
+	call	DOS
+	pop	bc
+	pop	hl
+	inc	hl
+	djnz	gcn07
+
 	ld	a,1
-ADDimgR:
-	ld	(protect),a	
+	or	a
+	ret
 
-	print	ADD_RI_S
+
+;
+; Upload file's contents into SRAM
+;
+UploadSRAM:
+	print	WR_SRAM_S
 	ld	de,Bi_FNAM
 	ld	c,_BUFIN
 	call	DOS
@@ -272,17 +552,12 @@ SelFile:
 	call    DOS
 
 SelFile0:
-	ld	de,FCBROM
+	ld	de,FCBSRM
 	ld	c,_FSEARCHF		; Search First File
 	call	DOS
 	or	a
 	jr	z,SelFile1		; file found!
 	print	NoMatch
-
-	ld	a,(F_A)
-	or	a
-	jp	nz,Exit			; Automatic exit
-
 	jp	MainM
 
 SelFile1:
@@ -418,23 +693,26 @@ opf3:	push	bc
 	ld	de,F_NOT_F_S
 	ld	c,_STROUT
 	call	DOS
+
 	ld	a,(F_A)
 	or	a
-	jp	nz,Exit			; Automatic exit
-	jp	MainM		
+	jp	nz,Exit			; automatic exit
+
+	jp	MainM
 	
 Fpo:
 ; set DMA
 	ld      c,_SDMA
 	ld      de,BUFTOP
 	call    DOS
+
 ; get file size
 	ld	hl,FCB+#10
 	ld	bc,4
 	ld	de,Size
 	ldir
 
-; print ROM size in hex
+; print SRM size in hex
 	ld	a,(F_V)			; verbose mode?
 	or	a
 	jr	z,vrb00
@@ -453,1199 +731,61 @@ Fpo:
 	ld	c,_STROUT
 	call	DOS	
 vrb00:
-
-; File size <= 32 κα ?
-;	ld	a,(Size+3)
-;	or	a
-;	jr	nz,Fptl
-;	ld	a,(Size+2)
-;	or	a
-;	jr	nz,Fptl
-;	ld	a,(Size+1)
-;	cp	#80
-;	jr	nc,Fptl
-; ROM Image is small, use no mapper
-; bla bla bla :)
-
-FMROM:
-	print	MROMD_S
 	ld	hl,(Size)
-	exx
-	ld	hl,(Size+2)
-	ld	bc,0
-	exx
-
-	ld	a,%00000100
-	ld	de,ssr08
-	ld	bc,#2001		; >8Kb
-	or	a
-	sbc	hl,bc
-	exx
-	sbc	hl,bc
-	exx
-	jr	c,FMRM01
-
-	ld	a,%00000101
-	ld	de,ssr16
-	ld	bc,#4001-#2001		; (#2000) >16kB
-	sbc	hl,bc
-	exx
-	sbc	hl,bc
-	exx
-	jr	c,FMRM01
-
-	ld	a,%00000110
-	ld	de,ssr32
-	ld	bc,#8001-#4001		; (#4000) >32kb
-	sbc	hl,bc
-	exx
-	sbc	hl,bc
-	exx
-	jr	c,FMRM01
-
-	ld	a,%00001110
-	ld	de,ssr48
-	ld	bc,#C001-#8001		; (#4000) >48kB
-	sbc	hl,bc
-	exx
-	sbc	hl,bc
-	exx
-	jr	c,FMRM01
-
-	ld	a,%00000111
-	ld	de,ssr64
-	ld	bc,#4000		; #10001-#C001 >64kB
-	sbc	hl,bc
-	exx
-	sbc	hl,bc
-	exx
-	jr	c,FMRM01
-
-	xor	a
-	ld	de,ssrMAP
-
-
-FMRM01:					; fix size
-	ld	(SRSize),a
-	ld	c,_STROUT
-	call	DOS
-	print	ONE_NL_S
-
-; !!!! file attribute fix by Alexey !!!!
-	ld	a,(FCB+#11)
-	cp	#20
-	jr	nz,Fptl
-	ld	a,(FCB+#0D)
-	cp	#21
-	jr	nz,Fptl
-	dec	a
-	ld	(FCB+#0D),a
-; !!!! file attribute fix by Alexey !!!!
-
-; Analyze ROM-Image
-
-; load first 8000h bytes for analysis	
-Fptl:	ld	hl,#8000
-	ld      c,_RBREAD
-	ld	de,FCB
-	call    DOS
 	ld	a,l
-	or	h
-	jp	z,FrErr
-
-; descriptor analysis
-;ROMABCD - % 0, 0, CD2, AB2, CD1, AB1, CD0, AB0	
-;ROMJT0	 - CD, AB, 0,0,TEXT ,DEVACE, STAT, INIT
-;ROMJT1
-;ROMJT2
-;ROMJI0	- high byte INIT jmp-address
-;ROMJI1
-;ROMJI2
-	ld	bc,6
-	ld	hl,ROMABCD
-	ld	de,ROMABCD+1
-	ld	(hl),b
-	ldir				; clear descr tab
-
-
-	ld	ix,BUFTOP		; test #0000
-	call	fptl00
-	ld	(ROMJT0),a
-	and	#0F
-	jr	z,fpt01
-	ld	a,e
-	ld	(ROMJI0),a
-fpt01:
-	ld	a,(SRSize)
-	and	#0F		
-	jr	z,fpt07			; MAPPER
-	cp	6
-	jr	c,fpt03			; <= 16 kB 
-fpt07:
-	ld	ix,BUFTOP+#4000		; test #4000
-	call	fptl00
-	ld	(ROMJT1),a
-	and	#0F
-	jr	z,fpt02
-	ld	a,e
-	ld	(ROMJI1),a
-fpt02:
-	ld	a,(SRSize)
-	and	#0F
-	jr	z,fpt08			; MAPPER
-	cp	7
-	jr	c,fpt03			; <= 16 kB 
-fpt08:
-	ld      c,_SDMA
-	ld      de,BUFFER
-	call    DOS
-
-	ld	hl,#0010
-	ld      c,_RBREAD
-	ld	de,FCB
-	call    DOS
-	ld	a,l
-	or	h
-	jp	z,FrErr
-
-	ld	ix,BUFFER		; test #8000
-	call	fptl00
-	ld	(ROMJT2),a
-	and	#0F
-	jr	z,fpt03
-	ld	a,e
-	ld	(ROMJI2),a
-
-fpt03:
-
-	ld      c,_SDMA
-	ld      de,BUFTOP
-	call    DOS
-	
-	jp	FPT10
-
-fptl00:
-	ld	h,(ix+1)
-	ld	l,(ix)
-	ld	bc,"A"+"B"*#100
-	xor	a
-	push	hl
-	sbc	hl,bc
-	pop	hl
-	jr	nz,fptl01
-	set	6,a
-fptl01: ld	bc,"C"+"D"*#100
 	or	a
-	sbc	hl,bc
-	jr	nz,fptl02
-	set	7,a
-fptl02:	ld	e,a	
-	ld	d,0
-	or	a
-	jr	z,fptl03		; no AB,CD descriptor
+	jr	nz,vbr01
+	ld	a,h
+	cp	#20			; 2000h = 8192 bytes
+	jr	z,FMRM01
+vbr01:
+	print	FileOver_S
 
-	ld	b,4
-	push	ix
-	pop	hl
-	inc	hl			; +1
-fptl05:
-	inc	hl			; +2
-	ld	a,(hl)
-	inc	hl
-	or	(hl)			; +3
-	jr	z,fptl04
-	scf
-fptl04:	rr	d
-	djnz	fptl05
-	rrc	d
-	rrc	d
-	rrc	d
-	rrc	d
-fptl03:
-	ld	a,d
-	or	e
-	ld	d,a
-	ld	e,(ix+3)
-	bit	0,d
-	jr	nz,fptl06
-	ld	e,(ix+5)
-	bit	1,d
-	jr	nz,fptl06
-	ld	e,(ix+7)
-	bit	2,d
-	jr	nz,fptl06
-	ld	e,(ix+9)
-fptl06:
-;	ld	e,a
-;	ld	a,d
-	ret
-FPT10:
-
-; file close NO! saved for next block
-;	ld	de,FCB
-;	ld	c,_FCLOSE
-;	call	DOS
-
-; print test ROM descriptor table
-	ld	a,(F_V)			; verbose mode?
-	or	a
-	jr	z,vrb02
-
-	print	TestRDT
-	ld	a,(ROMJT0)
-	call	HEXOUT
-	ld	e," "
-	ld	c,_CONOUT
-	call	DOS
-	ld	a,(ROMJT1)
-	call	HEXOUT
-	ld	e," "
-	ld	c,_CONOUT
-	call	DOS
-	ld	a,(ROMJT2)
-	call	HEXOUT
-	print	ONE_NL_S
-	ld	a,(ROMJI0)
-	call	HEXOUT
-	ld	e," "
-	ld	c,_CONOUT
-	call	DOS
-	ld	a,(ROMJI1)
-	call	HEXOUT
-	ld	e," "
-	ld	c,_CONOUT
-	call	DOS
-	ld	a,(ROMJI2)
-	call	HEXOUT
-	print	ONE_NL_S
-
-vrb02:
-; Map / miniROm select
-	ld	a,(SRSize)
-	and	#0F
-	jr	z,FPT01			; MAPPER ROM
-	cp	7
-	jp	c,FPT02			; MINI ROM
-
-;	print	MRSQ_S
-;FPT03:	ld	c,_INNOE		; 32 < ROM =< 64
-;	call	DOS
-;	cp	"n"
-;	jr	z,FPT01			; no minirom (mapper)
-;	cp	"y"			; yes minirom
-;	jr	nz,FPT03
-
-	jr	FPT04			; Mapper detected!
-
-
-
-
-FPT01:
-	xor	a
-	ld	(SRSize),a	
-FPT04:
-; Mapper types Singature
-; Konami:
-;    LD    (#6000),a
-;    LD    (#8000),a
-;    LD    (#a000),a
-; 
-;    Konami SCC:
-;    LD    (#5000),a
-;    LD    (#7000),a
-;    LD    (#9000),a
-;    LD    (#b000),a
-; 
-;    ASCII8:
-;    LD    (#6000),a
-;    LD    (#6800),a
-;    LD    (#7000),a
-;    LD    (#7800),a
-; 
-;    ASCII16:
-;    LD    (#6000),a
-;    LD    (#7000),a
-;
-;    32 00 XX
-; 
-;    For Konami games is easy since they always use the same register addresses.
-; 
-;    But ASC8 and ASC16 is more difficult because each game uses its own addresses and instructions to access them.
-;    I.e.:
-;    LD    HL,#68FF 2A FF 68
-;    LD    (HL),A   77
-;
-;    BIT E 76543210
-; 	   !!!!!!!. 5000h
-;          !!!!!!.- 6000h
-;          !!!!!.-- 6800h
-;	   !!!!.--- 7000h
-;	   !!!.---- 7800h
-;          !!.----- 8000h
-;          !.------ 9000h
-;	   .------- A000h
-;    BIT D 76543210
-;	          . B000h
-DTMAP:
-	print	Analis_S
-	ld	de,0
-DTME6:				; point next portion analis
-	ld	ix,BUFTOP
-	ld	bc,#8000
-DTM01:	ld	a,(ix)
-	cp	#2A
-	jr	nz,DTM03
-	ld	a,(ix+1)
-	cp	#FF
-	jr	nz,DTM02
-	ld	a,(ix+3)
-	cp	#77
-	jr	nz,DTM02
-	ld	a,(ix+2)
-	cp	#60
-	jr	z,DTM60	
-	cp	#68
-	jr	z,DTM68
-	cp	#70
-	jr	z,DTM70
-	cp	#78
-	jr	z,DTM78
-	jr	DTM02
-DTM03:	cp	#32
-	jr	nz,DTM02
-	ld	a,(ix+1)
-	cp	#00
-	jr	nz,DTM02
-	ld	a,(ix+2)
-	cp	#50
-	jr	z,DTM50
-	cp	#60
-	jr	z,DTM60
-	cp	#68
-	jr	z,DTM68
-	cp	#70
-	jr	z,DTM70
-	cp	#78
-	jr	z,DTM78
-	cp	#80
-	jr	z,DTM80
-	cp	#90
-	jr	z,DTM90
-	cp	#A0
-	jr	z,DTMA0
-	cp	#B0
-	jr	z,DTMB0
-	
-DTM02:	inc	ix
-	dec	bc
-	ld	a,b
-	or	c
-	jr	nz,DTM01
-	jr	DTME
-DTM50:
-	set	0,e
-	jr	DTM02
-DTM60:
-	set	1,e
-	jr	DTM02
-DTM68:
-	set	2,e
-	jr	DTM02
-DTM70:
-	set	3,e
-	jr	DTM02
-DTM78:
-	set	4,e
-	jr	DTM02
-DTM80:
-	set	5,e
-	jr	DTM02
-DTM90:
-	set	6,e
-	jr	DTM02
-DTMA0:
-	set	7,e
-	jr	DTM02
-
-DTMB0:
-	set	0,d
-	jr	DTM02
-	
-
-DTME:
-	ld	(BMAP),de		; save detected bit mask
-
-	ld	a,(F_V)			; verbose mode?
-	or	a
-	jr	z,DTME23
-; print bitmask
-	ld	a,(BMAP+1)
-	call	HEXOUT
-	ld	a,(BMAP)
-	call	HEXOUT	
-	ld	e," "
-	ld	c,_CONOUT
-	call	DOS
-DTME23:
-
-	ld	a,0
-
-;    BIT E 76543210
-; 	   !!!!!!!. 5000h
-;          !!!!!!.- 6000h
-;          !!!!!.-- 6800h
-;	   !!!!.--- 7000h
-;	   !!!.---- 7800h
-;          !!.----- 8000h
-;          !.------ 9000h
-;	   .------- A000h
-;    BIT D 76543210
-;	          . B000h
-	ld	a,(BMAP+1)
-	bit	0,a
-;	cp	%00000001
-	ld	a,(BMAP)
-;	jr	z,DTME2			; Konami5
-	jr	nz,DTME2			; Konami5
-
-	ld	b,4			; AsCII 16
-	cp	%00001010		; 6000h 7000h
-	jp	z,DTME1		
-;	cp	%00000010		; Zanax-EX
-;	jr	z,DTME1
-
-	ld	b,1			; Konami (4)
-	cp	%10100010		; 6000h 8000h A000h
-	jp	z,DTME1
-	cp	%10100000		; Aleste
-	jp	z,DTME1
-	cp	%00100010		; 6000h 8000h
-	jp	z,DTME1			;
-	cp	%00100000		; 8000h
-	jp	z,DTME1
-
-
-	ld	b,3			; ASCII 8
-	cp	%00011110		; 6000h,6800h,7000h,8700h
-	jr	z,DTME1
-	cp	%00011100
-	jr	z,DTME1
-	cp	%00011000		; 0018
-	jr	z,DTME1
-
-DTME3:					; Mapper not detected
-					; second portion ?
-					; next block file read
-	ld      c,_SDMA
-	ld      de,BUFTOP
-	call    DOS
-	ld	hl,#8000
-	ld      c,_RBREAD
-	ld	de,FCB
-	call    DOS
-	ld	a,l
-	or	h
-	ld	de,(BMAP)		; load previos bitmask
-	jp	z,DTME5
-	set	7,d			; bit second seach
-	jp	DTME6			; next analise search
-
-DTME5:					; fihish file
-	ld	a,e
-	ld	b,4
-	cp	%00000010		; 0002 = ASCII 16 ZanacEX
-	jr	z,DTME1
-	cp	%00001000		; 0008 = ASCII 16
-	jr	z,DTME1
-	cp	%01001000		; 0048 = ASCII 16
-	jr	z,DTME1
-	ld	b,3
-	cp	%00001110		; 000E = ASCII 8
-	jr	z,DTME1
-	cp	%00000100		; 0004 = ASCII 8
-	jr	z,DTME1
-	cp	%00100000		; 0010 = ASCII 8
-	jr	z,DTME1
-	ld	b,0
-	jr	DTME1
-DTME2:
-	cp	%01001001		; 5000h,7000h,9000h	
-	ld	b,2			; Konami 5 (SCC)
-	jr	z,DTME1
-	cp	%01001000		; 5000h,7000h
-	jr	z,DTME1
-	cp	%01101001		; 
-	jr	z,DTME1
-	cp	%11101001		; 01E9
-	jr	z,DTME1
-	cp	%01101000		; 0168
-	jr	z,DTME1
-	cp	%11001000		; 01C8
-	jr	z,DTME1
-	cp	%01000000		; 0140
-	jr	z,DTME1
-
-	ld	b,3
-	cp	%00011000
-	jr	z,DTME1
-	ld	b,1
-	cp	%10100000
-	jr	z,DTME1
-	jr	DTME3	
-DTME1:
-	ld	a,b
-	ld	(DMAP),a		; save detected Mapper type
-	or	a
-	jr	nz,DTME21
-	
-;mapper not found
-	ld	a,(SRSize)
-	or	a
-	jr	z,DTME22		; size > 64k ? not minirom
-
-	print	MD_Fail
-
-	ld	a,(F_A)
-	or	a
-	jr	nz,FPT02		; flag auto yes
-
-	print	MRSQ_S
-FPT03:	ld	c,_INNOE		; 32 < ROM =< 64
-	call	DOS
-	cp	"n"
-	jp	z,MTC			; no minirom (mapper), select manually
-	cp	"y"			; yes minirom
-	jr	nz,FPT03
-
-FPT02:
-; Mini ROM set
-	print	NoAnalyze
-	ld	a,5
-	ld	(DMAP),a		; Minirom
-	jr	DTME22
-
-DTME21:
-	xor	a
-	ld	(SRSize),a
-
-DTME22:
-					; file close
 	ld	de,FCB
 	ld	c,_FCLOSE
 	call	DOS
 
-
-	ld	a,(DMAP)
-	ld	b,a
-	call	TTAB
-	inc	hl
-	ex	hl,de
-	ld	c,_STROUT		; print selected MAP
-	call	DOS
-	print	ONE_NL_S
-
-	ld	a,(SRSize)
-	and	#0F
-	jp	nz,DE_F1		; do not confirm the mapper type
-
-	ld	a,(F_A)
-	or	a
-	jp	nz,DE_F1		; do not confirm the type mapper (auto)
-
-	ld	a,(DMAP)
-	or	a
-	jr	z,MTC
-	print	CTC_S			; (y/n)?
-DTME4:	ld	c,_INNOE
-	call	DOS
-	cp	"y"
-	jp	z,DE_F1
-	cp	"n"
-	jr	nz,DTME4
-MTC:					; Manually select MAP type
-	print	CoTC_S
-	ld	a,1
-MTC2:	ld	(DMAPt),a		; prtint all tab MAP
-	ld	b,a
-	call	TTAB
-	ld	a,(hl)
-	or	a
-	jr	z,MTC1	
-	push	hl
-	ld	a,(DMAPt)
-	ld	e,a
-	ld	d,0
-	ld	hl,BUFFER
-	ld	b,2
-	ld	c," "
-	ld	a,%00001000		; print 2 decimal digit number
-	call	NUMTOASC
-	print	BUFFER
-	ld	e," "
-	ld	c,_CONOUT
-	call	DOS
-	pop	hl
-	inc	hl
-	ex	hl,de
-	ld	c,_STROUT
-	call	DOS
-	print	ONE_NL_S
-	ld	a,(DMAPt)
-	inc	a
-	jr	MTC2
-MTC1:
-	print	Num_S
-
-MTC3:		
-	ld	c,_INNOE
-	call	DOS			; input one character
-	cp	"1"
-	jr	c,MTC3
-	cp	MAPPN + "1"		; number of supported mappers + 1
-	jr	nc,MTC3
-	push	af
-	ld	e,a
-	ld	c,_CONOUT
-	call	DOS			; print selection
-	print	ONE_NL_S
-	pop	af
-	sub	a,"0"
-
-MTC6:
-; check input
-	ld	hl,DMAPt
-	cp	(hl)
-	jp	nc,MTC
-	or	a
-	jp	z,MTC
-	ld	b,a
-	push	af
-	push	bc
-	print	SelMapT
-	pop	bc
-	pop	af
-	jp	DTME1
-
-DE_F1:
-; Save MAP config to Record form
-	ld	a,(DMAP)
-	ld	b,a
-	call	TTAB
-	ld	a,(hl)
-	ld	(Record+04),a		; type descriptos symbol
-	ld	bc,35			; TAB register map
-	add	hl,bc
-	ld	de,Record+#23		; Record register map
-	ld	bc,29			; (6 * 4) + 5
-	ldir
-
-	ld	a,(SRSize)
-	ld	(Record+#3D),a
-
-; Correction start metod
-
-; ROMJT0
-	ld	ix,ROMJT0
-	and	#0F
-	jp	z,Csm01			; mapper ROM
-;Mini ROM-image
-;;	
-	cp	5			; =< 8Kb
-	jr	nc,Csm04
-
-	ld	a,#A4			; set size 8kB no Ch.reg
-	ld	(Record+#26),a		; Bank 0
-	ld	a,#AD			; set Bank off
-	ld	(Record+#2C),a		; Bank 1
-	ld	(Record+#32),a		; Bank 2
-	ld	(Record+#38),a		; Bank 3
-Csm08:	ld	a,(ix)
-	cp	#41
-	ld	a,#40
-	jr	nz,Csm06		; start on reset
-	ld	a,(ix+3)
-	and	#C0
-	ld	(Record+#28),a		; set Bank Addr	
-	cp	#40
-	jr	z,Csmj4			; start on #4000
-	cp	#80	
-	jr	z,Csmj8			; start Jmp(8002)
-Csm06:
-	ld	a,(ix+3)
-	and	#C0
-	ld	(Record+#28),a		; set Bank Addr	
-
-	ld	a,01			; start on reset
-Csm05:	ld	(Record+#3E),a		
-	jp	Csm70
-Csmj4:	ld	a,2
-	jr	Csm05
-Csmj8:	ld	a,6
-	jr	Csm05
-
-;
-Csm04:	cp	6			; =< 16 kB
-	jr	nc,Csm07
-
-	ld	a,#A5			; set size 16kB noCh.reg
-	ld	(Record+#26),a		; Bank 0
-	ld	a,#AD			; set Bank off
-	ld	(Record+#2C),a		; Bank 1
-	ld	(Record+#32),a		; Bank 2
-	ld	(Record+#38),a		; Bank 3
-	jp	Csm08
-
-Csm07:	cp	7			; =< 32 kb
-	jr	nc,Csm09
-	ld	a,#A5			; set size 16kB noCh.reg
-	ld	(Record+#26),a		; Bank 0
-	ld	a,#A5			; set size 16kB noCh.reg
-	ld	(Record+#2C),a		; Bank 1
-	ld	a,#AD			; set Bank off
-	ld	(Record+#32),a		; Bank 2
-	ld	(Record+#38),a		; Bank 3
-	ld	a,(ix)
-	ld	b,a
-;	cp	#41
-	or	a
-;	jr	z, Csm071
-	jr	nz,Csm071
-	ld	a,(ix+1)
-	cp	#41
-	jr	nz,Csm06
-	ld	a,(ix+4)
-	and	#C0
-	cp	#80
-	jr	nz,Csm06
-	jr	Csmj8			; start Jmp(8002)	
-Csm071:	ld	a,(ix+3)	
-	and	#C0
-	cp	#40			; #4000
-	jr	nz,Csm072
-	ld	a,b
-	cp	#41
-	jp	nz,Csm06		; R
-	ld	a,2
-	jp	Csm05			; start Jmp(4002)
-	cp	#00			; #0000 subrom
-	jr	nz,Csm072
-	ld	(Record+#28),a		; Bank1 #0000 
-	ld	a,#40
-	ld	(Record+#2E),a		; Bank2 #4000
-	jp	Csm06			; start on reset 	
-Csm072:	cp	#80
-	jp	nz,Csm06		; start on reset
-	ld	(Record+#28),a		; Bank1 #0000 
-	ld	a,#C0
-	ld	(Record+#2E),a		; Bank2 #4000
-	ld	a,6
-	jp	Csm05			; start Jmp(8002)
-
-Csm09:
-	cp	7			; 64 kB ROM
-	jr	nz,Csm10
-	ld	a,#A7			; set size 64kB noCh.reg
-	ld	(Record+#26),a		; Bank 0
-	ld	a,#AD			; set Bank off
-	ld	(Record+#2C),a		; Bank 1
-	ld	(Record+#32),a		; Bank 2
-	ld	(Record+#38),a		; Bank 3
-	ld	a,0
-	ld	(Record+#28),a		; Bank 0 Address=0
-	ld	a,(ix)
-	or	a
-	jp	nz,Csm06		; start on Reset
-	ld	a,(ix+1)
-	or	a
-	jr	z,Csm11
-	cp	#41
-	jp	nz,Csm06
-	ld	a,2			; start jmp(4002)
-	jp	Csm05				
-Csm11:	ld	a,(ix+2)
-	cp	#41
-	jp	nz,Csm06
-	ld	a,6			; staer jmp(8002)
-	jp	Csm05		
-
-
-Csm10:
-;                               	; %00001110 48 kB
-	ld	a,#A5			; set size 16kB noCh.reg
-	ld	(Record+#26),a		; Bank 0
-	ld	a,#A5			; set size 16kB noCh.reg
-	ld	(Record+#2C),a		; Bank 1
-	ld	a,#A5			; set size 16kB noCh.reg
-	ld	(Record+#32),a		; Bank 2
-	ld	a,#AD			; set Bank off
-	ld	(Record+#38),a		; Bank 3
-	ld	a,1
-	ld	(Record+#2B),a		; correction for bank 1
-	ld	a,(ix)
-	or	a			
-	jr	z,Csm12
-	cp	41
-	jr	nz,Csm13
-	ld	a,2			; start jmp(4002)
-	jp	Csm05
-Csm13:	ld	a,(ix+3)
-	and	#C0
-	jp	nz,Csm06		; start on Reset
-	xor	a			; 0 address
-	ld	(Record+#28),a
-	ld	a,#40
-	ld	(Record+#2E),a
-	ld	a,#80
-	ld	(Record+#34),a
-	jp	Csm06			; start on Reset
-Csm12:	ld	a,(ix+1)
-	or	a
-	jr	z,Csm14
-	ld	a,(ix+4)
-	and	#C0
-	cp	#40
-	jr	nz,Csm15
-	xor	a			; 0 address
-	ld	(Record+#28),a
-	ld	a,#40
-	ld	(Record+#2E),a
-	ld	a,#80
-	ld	(Record+#34),a
-	ld	a,(ix+1)
-	cp	#41
-	jp	nz,Csm06
-	ld	a,2			; start jmp(4002)
-	jp	Csm05
-Csm15:	jp	Csm06
-
-Csm14:	ld	a,(ix+2)
-	or	a
-	jp	nz,Csm06
-	xor	a			; 0 address
-	ld	(Record+#28),a
-	ld	a,#80
-	ld	(Record+#2E),a
-	ld	a,(ix+2)
-	cp	#41	
-	jp	nz,Csm06
-	ld	a,6			; start jmp(8002)
-	jp	Csm05
-
-Csm01:
-
-; Mapper ROM IMAGE start Bank #4000
-; 
-	ld	a,(ix+1)		; ROMJT1 (#8000)
-	or	a
-	jr	z,Csm02	
-Csm03:	ld	a,01			; Complex start
-	ld	(Record+#3E),a		; need Reset
-	jp	Csm80
-Csm02:
-	ld	a,(ix)			; ROMJT0 (#4000)
-	cp	#41
-	jr	nz,Csm03		; Reset
-	ld	a,02			; Start to jump (#4002)	
-	ld	(Record+#3E),a
-Csm70:
-
-
-Csm80:
-; test print Size-start metod
-	ld	a,(F_V)			; verbose mode?
-	or	a
-	jr	z,Csm81
-
-	print	Strm_S
-	ld	a,(Record+#3D)
-	call	HEXOUT
-	ld	e,"-"
-	ld	c,_CONOUT
-	call	DOS
-	ld	a,(Record+#3E)
-	call	HEXOUT
-	print	ONE_NL_S
-
-
-; Search free space in flash
-Csm81:	ld	a,(Record+#3D)
-	and	#0F
-	jp	SFM80			; mapper ROM
-
-SFM01:
-;find
-	ld	e,a
-	push	de
-
-	ld	a,(TPASLOT1)		; reset 1 page
-	ld	h,#40
-	call	ENASLT
-
-	ld	a,(F_V)			; verbose mode?
-	or	a
-	jr	z,SFM01A
-
-	print	FNRE_S
-
-	pop	de
-	push	de
-	ld	a,d			; print N record
-	call	HEXOUT
-	ld	e,"-"
-	ld	c,_CONOUT
-	call	DOS
-	ld	a,(ix+2)		; print N FlashBlock
-	call	HEXOUT
-	ld	e,"-"
-	ld	c,_CONOUT
-	call	DOS
-	pop	de
-
-	push	de
-	ld	a,e			; print N Bank
-	call	HEXOUT
-	print	ONE_NL_S
-
-SFM01A:
-	pop	de
-
-	ld	a,(Record+#3D)
-	and	#0F
-	cp	6
-	ld	a,e
-	jr	c,SFM70
-	rlc	a
-SFM70:	
-	ld	(Record+#25),a		; R1Reg
-	inc	a
-	ld	(Record+#2B),a		; R2Reg
-	inc	a
-	ld	(Record+#31),a		; R3Reg
-	inc	a
-	ld	(Record+#37),a		; R4Reg
-
-	ld	a,e
-	rlc	a
-	rlc	a
-	rlc	a
-	rlc	a
-	ld	b,a
-	ld	a,(Record+#3D)
-	and	#0F
-	or	b
-	ld	(Record+#3D),a
-
-	ld	d,1
-	ld	e,(ix+2)
-	ld	a,d
-	ld	(multi),a
-
-	jp	DEFMR1
-
-SFM80:
-	xor	a
-	ld	(multi),a
-
-sfm81:
-; Size  - size file 4 byte
-; 
-; calc blocks len
-;
-	ld	a,(Size+3)
-	or	a
-	jr	nz,DEFOver
-	ld	a,(Size+2)
-	cp	#0C			; < 720kb?
-	jr	c,DEFMR1
-
-DEFOver:
-	print	FileOver_S
-	ld	a,(F_A)
-	or	a
-	jp	nz,Exit			; Automatic exit
-	jp	MainM
-
-DEFMR1:
-	ld	a,4			; start from 4th block in RAM
-	ld	(Record+02),a		; Record+02 - starting block
-	ld	a,(Size+2)
-	or	a
-	jr	nz,DEFMR2
-	inc	a			; set minumum 1 block for any file
-DEFMR2:
-	ld	(Record+03),a		; Record+03 - length in 64kb blocks
-	ld	a,#FF
-	ld	(Record+01),a		; set "not erase" byte
-
-; search free DIR record
-DEF09:	call	FrDIR
-	jr	nz,DEF06
-
-	ld	a,(F_A)
-	or	a
-	jp	nz,DEF08			; Automatic action
-
-; Directory overfilling?
-	print	DirOver_S
-DEF07:	ld	c,_INNOE
-	call	DOS
-	cp	"y"
-	jr	z,DEF08
-	cp	"n"
-	jp	z,MainM
-	jr	DEF07
-
-DEF08:	call	CmprDIR
-	jr	DEF09
-
-DEF06:	
-	ld	(Record),a		; save DIR number
-
-	ld	a,(F_V)			; verbose mode?
-	or	a
-	jr	z,DEF06A
-
-	print	FDE_S
-	ld	a,(Record)
-	call	HEXOUT
-	print	ONE_NL_S
-
-; Filename -> Record name
-DEF06A:	
-	ld	bc,30
-	ld	de,Record+05
-	ld	hl,RAM_TEMPL+1
-	ldir				; copy info from RAM template to record excluding "R" identifier (RAM)
-
-	ld	hl,FCB+1
-	ld	de,Record+10
-	ld	bc,8			; move file name without extension
-	ldir
-
-	ld	a,(F_V)			; verbose mode?
-	or	a
-	jr	z,DEF13
-
-	ld	a,"."
-	ld	(de),a
-	inc	de
-	ld	bc,3			; transfer extension in verbose mode
-	ldir
-
-; print Record name
-DEF13:
-	print	NR_I_S
-	ld	b,25			; 30-5 for "RAM: "
-	ld	hl,Record+10
-DEF12:
-	push	hl
-	push	bc
-	ld	e,(hl)
-	ld	c,_CONOUT
-	call	DOS
-	pop	bc
-	pop	hl
-	inc	hl
-	djnz	DEF12
-
-	ld	a,(F_A)
-	or	a
-	jr	nz,DEF10		; Flag automatic confirm
-	print	ONE_NL_S
-	print	NR_L_S
-
-	ld	a,25			; 30-5 for "RAM: "
-	ld	(BUFFER),a
-	ld	c,_BUFIN
-	ld	de,BUFFER
-	call	DOS
-	ld	a,(BUFFER+1)	
-	or	a
-	jr	z,DEF10
-
-	ld	bc,30
-	ld	de,Record+05
-	ld	hl,RAM_TEMPL+1
-	ldir				; copy info from RAM template to record excluding "R" identifier (RAM)
-
-	ld	a,(BUFFER+1)
-	ld	b,0
-	ld	c,a
-	ld	hl,BUFFER+2
-	ld	de,Record+10
-	ldir
-	jr	DEF13
-DEF10:
-	ld	a,(F_A)
-	or	a
-	jr	nz,DEF11
-
-	print	CreaDir			; create directory entry?
-	xor	a
-	ld	(F_D),a			; by default create directory
-DEF10A:
-	ld	c,_INNOE
-	call	DOS
-	cp	"y"
-	jr	z,DEF10AA
-	cp	"n"
-	jp	nz,DEF10A
-	ld	a,1
-	ld	(F_D),a			; don't create directory
-
-DEF10AA:
-	print	ONE_NL_S
-	print	LOAD_S			; ready?
-
-DEF10B:
-	ld	c,_INNOE
-	call	DOS
-	cp	"y"
-	jr	z,DEF11
-	cp	"n"
-	jp	nz,DEF10B
-	print	ONE_NL_S
-	jp	MainM
-
-DEF11:
-	print	ONE_NL_S
-	call	LoadImage		; load file into RAM
-
-; Restore slot configuration!
-        ld      a,(ERMSlt)
-        ld      h,#40
-        call    ENASLT
-	ld	a,#15
-	ld	(R2Mult),a		; set 16kB Bank write
-	xor	a
-	ld	(EBlock),a
-	ld	(AddrFR),a
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
-        ld      a,(TPASLOT2)
-        ld      h,#80
-        call    ENASLT          	; Select Main-RAM at bank 8000h~BFFFh
-
-	ld	a,(F_D)
-	or	a
-	jr	nz,DEF11A		; skip directory entry creation?
-
-	call	SaveDIR			; save directory
-
-DEF11A:
 	ld	a,(F_A)
 	or	a
 	jp	nz,Exit			; automatic exit
+
+	jp	MainM
+	
+FMRM01:					; fix size
+
+; !!!! file attribute fix by Alexey !!!!
+	ld	a,(FCB+#11)
+	cp	#20
+	jr	nz,DEF10
+	ld	a,(FCB+#0D)
+	cp	#21
+	jr	nz,DEF10
+	dec	a
+	ld	(FCB+#0D),a
+; !!!! file attribute fix by Alexey !!!!
+
+DEF10:
+	ld	de,FCB
+	ld	c,_FCLOSE
+	call	DOS
+
+	call	LoadImage
+	jr	c,DEF11			; if failed, C flag is set
+	print	Success
+DEF11:
+
+	ld	a,(F_A)
+	or	a
+	jp	nz,Exit			; automatic exit
+
 	jp	MainM
 
 
+; Load image and save it to SRAM
 ;-----------------------------------------------------------------------------
 LoadImage:
-; Erase block's and load ROM-image
 
 ; Reopen file image
-
         ld      bc,24			; Prepare the FCB
         ld      de,FCB+13
         ld      hl,FCB+12
@@ -1664,54 +804,7 @@ LIF01:	ld      c,_SDMA
 	ld      de,BUFTOP
 	call    DOS
 
-; loading ROM-image to RAM
 LIFM1:
-        ld      a,(ERMSlt)
-        ld      h,#40
-        call    ENASLT
-	ld	a,#34			; RAM instead of ROM, Bank write enabled, 8kb pages, control off
-	ld	(R2Mult),a		; set value for Bank2
-
-	ld	a,(Record+02)		; start block (absolute block 64kB), 4 for RAM/Flash
-	ld	(EBlock),a
-	ld	(AddrFR),a
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
-
-	xor	a
-	ld	(PreBnk),a		; no shift for the first block
-
-	print	LFRI_S
-
-; calc loading cycles
-; Size 3 = 0 ( or oversize )
-; Size 2 (x 64 kB ) - cycles for (Eblock) 
-; Size 1,0 / 2000h - cycles for RAMProg portions
-
-;Size / #2000 
-	ld	h,0
-	ld	a,(Size+2)
-	ld	l,a
-	xor	a
-	ld	a,(Size+1)
-	rl	a
-	rl	l
-	rl	h			; 00008000
-	rl	a
-	rl	l
-	rl	h			; 00004000
-	rl	a
-	rl	l
-	rl	h			; 00002000
-	ld	b,a
-	ld	a,(Size)
-	or	b
-	jr	z,Fpr03
-	inc	hl			; rounding up
-Fpr03:	ld	(C8k),hl		; save Counter 8kB blocks
-
-Fpr02:	
 
 ; !!!! file attribute fix by Alexey !!!!
 	ld	a,(FCB+#11)
@@ -1724,7 +817,7 @@ Fpr02:
 	ld	(FCB+#0D),a
 ; !!!! file attribute fix by Alexey !!!!
 
-;load portion from file
+;load file
 Fpr02a:	ld	c,_RBREAD
 	ld	de,FCB
 	ld	hl,#2000
@@ -1732,48 +825,36 @@ Fpr02a:	ld	c,_RBREAD
 	ld	a,h
 	or	l
 	jp	z,Ld_Fail
-;program portion
-	ld	hl,BUFTOP
-	ld	de,#8000
-	ld	bc,#2000
- 
-	call	RAMProg			; save part of file to RAM
-	jp	c,PRR_Fail
 
-	ld	e,">"			; indicator
-	ld	c,_CONOUT
-	call	DOS
-	ld	a,(PreBnk)
-	inc	a			; next PreBnk 
-	and	7
-	ld	(PreBnk),a	
-	jr	nz,FPr01
-	ld	hl,EBlock
-	inc	(hl)	
-FPr01:	ld	bc,(C8k)
-	dec	bc
-	ld	(C8k),bc
-	ld	a,c
-	or	b
-	jr	nz,Fpr02	
-
-; finishing loading ROMimage
+	ld	a,SRAMBLK
+	ld	(EBlock),a		; shift to the block of RAM where SRAM is located
+	ld	a,SRAMBNK
+	ld	(PreBnk),a		; shift to the address in block where SRAM is located: 0FE000h-0FFFFFh
 
         ld      a,(ERMSlt)
         ld      h,#40
         call    ENASLT
-	ld	a,#A4			; RAM instead of ROM, Bank write disabled, 8kb pages, control on
+	ld	a,#34			; RAM instead of ROM, Bank write enabled, 8kb pages, control off
 	ld	(R2Mult),a		; set value for Bank2
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT
+	
+	ld	hl,BUFTOP		; source
+	ld	de,#8000		; destination
+	ld	bc,#2000		; size
+	call	RW_RAM			; save loaded data into SRAM
+	jr	nc,LIF04
 
-        ld      a,(TPASLOT2)
-        ld      h,#80
-        call    ENASLT          	; Select Main-RAM at bank 8000h~BFFFh
+	print	DATA_ERR
+	print	UL_erd_S
+	scf				; set carry flag because of an error
 
-	ret
+LIF04:
+	push	af
 
+; Restore slot configuration!
 
-SaveDIR:
-; save directory record
         ld      a,(ERMSlt)
         ld      h,#40
         call    ENASLT
@@ -1785,143 +866,36 @@ SaveDIR:
         ld      a,(TPASLOT1)
         ld      h,#40
         call    ENASLT
-; 
-	ld	a,1	
-	ld	(PreBnk),a
-
-        ld      a,(ERMSlt)
+        ld      a,(TPASLOT2)
         ld      h,#80
-        call    ENASLT
-;
-	ld	a,(Record)
-	ld	d,a
-	call	c_dir			; calc address directory record
-	push	ix
-	pop	de			; set flash destination
+        call    ENASLT          	; Select Main-RAM at bank 8000h~BFFFh
 
-	xor	a
-	ld	(Record+03),a		; correct image size for RAM -> 0
-
-	ld	a,(protect)
-	or	a
-	jr	nz,SaveDIR1
-
-	ld	a,(Record+#26)
-	or	#10			; set protect bit to 1 (unprotected)
-	ld	(Record+#26),a		; Bank 0
-	ld	a,(Record+#2C)
-	or	#10			; set protect bit to 1 (unprotected)
-	ld	(Record+#2C),a		; Bank 1
-	ld	a,(Record+#32)
-	or	#10			; set protect bit to 1 (unprotected)
-	ld	(Record+#32),a		; Bank 2
-	ld	a,(Record+#38)
-	or	#10			; set protect bit to 1 (unprotected)
-	ld	(Record+#38),a		; Bank 3
-	jr	SaveDIR2
-
-SaveDIR1:
-	ld	a,(Record+#26)
-	and	#EF			; set protect bit to 0 (protected)
-	ld	(Record+#26),a		; Bank 0
-	ld	a,(Record+#2C)
-	and	#EF			; set protect bit to 0 (protected)
-	ld	(Record+#2C),a		; Bank 1
-	ld	a,(Record+#32)
-	and	#EF			; set protect bit to 0 (protected)
-	ld	(Record+#32),a		; Bank 2
-	ld	a,(Record+#38)
-	and	#EF			; set protect bit to 0 (protected)
-	ld	(Record+#38),a		; Bank 3
-
-SaveDIR2:
-	ld	hl,Record		; set source
-	ld	bc,#40			; record size
-	call	FBProg			; save
-	jr	c,PR_Fail
-	print	Prg_Su_S
-LIF04:
 ; file close
-	push	af
 	ld	de,FCB
 	ld	c,_FCLOSE
 	call	DOS
 	pop	af
 	ret
 
-PR_Fail:
-	print	FL_erd_S
-	scf				; set carry flag because of an error
-	jr	LIF04
-
-PRR_Fail:
-	print	FL_er_S
-	scf				; set carry flag because of an error
-	jr	LIF04
-
 Ld_Fail:
-	print	ONE_NL_S
-	print	FR_ER_S
+	print	FR_ERS
 	scf				; set carry flag because of an error
 	jr	LIF04
 
-FBProg:
-; Block (0..2000h) programm to Flash
-; hl - buffer source
-; de = Flash destination
-; bc - size
-; (Eblock),(Eblock0) - start address in Flash
+
+
+;-----------------------------------------------------------------------------
+RW_RAM:
+; Block (0..2000h) save into/from SRAM
+; hl - source address
+; de = destination address
+; bc - length
+; (EBlock)x64kB, (PreBnk)x8kB(16kB) - start address in RAM
 ; output CF - failed flag
 	exx
         ld      a,(ERMSlt)
-        ld      h,#40
-        call    ENASLT  
-	ld	a,(PreBnk)
-	ld	(R2Reg),a
-	ld	a,(EBlock)
-	ld	(AddrFR),a
-        ld      a,(TPASLOT1)
         ld      h,#40
         call    ENASLT
-        ld      a,(ERMSlt)
-        ld      h,#80
-        call    ENASLT 
-	ld	hl,#8AAA
-	ld	de,#8555
-	exx
-	di
-Loop1:
-	exx
-	ld	(hl),#AA		; (AAA)<-AA
-	ld	a,#55		
-	ld	(de),a			; (555)<-55
-	ld	(hl),#A0		; (AAA)<-A0
-	exx
-	ld	a,(hl)
-	ld	(de),a			; byte programm
-
-	call	CHECK			; check
-	jp	c,PrEr
-	inc	hl
-	inc	de
-	dec	bc
-	ld	a,b
-	or	c
-	jr	nz,Loop1
-	jr	PrEr
-
-
-RAMProg:
-; Block (0..2000h) program to RAM
-; hl - buffer source
-; de = #8000
-; bc - Length
-; (Eblock)x64kB, (PreBnk)x8kB(16kB) - start address in RAM
-; output CF - failed flag
-	exx
-        ld      a,(ERMSlt)
-        ld      h,#40
-        call    ENASLT  
 	ld	a,(PreBnk)
 	ld	(R2Reg),a
 	ld	a,(EBlock)
@@ -1956,6 +930,12 @@ PrEr:
 	push	af
 	ei
 
+        ld      a,(ERMSlt)
+        ld      h,#40
+        call    ENASLT
+	ld	a,#A4			; RAM instead of ROM, Bank write disabled, 8kb pages, control on
+	ld	(R2Mult),a		; set value for Bank2
+
         ld      a,(TPASLOT2)
         ld      h,#80
         call    ENASLT          	; Select Main-RAM at bank 8000h~BFFFh
@@ -1982,94 +962,6 @@ CHK_R1:	pop bc
 	ret	
 
 
-FrDIR:
-; Search free DIR record
-; output A - DIR number
-
-; Set flash configuration
-	ld	a,(ERMSlt)
-	ld	h,#40			; set 1 page
-	call	ENASLT
-
-	ld	hl,B2ON
-	ld	de,CardMDR+#0C		; set Bank2
-	ld	bc,6
-	ldir
- 
-	ld	a,(ERMSlt)		; set 2 page
-	ld	h,#80
-	call	ENASLT
-	ld	a,1
-	ld	(CardMDR+#0E),a 	; set 2nd bank to directory map
-
-	ld	d,0
-FRD02:	call	c_dir
-	ld	a,(ix)
-	cp	#FF
-	jr	z,FRD01			; found empty
-	inc	d
-	jr	nz,FRD02		; next DIR
-	xor	a
-	jr	FRD03			; not found Zero
-FRD01:	ld	a,d
-	or	a			; not zero?
-FRD03:	push	af
-	ld	a,(TPASLOT1)		; reset 1 page
-	ld	h,#40
-	call	ENASLT
-	ld	a,(TPASLOT2)		; reset 2 page
-	ld	h,#80
-	call	ENASLT
-	pop	af
-	ret
-
-
-B1ON:	db	#F8,#50,#00,#85,#03,#40
-B2ON:	db	#F0,#70,#01,#15,#7F,#80
-B23ON:	db	#F0,#80,#00,#04,#7F,#80
-	db	#F0,#A0,#00,#34,#7F,#A0
-
-
-c_dir:
-; input d - dir idex num
-; outut	ix - dir point enter
- 	ld	b,0
-	or	a 
-	ld	a,d
-	rl	a
-	rl	b
-	rl	a
-	rl	b
-	rl	a
-	rl	b
-	rl	a
-	rl	b
-	rl	a
-	rl	b
-	rl	a
-	rl	b
-	ld	c,a
-	ld	ix,#8000
-	add	ix,bc			; 8000h + b*64
-; test empty/delete
-	ld	a,(ix)
-	cp	#FF			; empty ?
-	ret	z			; RET Z=1
-	ld	a,(ix+1)
-	or	a			; delete ?
-	ret
-;-------------------------------
-TTAB:
-;	ld	b,(DMAP)
-	inc	b
-	ld	hl,CARTTAB
-	ld	de,64
-TTAB1:	dec	b
-	ret	z
-	add	hl,de
-	jr	TTAB1
-
-
 FrErr:
 ; file close
 	ld	de,FCB
@@ -2080,12 +972,10 @@ FrErr:
 	ld	c,_STROUT
 	call	DOS
 ; return main	
-	ld	a,(F_A)
-	or	a
-	jr	nz,Exit			; Automatic exit
 	jp	MainM		
 
-Exit:	ld	de,EXIT_S
+Exit:
+	ld	de,EXIT_S
 	jp	termdos
 
 
@@ -2541,57 +1431,6 @@ ASt03:
         call    ENASLT	
 	pop	af
 	ret
-
-
-CmprDIR:
-; Compress directory 
-; Set flash configuration
-	ld	a,(ERMSlt)
-	ld	h,#40			; set 1 page
-	call	ENASLT
-
-	ld	hl,B2ON
-	ld	de,CardMDR+#0C		; set Bank2
-	ld	bc,6
-	ldir
- 
-	ld	a,(ERMSlt)		; set 2 page
-	ld	h,#80
-	call	ENASLT
-	ld	a,1
-	ld	(CardMDR+#0E),a 	; set 2nd bank to directory map
-
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
-; copy valid record 1st 8kB
-	xor	a
-	ld	(Dpoint+2),a		; start number record
-	ld	hl,#8000
-	ld	(Dpoint),hl
-
-
-SET2PD:
-	ld	a,(ERMSlt)
-	ld	h,#40			; set 1 page
-	call	ENASLT
-
-	ld	hl,B2ON
-	ld	de,CardMDR+#0C		; set Bank2
-	ld	bc,6
-	ldir
- 
-	ld	a,(ERMSlt)		; set 2 page
-	ld	h,#80
-	call	ENASLT
-	ld	a,1
-	ld	(CardMDR+#0E),a 	; set 2nd bank to directory map
-
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
-	ret
-
 
 
 HEXA:
@@ -3191,22 +2030,22 @@ fkey01:	cp	"/"
 	inc	hl
 	ld	a,(hl)
 	and	%11011111
-	cp	"P"
+	cp	"D"
 	jr	nz,fkey02
 	ld	a,1
-	ld	(F_P),a
+	ld	(F_D),a
 	ret
 fkey02:	ld	hl,BUFFER+1
 	ld	a,(hl)
 	and	%11011111
-	cp	"A"
+	cp	"U"
 	jr	nz,fkey03
 	inc	hl
 	ld	a,(hl)
 	or	a
 	jr	nz,fkey03
 	ld	a,2
-	ld	(F_A),a
+	ld	(F_U),a
 	ret
 fkey03:	ld	hl,BUFFER+1
 	ld	a,(hl)
@@ -3233,19 +2072,6 @@ fkey04:	ld	hl,BUFFER+1
 	ld	(F_H),a			; show help
 	ret
 fkey05:
-	ld	hl,BUFFER+1
-	ld	a,(hl)
-	and	%11011111
-	cp	"D"
-	jr	nz,fkey06
-	inc	hl
-	ld	a,(hl)
-	or	a
-	jr	nz,fkey06
-	ld	a,4
-	ld	(F_D),a			; disable directory creation
-	ret
-fkey06:
 	xor	a
 	dec	a			; S - Illegal flag
 	ret
@@ -3253,70 +2079,9 @@ fkey06:
 
 ;------------------------------------------------------------------------------
 
-; Mapper and directory data areas
-
-RAM_TEMPL:
-	db	"R"
-	db	"RAM:                          "
-	db	#F8,#50,#00,#AC,#3F,#40
-	db	#F8,#70,#01,#AC,#3F,#60		
-	db      #F8,#90,#02,#AC,#3F,#80		
-	db	#F8,#B0,#03,#AC,#3F,#A0	
-	db	#FF,#BC,#00,#02,#FF
-
-
-CARTTAB: ; (N x 64 byte) 
-	db	"U"					;1
-	db	"Unknown mapper type              $"	;34
-	db	#F8,#50,#00,#A4,#FF,#40			;6
-	db	#F8,#70,#01,#A4,#FF,#60			;6	
-	db      #F8,#90,#02,#A4,#FF,#80			;6	
-	db	#F8,#B0,#03,#A4,#FF,#A0			;6
-	db	#FF,#BC,#00,#02,#FF			;5
-
-CRTT1:	db	"k"
-	db	"Konami (Konami 4)                $"
-	db	#E8,#50,#00,#24,#FF,#40			
-	db	#E8,#60,#01,#A4,#FF,#60				
-	db      #E8,#80,#02,#A4,#FF,#80				
-	db	#E8,#A0,#03,#A4,#FF,#A0			
-	db	#FF,#AC,#00,#02,#FF
-CRTT2:	db	"K"
-	db	"Konami SCC (Konami 5)            $"
-	db	#F8,#50,#00,#A4,#FF,#40			
-	db	#F8,#70,#01,#A4,#FF,#60				
-	db      #F8,#90,#02,#A4,#FF,#80				
-	db	#F8,#B0,#03,#A4,#FF,#A0			
-	db	#FF,#BC,#00,#02,#FF
-CRTT3:	db	"a"
-	db	"ASCII 8 bit                      $"
-	db	#F8,#60,#00,#A4,#FF,#40			
-	db	#F8,#68,#01,#A4,#FF,#60				
-	db      #F8,#70,#02,#A4,#FF,#80				
-	db	#F8,#78,#03,#A4,#FF,#A0			
-	db	#FF,#AC,#00,#02,#FF
-CRTT4:	db	"A"
-	db	"ASCII 16 bit                     $"		
-	db	#F8,#60,#00,#A5,#FF,#40			
-	db	#F8,#70,#01,#A5,#FF,#80				
-	db      #F8,#70,#02,#28,#3F,#80				
-	db	#F8,#78,#03,#28,#3F,#A0			
-	db	#FF,#8C,#00,#01,#FF
-CRTT5:	db	"M"
-	db	"Mini ROM (without mapper)        $"		
-	db	#F8,#60,#00,#26,#7F,#40			
-	db	#F8,#70,#01,#28,#7F,#80				
-	db      #F8,#70,#02,#28,#3F,#C0				
-	db	#F8,#78,#03,#28,#3F,#A0			
-	db	#FF,#8C,#07,#01,#FF
-	
-	db	0			; end of mapper table
-
 ;
 ;Variables
 ;
-protect:
-	db	1
 DOS2:	db	0
 ERMSlt	db	1
 TRMSlt	db	#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF
@@ -3335,7 +2100,6 @@ BMAP:	ds	2
 Dpoint:	db	0,0,0
 StartBL:
 	ds	2
-C8k:	dw	0
 PreBnk:	db	0
 EBlock0:
 	db	0
@@ -3343,7 +2107,7 @@ EBlock:	db	0
 strp:	db	0
 strI:	dw	#8000
 
-Bi_FNAM db	14,0,"D:FileName.ROM",0
+Bi_FNAM db	14,0,"D:FileName.SRM",0
 ;--- File Control Block
 FCB:	db	0
 	db	"           "
@@ -3370,10 +2134,10 @@ CURPAG:	db	0,0
 
 ; /-flags parameter
 F_H	db	0
-F_P	db	0
-F_A	db	0
-F_V	db	0
 F_D	db	0
+F_U	db	0
+F_V	db	0
+F_A	db	0
 p1e	db	0
 
 ZeroB:	db	0
@@ -3382,15 +2146,24 @@ Space:
 	db	" $"
 Bracket:
 	db	" ",124," $"
-
-FCBROM:	
+SRMFN:	db	0
+	db	"        SRM"
+FCB2:	
 	db	0
-	db	"????????ROM"
+	db	"        SRM"
+	ds	28
+FCBSRM:	
+	db	0
+	db	"????????SRM"
 	ds	28
 
 BUFFER:	ds	256
 	db	0,0,0
 
+B1ON:	db	#F8,#50,#00,#85,#03,#40
+B2ON:	db	#F0,#70,#01,#15,#7F,#80
+B23ON:	db	#F0,#80,#00,#04,#7F,#80	; for shadow source bank
+	db	#F0,#A0,#00,#34,#7F,#A0	; for shadow destination bank
 
 ;------------------------------------------------------------------------------
 
@@ -3401,37 +2174,32 @@ BUFFER:	ds	256
 DESCR:	db	"CMFCCFRC"
 ABCD:	db	"0123456789ABCDEF"
 
-ssrMAP:	db	"64kb or more (mapper is required)$"
-ssr64:	db	"64kb$"
-ssr48:	db	"48kb$"
-ssr32:	db	"32kb$"
-ssr16:	db	"16kb$"
-ssr08:	db	"8kb or less$"
-
 MAIN_S:	db	13,10
 	db	"Main Menu",13,10
 	db	"---------",13,10
-	db	" 1 - Write ROM image into cartridge's RAM with protection",13,10
-	db	" 2 - Write ROM image into cartridge's RAM without protection",13,10
+	db	" 1 - Download SRAM contents to a file",13,10
+	db	" 2 - Upload file's contents into SRAM",13,10
 	db	" 0 - Exit to MSX-DOS",13,10,"$"
 
 EXIT_S:	db	10,13,"Thanks for using the RBSC's products!",13,10,"$"
-DirComr_S:
-	db	10,13,"Directory entries will be optimized. Proceed? (y/n) $"
-DirComr_E:
-	db	13,10,"Optimizing of directory entries is complete!",13,10,"$"
-Flash_C_S:
+FileSZH:
+	db	"File size (hexadecimal): $"
+Success:
 	db	13,10,"The operation completed successfully!",13,10,"$"
 ANIK_S:
 	db	"Press any key to continue",13,10,"$"
-ADD_RI_S:
-	db	13,10,"Input full ROM's file name or just press Enter to select files: $"
+WR_SRAM_S:
+	db	13,10,"Input file name to upload into SRAM or just press Enter to select files: $"
+SRM_FNM:
+	db	13,10,"Input file name to download SRAM contents to: $"
 SelMode:
 	db	10,13,"Selection mode: TAB - next file, ENTER - select, ESC - exit",10,13,"Found file(s):",9,"$"
 NoMatch:
-	db	10,13,"No ROM files found in the current directory!",10,13,"$"
+	db	10,13,"No SRM files found in the current directory!",10,13,"$"
 OpFile_S:
 	db	10,13,"Opening file: ","$"
+CrFile_S:
+	db	10,13,"Creating file: ","$"
 F_NOT_F_S:
 	db	"File not found!",13,10,"$"
 F_NOT_FS:
@@ -3446,44 +2214,21 @@ FR_ERW_S:
 	db	13,10,"File write error!","$"
 FR_ERC_S:
 	db	13,10,"File create error!","$"
-Analis_S:
-	db 	"Detecting ROM's mapper type: $"
-SelMapT:
-	db	"Selected ROM's mapper type: $"
-NoAnalyze:
-	db	"The ROM's mapper type is set to: $"
-MROMD_S:
-	db	"ROM's file size: $" 
-CTC_S:	db	"Do you confirm this mapper type? (y/n)",10,13,"$"
-CoTC_S:	db	10,13,"Manual mapper type selection:",13,10,"$"
-Num_S:	db	"Your selection - $"
+DATA_ERR:
+	db	13,10,"Data copying error!","$"
+UL_erd_S:
+	db	13,10,"Uploading file into SRAM failed!",13,10,"$"
+DL_erd_S:
+	db	13,10,"Downloading SRAM into file failed!",13,10,"$"
+F_EXIST_S:
+        db      13,10,"File already exists, overwrite? (y/n) $"
 FileOver_S:
-	db	"File is too big to be loaded into the cartridge's RAM!",13,10
-	db	"You can only upload ROM files up to 720kb into RAM.",13,10
+	db	10,13
+	db	"Incorrect file's size for loading into the emulated SRAM!",13,10
+	db	"The file for uploading into SRAM must be 8192 bytes long.",13,10
 	db	"Please select another file...",13,10,"$"
-MRSQ_S:	db	10,13,"The ROM's size is between 32kb and 64kb. Create Mini ROM entry? (y/n)",13,10,"$"
-Strm_S:	db	"MMROM-CSRM: $"
-FNRE_S:	db	"Using Record-FBlock-NBank for Mini ROM",#0D,#0A
-	db	"[Multi ROM entry] - $"
-DirOver_S:
-	db	"No more free directory entries!",13,10
-DirCmpr:db	"Optimize directory entries now? (y/n)",13,10,"$"
-FDE_S:	db	"Found free directory entry at: $"
-NR_I_S:	db	"Name of directory entry: $"
-FileSZH:
-	db	"File size (hexadecimal): $"
-NR_L_S: db	"Press ENTER to confirm or input a new name below:",13,10,"$"
-LFRI_S:	db	"Writing ROM image, please wait...",13,10,"$"
-Prg_Su_S:
-	db	13,10,"The ROM image was successfully written into cartridge's RAM!"
-	db	13,10,"Please reboot (NO POWER OFF!) your MSX now...",13,10,"$"
-FL_er_S:
-	db	13,10,"Writing into cartridge's RAM failed!",13,10,"$"
-FL_erd_S:
-	db	13,10,"Writing directory entry failed!",13,10,"$"
-CreaDir:
-	db      "Create directory entry for the loaded ROM? (y/n)$"
-LOAD_S: db      "Ready to write the ROM image. Proceed? (y/n)$"
+SRM_Name:
+        db      10,13,"Destination file name: $"
 TWO_NL_S:
 	db	13,10
 ONE_NL_S:
@@ -3493,12 +2238,10 @@ CLStr_S:
 	db	27,"K$"
 MD_Fail:
 	db	"FAILED...",13,10,"$"
-TestRDT:
-	db	"ROM's descriptor table:",10,13,"$"
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.10",13,10
+	db	"Carnivore2 MultiFunctional Cartridge SRAM Manager v1.00",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -3534,13 +2277,12 @@ I_MPAR_S:
 	db	"Too many parameters!",13,10,13,10,"$"
 H_PAR_S:
 	db	"Usage:",13,10,13,10
-	db	" c2ramldr [filename.rom] [/h] [/v] [/a] [/p] [/d]",13,10,13,10
+	db	" c2sram [filename.srm] [/h] [/v] [/d] [/u]",13,10,13,10
 	db	"Command line options:",13,10
 	db	" /h  - this help screen",13,10
 	db	" /v  - verbose mode (show detailed information)",13,10
-	db	" /p  - switch RAM protection off after copying the ROM",10,13
-	db	" /d  - don't create a directory entry for the uploaded ROM",13,10
-	db	" /a  - autodetect and write ROM image (no user interaction)",13,10,"$"
+	db	" /d  - download contents of SRAM into a file",10,13
+	db	" /u  - upload file's contents into SRAM",13,10,"$"
 
 	db	0,0,0
 	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000:2017"

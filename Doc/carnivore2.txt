@@ -1,0 +1,519 @@
+--------------------------------------------------------------------------------
+Carnivore2 Technical Details
+Copyright (c) 2017 RBSC
+English version
+Last updated on 12.11.2017
+--------------------------------------------------------------------------------
+
+NOTE: The hexadecimal numbers are shown as #90, 90h or 0x90
+
+
+--------------------------------------------------------------------------------
+Main features:
+
+ - 8192KB FlashROM memory (M29W640GB)
+ - Mappers: ASCII8, ASCII16, Konami4, Konami5 (SCC), linear 64K
+ - SCC/SCC+ emulation
+ - FMPAC (OPLL) emulation in subslot 3, supports 8kb SRAM emulation
+ - 1024KB RAM with mapper in subslot 2
+ - 720KB shadow RAM at physical address range 040000h-0F0000h
+ - Additional 1kb configuration EEPROM (M93C46MN1), works in 8-bit mode
+ - User-selectable volume for SCC and FMPAC (8 steps), saved in 93C46 EEPROM
+ - User-selectable VDP frequency (50/60Hz), saved in the 93C46 EEPROM
+
+
+--------------------------------------------------------------------------------
+[On-board BIOSes and Modules]
+
+ - BIDECMFC.ROM: Nextor Alpha 2.1 Alpha2 BIOS (131072 bytes) in Subslot 1
+ - FMPCCMFC.ROM: Translated FMPAC BIOS (65536 bytes) in Subslot 3
+ - BOOTCMFC.ROM: Carnivore Boot block (variable size) in Subslot 0
+
+The layout of boot block, directory and BIOSes is described below. There are logical
+and physcal blocks and they have different numbering. 
+
+
+8kb blocks
+----------
+
+The first eight 8kb blocks are united into the first logical block that is addressed by
+the AddrFr register. The first 2 blocks contain the boot block code
+
+ - 000000h-001FFFh (block 0) - after power on (AddrFR=#00, R1Mult="10000101" B1AdrD = #4000)
+   is visible in subslot 0 at address #4000-#5FFF and contains the first 8kb of boot block
+   (ROM "AB" header + start addresses)
+ - 002000h-003FFFh (block 1) - after power on is visible in subslot 0 at addresses #6000-#7FFF
+   (bits 2-0 of R1Mult = "101" are the size of the shown block (16kb)) and contain the second
+   8kb of boot block
+
+Blocks 2 and 3 contain the directory entries
+
+ - 004000h-005FFFh (block 2)
+ - 006000h-007FFFh (block 3)
+
+Block 4 contains the "autostart table"
+
+ - 008000h-009FFFh (block 4) - this block holds the "autostart" table; to prevent repeated
+   saving of the autostart variable at the same address, this variable is "floating" within
+   this block
+
+Blocks 5, 6 and 7 are not used
+
+ - 00A000h-00BFFFh (block 5)
+ - 00C000h-00DFFFh (block 6)
+ - 00E000h-00FFFFh (block 7)
+
+
+64kb blocks
+-----------
+
+After first physical 8kb blocks there start 64kb blocks of the FlashROM. The physical blocks 8
+and 9 correspond to the logical blocks 1 and 2. They contain the IDE BIOS
+
+ - 010000h-01FFFFh (block 8, logical block 1, AddrFR=#01)
+ - 020000h-02FFFFh (block 9, logical block 2, AddrFR=#02)
+
+The physical block 10 (corresponds to logical block 3) contains FMPAC BIOS
+
+ - 030000h-03FFFFh (block 10, logical block 3, AddrFR=#03)
+
+
+Data blocks
+-----------
+
+These blocks are used for saving the ROM images (games, etc.)
+
+ - 040000h-04FFFFh (block 11, logical block 4, AddrFR=#03)
+ - 050000h-05FFFFh (block 12, logical block 5, AddrFR=#03)
+...
+...
+ - 7F0000h-7FFFFFh (block 134, logical block 127, AddrFR=#7F)
+
+
+--------------------------------------------------------------------------------
+[FlashROM Memory]
+
+Model: Numonix M29W640GB TSOP48
+Datasheet: https://lrak.net/secret/data_sheets/memory_IC/M29W640.pdf
+
+Block layout:
+ - #00000  8K
+ - #02000  8K
+ - #04000  8K
+ - #06000  8K
+ - #08000  8K
+ - #0A000  8K
+ - #0C000  8K
+ - #0E000  8K
+ - #10000 64K x 127
+
+Command addresses: #4555 and #5AAA
+
+Commands:
+ - AUTOSELECT  #90
+ - WRITE       #A0
+ - CHIP_ERASE  #10
+ - BLOCK_ERASE #30
+ - RESET       #F0
+
+FlashROM ID: #7E
+
+Block 0 is reserved for the directory and the boot block: BOOTCMFC.ROM
+Blocks 1-2 are reserved for the IDE BIOS: BIDECMFC.ROM
+Block 3 is reserved for the FMPAC BIOS: FMPCCMFC.ROM
+
+
+--------------------------------------------------------------------------------
+[FMPAC Emulation]
+
+The FMPAC emulation that is included in the cartridge is mapped to ports #7C-7D.
+
+The FMPAC SRAM is emulated by using the 8kb of the upper area of the 1st megabyte
+of RAM (shadow RAM) that is not shared with the memory mapper. The physical address
+of the 8kb area for SRAM in the shadow RAM is 0FE000h-0FFFFFh.
+
+NOTE: The settings of SRAM will be lost after powering down unless the cartridge
+has the backup battery installed.
+
+FMPAC's own control registers:
+
+ - 7FF4h: write YM-2413 register port (write only)
+ - 7FF5h: write YM-2413 data port (write only)
+ - 7FF6h: activate OPLL I/O ports (read/write)
+ - 7FF7h: ROM page (read/write)
+
+To enable 8kb of SRAM at address 4000h-5FFFh, set 4Dh to 5FFEh and 69h to 5FFFh.
+
+
+--------------------------------------------------------------------------------
+[Additional Configuration EEPROM]
+
+Model: M93C46MN1 (1kb)
+Datasheet: http://www.atmel.com/Images/doc5140.pdf
+The EEPROM is used in 8-bit mode
+
+This EEPROM is used to store additional configuration settings. The volume control
+register is located at address 0x4FA2. Bits 6 and 7 are not used, bits 3,4,5 are
+responsible for FMPAC volume, bits 0,1,2 are responsible for SCC/SCC+ volume. The
+default values are 4 (FMPAC) and 4 (SCC). In the EEPROM the volume byte is stored
+at address 0x1.
+
+The VDP's frequency setting is stored as 0 (NTSC) or 1 (PAL) at address 0x2. Only
+bits 0 and 1 are used to store the frequency value.
+
+Writing to EEPROM is done via the configuration register CardMDR+#23. The commands
+for EEPROM are saved into this register in a sequence that is described in the
+chip's datasheet. Only write-enable, read and write commands are used.
+
+IMPORTANT: The chip is operated only in 8-bit mode!
+
+
+--------------------------------------------------------------------------------
+[Configuration Registers]
+
+The configuration registers are located at addresses #0F80 or #4F80 or #8F80 or
+#CF80h. Their visibility and location is controlled by the main control register's
+first byte. The main control register is called "CardMDR".
+
+After power on the registers are located at address #4F80. All registers are write-
+only except the pseudo-register for sending/receiving the data when accessing the
+FlashROM.
+
+Below you can find the description of configuration registers.
+
++#00	CardMDR	- main cartridge's configuration register
+
+	7 bit -	controls the visibility of the registers
+		1 - don't show registers
+		0 - show registers
+	6,5 bit - location of configuration registers
+		0/1/2/3 - registers are located at addresses 0F80h/4F80h/8F80h/CF80h
+	4 bit - SCC control register
+		1 - SCC enabled
+		0 - SCC disabled
+	3 bit - configuration type
+		1 - delayed configuration
+		0 - configuration is changed immediately after updating the registers
+	2 bit - configuration enabling control
+		0 - delayed configuration is enabled after CPU executes at address 0000h
+		1 - configuration is enabled after reading from address 4000h
+		The delayed configuration works only for AddrFR and bank control registers
+        1 bit - source for BIOS of embedded devices
+                0 - BIOS data (boot block, IDE controller, FMPAC) is read from FlashROM chip
+		1 - BIOS data (boot block, IDE controller, FMPAC) is read from RAM
+		Warning! The data must be copied into DAM before setting this bit!
+	0 bit - configuration registers visibility control
+		0 - configuration registers are visible at addresses 0F80h/4F80h/8F80h/CF80h
+		depending on the values of bits 5 and 6
+		1 - configuration registers are not visible, the data from the corresponding
+		block in the FlashROM is available at those addresses
+
++#01	AddrM0	- lower address register (bits 7-0) for accessing the FlashROM
+
++#02	AddrM1	- middle address register (bits 15-8) for accessing the FlashROM
+
++#03	AddrM2	- higher address register (bits 22-16) for accessing the FlashROM
+
++#04	DatM0	- pseudo-register for sending/receiving data from/to FlashROM
+
++#05	AddrFR	- register controlling the number of FlashROM's 64kb block for ROM emulation
+		The default value of this register is 00h
+
+
+First bank configuration registers
+----------------------------------
+
++#06	R1Mask	- bitmask for bank's register address
+		This value is normally mirrored into several addresses, for example for Konami 5
+		cartridges those addresses for the first bank are 5000h-57FFh. Here we use only
+		the high byte's address - F8h (11111000b)
+	The default value of this register is F8h
+
++#07	R1Addr	- high byte of the bank's address register (example: 50h for address 5000h)
+	The default value of this register is 50h
+
++#08	R1Reg	- initial value for bank's number (usually 00h)
+	The default value of this register is 00h
+
++#09	R1Mult	- bank's mode and size register
+
+	7 bit - bank's register control
+		1 - bank's register is enabled
+		0 - bank's control is disabled
+	6 bit - mirroring control
+		1 - mirroring is enabled
+		0 - mirroring is disabled
+	5 bit - media type selection
+		0 - FlashROM
+		1 - RAM
+	4 bit - RAM's bank read/write control
+		1 - writing to bank is enabled
+		0 - writing to bank is disabled
+	3 bit - bank on/off control
+		0 - bank is enabled
+		1 - bank is disabled
+	2,1,0 bits - bank's size
+		111b = 64 kb
+		110b = 32 kb
+		101b = 16 kb
+		100b = 8 kb
+		011b = 4 kb
+            	other value - bank is disabled
+
+	The default value of this register is 85h
+
++#0A	B1MaskR - bitmask for bank's addressing mode into the FlashROM
+		This is the ROM's emulated size and the number of pages. For example for a
+		128kb ROM we will need 16 pages of 8kb, so we set the 0Fh (00001111b) mask.
+	The default value of this register is 03h
+
++#0B	B1AdrD - high byte of the bank's address (example: 40h for address 4000h)
+	The default value of this register is 40h
+
+
+Second bank configuration registers
+-----------------------------------
+
++#0C	R2Mask
++#0D	R2Addr
++#0E	R2Reg
++#0F	R2Mult	- the default value is 00h (bank is disabled)
++#10	B2MaskR
++#11	B2AdrD
+
+
+Third bank configuration registers
+----------------------------------
+
++#12	R3Mask
++#13	R3Addr
++#14	R3Reg
++#15	R3Mult	- the default value is 00h (bank is disabled)
++#16	B3MaskR
++#17	B3AdrD
+
+
+Fourth bank configuration registers
+-----------------------------------
+
++#18	R4Mask
++#19	R4Addr
++#1A	R4Reg
++#1B	R4Mult	- the default value is 00h (bank is disabled)
++#1C	B4MaskR
++#1D	B4AdrD
+
+
++#1E	Mconf	- expanded slot configuration register
+
+	7 bit - controls slot expansion
+		1 - slot is expanded
+		0 - slot is not expanded
+	6 bit - mapper port reading
+		1 - MMM mapper ports FC,FD,FE,FF reading is enabled
+		0 - MMM mapper ports FC,FD,FE,FF reading is disabled
+	5 bit - FMPAC (YM2413) ports 3Ch,3Dh control
+		1 - FMPAC ports are enabled
+		0 - FMPAC ports are disabled
+	4 bit - MMM mapper port 3Ch control
+		1 - MMM mapper port is enabled
+		0 - MMM mapper port is disabled
+	3 bit - FMPAC device control
+		1 - FMPAC BIOS is enabled in subslot 3
+		0 - FMPAC is disabled
+	2 bit - MMM mapper control
+		1 - MMM mapper with 1mb of RAM is enabled in subslot 2
+		0 - MMM mapper is disabled
+	1 bit -	IDE interface control
+		1 - IDE (CF card) interface is enabled in subslot 1
+		0 - IDE (CF card) interface is disabled
+	0 bit - MultiMapper control
+		1 - MultiMapper is enabled in subslot 0
+		0 - MultiMapper is disabled
+
++#1F	CMDRCpy	- copy of the CardMDR+#00 register (to be used with LDIR command)
+
++#20	ConfFl	- FlashROM chip's configuration
+
+	2 bit - bus type
+		0 - 8 bit bus
+		1 - 16 bit bus
+	1 bit - reset/protect
+	0 bit - boots writing speed
+		1 - enable 12V for boosted writing into FlashROM
+		0 - disable 12V for boosted writing into FlashROM
+
+	The default value of this register is 02h
+
+
++#21 	NSReg - Non standart Register
+	The default value of this register is #00, please don't change it!
+
++#22	SndLVL - volume level register
+
+	7,6 bit - not used
+	5,4,3 - FMPAC audio level
+	2,1,0 - SCC/SCC+ audio level
+
+	The default value of this register is 33h (00011011b)
+
++#23	CfgEEPR	- register for controlling additional configuration EEPROM (93C46)
+
+	7,6,5,4 bit - not used
+	3 bit	- EECS signal Chip Select EEPROM
+	2 bit	- EECK signal CLK (sync)
+	1 bit	- EEDI signal Data Input (data sent to EEPROM)
+	0 bit	- EEDO signal Data Output (data received from EEPROM); read-only
+
+
+--------------------------------------------------------------------------------
+[Directory Entry Format]
+
+There are 127 user-controlled directory entries available in the cartridge. The
+first directory entry can't be edited or deleted because it sets the default
+cartridge's configuration - all enabled.
+
+The directory consists of 2 blocks of 8kb and is physically located in the 2 and 3 blocks
+of the FlashROM chip (addresses 004000h-005FFFh (block 2) and 006000h-007FFFh (block 3). The
+logical block number addressed by the AddrFr register is zero.
+
+Each directory entry occupies 40h (64 bytes) and has the following format:
+
++#00	ACT - Active/empty record's flag (0xFF - empty record)
++#01	PSV - Passive/active record (0xFF - active)
++#02	STB - Starting 64kb block for data 
++#03	LNB - Data size in 64kb blocks
++#04	MAP - Mapper type symbol
++#05	NAM - Name of the record starts (30 bytes)
++#22	NAM - Name of the record ends
+
++#23 +#24 +#25 +#26 +#27 +#28 - R1Mask R1Addr R1Reg R1Mult B1MaskR B1AdrD - 6 bytes of first bank's configuration
++#29 +#2A +#2B +#2C +#2D +#2E - R2Mask R2Addr R2Reg R2Mult B2MaskR B2AdrD - 6 bytes of second bank's configuration
++#2F +#30 +#31 +#32 +#33 +#34 - R3Mask R3Addr R3Reg R3Mult B3MaskR B3AdrD - 6 bytes of third bank's configuration
++#35 +#36 +#37 +#38 +#39 +#3A - R4Mask R4Addr R4Reg R4Mult B4MaskR B4AdrD - 6 bytes of forth bank's configuration
+
++#3B	Mconf - expanded slot configuration register
++#3C 	CardMDR - main configuration register
++#3D	PosSiz - size and position in 64kb block for mini ROMs
+
+	7 bit - reserved
+	6,5,4 bits - offset of mini ROM in 64kb block
+		000b = 0 kb
+		001b = 8 kb
+		010b = 16 kb
+		011b = 24 kb
+		100b = 32 kb
+		101b = 40 kb
+		110b = 48 kb
+		111b = 56 kb
+	3 bit - non-standard ROM size
+		1 - 49kb ROM
+		0 - standard ROM size
+	2,1,0 bits - mini ROM's size
+		110b = 32 kb
+		101b = 16 kb
+		100b = 8 kb
+		011b = 4 kb
+		000b = not mini ROM
+
++#3E	RstRun - reset and start options
+
+	3 bit - ROM's start address
+		0 - use bit 2 from this register
+		1 - use start address at 0002h
+	2 bit - ROM's start address
+		0 - use start address at 4002h
+		1 - use start address at 8002h
+	1 bit - execution control
+		0 - don't start ROM
+		1 - start using ROMini address (bits 3,2)
+	0 bit - reset flag
+		0 - do not reset MSX
+		1 - reset MSX
+
++#3F	Resrv - Reserved
+
+
+--------------------------------------------------------------------------------
+[MAPPERS]
+
+ - ASCII 8: Common ASCII 8 bit mapper
+
+	Default configuration values:
+
+	#F8,#60,#00,#84,#FF,#40	- bank 0
+	#F8,#68,#01,#84,#FF,#60	- bank 1
+	#F8,#70,#02,#84,#FF,#80	- bank 2
+	#F8,#78,#03,#84,#FF,#A0	- bank 3
+	#FF,#AC,#00,#02,#FF	- configuration registers
+
+ - ASCII 16: Common ASCII 16 bit mapper
+
+	Default configuration values:
+
+	#F8,#60,#00,#85,#FF,#40	- bank 0
+	#F8,#70,#01,#85,#FF,#80	- bank 1
+	#F8,#70,#02,#08,#3F,#80	- bank 2
+	#F8,#78,#03,#08,#3F,#A0	- bank 3
+	#FF,#8C,#00,#01,#FF	- configuration registers
+
+ - Konami 4: Common Konami 4 mapper
+
+	Default configuration values:
+
+	#E8,#50,#00,#04,#FF,#40	- bank 0
+	#E8,#60,#01,#84,#FF,#60	- bank 1
+	#E8,#80,#02,#84,#FF,#80	- bank 2
+	#E8,#A0,#03,#84,#FF,#A0	- bank 3
+	#FF,#AC,#00,#02,#FF	- configuration registers
+
+ - Konami 5: Common Konami SCC mapper
+
+	Default configuration values:
+
+	#F8,#50,#00,#84,#FF,#40	- bank 0
+	#F8,#70,#01,#84,#FF,#60	- bank 1
+	#F8,#90,#02,#84,#FF,#80	- bank 2
+	#F8,#B0,#03,#84,#FF,#A0	- bank 3
+	#FF,#BC,#00,#02,#FF	- configuration registers
+
+ - Linear 64: Linear 64kb mode
+
+	Default configuration values for Mini ROMs:
+
+	#F8,#60,#00,#06,#7F,#40	- bank 0
+	#F8,#70,#01,#08,#7F,#80	- bank 1
+	#F8,#70,#02,#08,#3F,#C0	- bank 2
+	#F8,#78,#03,#08,#3F,#A0	- bank 3
+	#FF,#8C,#07,#01,#FF	- configuration registers
+
+	Bank addresses in linear mode:
+
+	#0000-#3FFF - bank 0
+	#4000-#7FFF - bank 1
+	#8000-#BFFF - bank 2
+	#C000-#FFFF - bank 3
+
+The physical address of the RAM allocated for the mapper is 100000h-1FFFFFh, which
+means that the second part of the RAM chip is used for it.
+
+
+--------------------------------------------------------------------------------
+[DEFAULT VALUES]
+
+ - CardMDR (CardMDR+#00) = 20h (but may vary because of 2 last bits)
+ - AddrFR  (CardMDR+#05) = 00h
+ - R1Mult  (CardMDR+#09) = 85h
+ - R2Mult  (CardMDR+#0F) = 00h
+ - R3Mult  (CardMDR+#15) = 00h
+ - R4Mult  (CardMDR+#1B) = 00h
+ - CMDRCpy (CardMDR+#1F) = 20h
+ - ConfFl  (CardMDR+#20) = 02h
+
+
+--------------------------------------------------------------------------------
+[LOGIC]
+
+The mapper logic is similar to the logic of MegaFlashROM cartridge. The description
+will be added later.
+

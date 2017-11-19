@@ -1,6 +1,7 @@
-Carnivore2 MultiFunctional Cartridge version 2.2
+Carnivore2 MultiFunctional Cartridge Readme File
 Copyright (c) 2017 RBSC
-
+Last updated: 17.11.2017
+------------------------------------------------
 
 WARNING! To avoid damage to the Carnivore2 cartridge and your MSX computer hardware never insert or remove the cartridge
 when a computer is powered on! Always power off your computer before inserting or removing of any cartridge!
@@ -68,34 +69,35 @@ easy. Here are the key assignments:
 	[F] - select 50Hz or 60Hz frequency for VDP
 	[LEFT],[RIGHT] - previous/next directory page
 	[UP],[DOWN] - select ROM/CFG entry
-	[SPACE]     - start entry normally
-	[SHIFT]+[G] - start entry directly (using the jump address of the ROM)
-	[SHIFT]+[R] - reset and start entry
-	[SHIFT]+[A] - entry's autostart ON
-	[SHIFT]+[D] - entry's autostart OFF
+	[SPACE],[ENTER] - start an entry
+	[G] - start an entry directly
+	[R] - reset MSX and start an entry
+	[A] - select an entry for autostart
+	[D] - disable autostart option
+	[F] - select 50Hz or 60Hz frequency
 
 Please keep in mind that some ROMs may require alternative starting method, so if pressing SPACE doesn't start the ROM, try
 using the direct start or start after system's reset.
 
-When you enable the autostart for an entry, it will be always activated after MSX's boot logo. The Boot Block menu will not be
-shown and the ROM or configuration entry will be started automatically. In order to disable the autostart or to skip the boot
-block completely the following keys should be used:
+There are several keys that can affect the cartridge's functionality at boot level. Certain keys can skip the autostart option,
+other keys can skip the boot block's main menu:
 
 	[F4] - disable autostart option
 	[F5] - disable startup menu
 
-In addition to F4 key, the ESC and TAB keys can be used to disable the autostart entry. If any of those keys are pressed, the
-autostart entry is ignored and the main menu is shown.
+When autostart is set on any entry, after reboot there will be a note shown and there will be a 3 second delay before this entry
+is activated. During these 3 seconds a user can abort autostart with ESC, TAB or F4 key. If any of these keys are pressed during
+the 3 seconds, the autostart will be skipped and the main menu will be shown
 
 The symbols that are displayed near the names of directory entries have certain meaning:
 
-	K5 - Konami 5 SCC
-	K4 - Konami 4
-	A8 - ASCII 8
+	K5  - Konami 5 SCC
+	K4  - Konami 4
+	A8  - ASCII 8
 	A16 - ASCII 16
-	MR - mini ROM
-	CF - configuration
-	UN - unknown
+	MR  - mini ROM
+	CF  - configuration
+	UN  - unknown
 
 For any other symbol there will be just 2 dashes.
 
@@ -156,7 +158,7 @@ Adding a ROM file into the FlashROM
 -----------------------------------
 
 To add a new ROM file into the FlashROM chip, select the "Write new ROM image into FlashROM" option. Follow the on-screen instructions
-until the ROM is successfully written into the chip and the main menu re-appears. The large ROMs' mapper should be normally
+until the ROM is successfully written into the chip and the main menu re-appears. The large ROMs' mappers should be normally
 detected automatically by the utility, but on some ROMs autodetecting may fail. In this case the utility will ask you to choose the
 mapper. The ROM will not start with incorrect mapper settings, so if your setting didn't work, try to change the mapper type.
 
@@ -250,6 +252,23 @@ The old directory entries with "RAM: " prefix, created by the "c2ramldr.com" uti
 power-off they become useless anyway.
 
 
+Using FMPAC's SRAM option
+-------------------------
+
+The FMPAC's 8kb SRAM is emulated by the cartridge at the Shadow RAM's address 0FE000h. This area is not affected by the 1mb of primary
+RAM in any way. This area is used by certain games to save the data. If the Carnivore2 cartridge doesn't have a backup RAM battery
+installed, then the data that was saved into that area will be lost when an MSX computer is switched off. As this data survives the
+reset, it's possible to save it to a file and load it back into RAM when needed. The utility that allows to save/load this data is
+called "c2sram.com". The files with the save data will have .SRM extension by default and these files will be found by the utility
+when a user selects files manually. However the file can be saved with any name and extension. In such a case when a user wants to
+upload the file into the emulated SRAM area, he will have to type its name manually.
+
+To save the data it's enough to reset MSX (no power-off!), run the "c2sram.com" utility and save the data to a file. Then a computer
+can be switched off. In case a user wants to restore the data and then run a game, the "c2sram.com" utility should be used to upload
+the previously saved file into SRAM area. Then a computer should be reset and a game can be then started from the boot block or from
+an emulated DSK image.
+
+
 Notes for SCC+ mode
 -------------------
 
@@ -282,7 +301,7 @@ has the expanded slot disabled and the only enabled device there is IDE. Otherwi
 
 The audio socket of the Carnivore2 cartridge may not be suitable for connecting the headphones. It's recommended to connect it to the
 speakers or to the amplifier. This socket will only output SCC or FMPAC music and sounds. For the full experience please use the MSX's
-startdard sound output - it will have the amplified SCC and FMPAC sound and music as well as the PSG sound and music.
+standard sound output - it will have the amplified SCC and FMPAC sound and music as well as the PSG sound and music.
 
 
 IMPORTANT!

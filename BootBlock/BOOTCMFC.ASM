@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
 ; Portions (c) Grauw
-; Version 1.77
+; Version 1.80
 ;
 
 ; !COMPILATION OPTIONS!
@@ -46,6 +46,7 @@ CURPAG	equ	#F568
 VDPVER	equ	#F56A
 PALNTSC	equ	#F56C
 XYPOS	equ	#F56E
+AUTOST	equ	#F570
 VDPR10	equ	#FFE8
 
 ; Card configuration registers
@@ -54,8 +55,12 @@ CardMDR equ	#4F80
 ; Delay for fading
 FDelay	equ	#1000
 
+; Delay for autostart
+ADelay	equ	3
+
 R_Base	equ	#C010
 L_STR	equ	16
+
 
 	org	#4000
 	db	"AB"	; ROM Identeficator
@@ -70,7 +75,7 @@ L_STR	equ	16
 	db	"CSCCFRC"
   endif
 	db	0
-	db	"v1.77"  ; Version
+	db	"v1.80"  ; Version | also update it on the help screen!
 	db	0
 
 
@@ -84,7 +89,10 @@ C2FCOLM	equ	15
 C2FPALM	equ	#7707
 
 C2BCOLM	equ	13
-C2BPALM	equ	#4301
+C2BPALM	equ	#4301		; default
+;C2BPALM	equ	#1101	; black
+;C2BPALM	equ	#1401	; blue
+;C2BPALM	equ	#1304	; green
 
 ; Colors for volume screen -------------
 ; First value - foreground color
@@ -96,7 +104,10 @@ C2FCOLV	equ	15
 C2FPALV	equ	#7707
 
 C2BCOLV	equ	12
-C2BPALV	equ	#1304
+C2BPALV	equ	#1304		; default
+;C2BPALV	equ	#1101	; black
+;C2BPALV	equ	#1401	; blue
+;C2BPALV	equ	#1304	; green
 
 ; Colors for help screen -------------
 ; First value - foreground color
@@ -108,7 +119,10 @@ C2FCOLH	equ	15
 C2FPALH	equ	#7707
 
 C2BCOLH	equ	4
-C2BPALH	equ	#1401
+C2BPALH	equ	#1401		; default
+;C2BPALH	equ	#1101	; black
+;C2BPALH	equ	#1401	; blue
+;C2BPALH	equ	#1304	; green
 
 
 ; Default colors and palette on MSX startup
@@ -144,7 +158,7 @@ DefBlP	equ	#1701		; 4
 ;	Copyright sign
 ;
 ;	#90
-;
+
 ;	Cursor (2 bytes)
 ;
 CURS1	equ	#94
@@ -205,6 +219,9 @@ TA_0B:
   endif
 
 ; Check for autostart
+	xor	a
+	ld	(AUTOST),a	; no autostart
+
 	ld	d,#FF
 	ld	a,2
 	ld	(CardMDR+#0E),a ; set 2nd bank to autostart map
@@ -227,8 +244,64 @@ TA_00:	ld	a,(hl)
 	and	%00001101	; ESC, F4 no autostart
 	cp	%00001101
 	jr	nz,Menu
-	ld	bc,#FFFF	; autostart flag, disable effects
-	jp	RUN_CT		; not empty record, go to start
+
+	ld	a,#FF
+	ld	(AUTOST),a	; autostart found
+	call	CLS
+	ld	hl,AutoMSG
+	call	print		; print autostart message
+
+	ld	hl,#0000
+	ld	bc,ADelay*60	; set delay for autostart in NTSC
+	ld	a,(PALNTSC)
+	bit	1,a
+	jr	z,AutoWait
+	ld	bc,ADelay*50	; set delay for autostart for PAL
+
+AutoWait:
+	ld	a,2
+	call	VDP_VScan	; wait for VSYNC to start
+	and	#40
+	jr	nz,AutoWait
+
+AutoWait1:
+	ld	a,2
+	inc	h
+	call	VDP_VScan	; wait for VSYNC to end (1 frame to draw)
+	and	#40
+	jr	z,AutoWait1
+
+	ld	a,(#FBEC)
+	and	%00001101	; ESC, F4 no autostart
+	cp	%00001101
+	jr	nz,AutoWAb	; Abort
+
+	dec	bc
+	inc	l
+	ld	a,l
+	cp	50
+	jr	nz,AutoWait2
+	push	hl
+	ld	hl,AutoDot
+	call	print		; print a dot every 50 frames
+	pop	hl
+	xor	a
+	ld	l,a
+
+AutoWait2:
+	ld	a,b
+	or	a
+	jr	nz,AutoWait
+	ld	a,c
+	or	a
+	jr	nz,AutoWait
+	jp	RUN_CT		; not empty record, do autostart
+
+AutoWAb:
+	xor	a
+	ld	(AUTOST),a	; no autostart
+	jp	Menu
+
 TA_01:	inc	hl		; next auto
 	inc	hl
 	ld	a,h
@@ -540,38 +613,48 @@ Wait0:
 	jp	z,P_F
 	cp	32		; SPACE
 	jp	z,RUN_CT	; run selected record
+	cp	13		; ENTER
+	jp	z,RUN_CT	; run selected record
 	cp	"R"
-	jp	z,RUN_CR	; run on reset
+	jp	z,RUN_CR	; run after reset
+	cp	"r"
+	jp	z,RUN_CR	; run after reset
 	cp	"G"
+	jp	z,RUN_CJ	; run directly
+	cp	"g"
 	jp	z,RUN_CJ	; run directly
 	cp	"A"
 	jp	z,AUTO_R	; set selected record for autorun
+	cp	"a"
+	jp	z,AUTO_R	; set selected record for autorun
 	cp	"D"
+	jp	z,DAUTO_R	; disable autorun record
+	cp	"d"
 	jp	z,DAUTO_R	; disable autorun record
 	cp	"?"
 	jp	z,Help		; show help
 	cp	"h"
-	jp	z,Help
+	jp	z,Help		; show help
 	cp	"H"
-	jp	z,Help
+	jp	z,Help		; show help
    if CV=2
 	cp	"V"
-	jp	z,SetVolume
+	jp	z,SetVolume	; set volume
 	cp	"v"
-	jp	z,SetVolume
+	jp	z,SetVolume	; set volume
 	cp	"F"
-	jp	z,ChangeFreq
+	jp	z,ChangeFreq	; change frequency
 	cp	"f"
-	jp	z,ChangeFreq
+	jp	z,ChangeFreq	; change frequency
    endif
-	jr	CH01
+	jp	CH01
 
 
 ; Cursor up (previous str select)
 C_UP:
 	ld	a,e
 	or	a
-	jr	z,CH01		; 1-st string?
+	jp	z,CH01		; 1-st string?
 	ld	hl,(XYPOS)
 	call	POSIT
 	ld	a,' '
@@ -725,12 +808,9 @@ RUN_CT:
 	bit	1,a
 	jp	nz,RUN_CJ
 
-	ld	a,b
+	ld	a,(AUTOST)	; autostart found?
 	cp	#FF
-	jr	nz,RUN_CT1
-	ld	a,c
-	cp	#FF
-	jr	z,RUN_CT2
+	jr	z,RUN_CT2	; skip effects
 
 RUN_CT1:
 	ld	hl,C2FPALM
@@ -786,12 +866,9 @@ RUN_CT2:
 
 ; Run selected record via reset
 RUN_CR:
-	ld	a,b
+	ld	a,(AUTOST)	; autostart found?
 	cp	#FF
-	jr	nz,RUN_CR1
-	ld	a,c
-	cp	#FF
-	jr	z,RUN_CR2
+	jr	z,RUN_CR2	; skip effects
 
 RUN_CR1:
 	ld	hl,C2FPALM
@@ -819,10 +896,8 @@ RUN_CR1:
 
 	call	RestEnv		; restore environment (font, colors, screen)
 
-
 ; Configure cart register and restart
 ; ix - point dir entry
-; 
 RUN_CR2:
 	ld	a,%00101000
 	ld	(CardMDR),a
@@ -866,7 +941,17 @@ RUN_CR4:
 	out	(#F4),a		; avoid "warm" reset on MSX2+
 
 Reset:
-	ld	hl,ResetMSG	; print rebooting message
+	call	CLS
+	ld	hl,ResetCMSG	; print rebooting message
+
+	ld	a,(ix+#04)	; mapper type
+	cp	'C'
+	jp	z,Reset1	; ignore direct start for configuration entries
+	cp	'c'       
+	jp	z,Reset1	; ignore direct start for configuration entries
+
+	ld	hl,ResetMSG	; print rebooting message with configuration
+Reset1:
 	call	print	
 
 	jp	0000		; reset system
@@ -875,14 +960,17 @@ Reset:
 
 ; Run selected record directly (using the ROM's start adddress
 RUN_CJ:
-	ld	a,b
+	ld	a,(AUTOST)	; autostart found?
 	cp	#FF
-	jr	nz,RUN_CJ1
-	ld	a,c
-	cp	#FF
-	jr	z,RUN_CJ2
+	jr	z,RUN_CJ2	; skip effects
 
 RUN_CJ1:
+	ld	a,(ix+#04)	; mapper type
+	cp	'C'
+	jp	z,CH01		; ignore direct start for configuration entries
+	cp	'c'
+	jp	z,CH01		; ignore direct start for configuration entries
+
 	ld	hl,C2FPALM
   if CV=2
 	ld	de,C2BPALM
@@ -907,10 +995,9 @@ RUN_CJ1:
 
 	call	RestEnv		; restore environment (font, colors, screen)
 
-RUN_CJ2:
 ; Configure cart register and start ROM
 ; ix - point dir entry
-
+RUN_CJ2:
 	ld	a,%00101100
 	ld	(CardMDR),a
 	ld	a,(ix+2)
@@ -922,10 +1009,6 @@ RUN_CJ2:
 	ld	de,CardMDR+#06
 	ld	bc,26
 	ldir
-
-;	ld	a,(hl)		; corr
-;	or	%00001100	; corr
-;	ld	(de),a		; corr
 
 	ld	hl,RJP
 	ld	de,R_Base
@@ -2377,6 +2460,68 @@ Change2:
   endif
 
 
+; Wait for vertical scan on VDP	
+VDP_VScan:
+	push	af
+	ld	a,(VDPVER)
+	or	a
+	jr	nz,VDP_VSDO
+	pop	af
+
+	ld	a,h
+	or	a		; first call?
+	jr	nz,VDP_VS1
+	ld	a,#BF		; simulate start of frame
+	ret
+
+VDP_VS1:
+	di
+	push	bc
+	push	hl
+	ld	bc,#FFFF
+VDP_VS2:			; for 1/50 of 3.58Mhz CPU time = 71600 cycles,
+				; so we need to repeat 280 cycles 256 times
+	ld	hl,(0000)	; 20 cycles
+	ld	hl,(0000)	; 20 cycles
+	ld	hl,(0000)	; 20 cycles
+	ld	hl,(0000)	; 20 cycles
+	ld	hl,(0000)	; 20 cycles
+	ld	hl,(0000)	; 20 cycles
+	ld	hl,(0000)	; 20 cycles
+	ld	hl,(0000)	; 20 cycles
+	ld	hl,(0000)	; 20 cycles
+	ld	hl,(0000)	; 20 cycles
+	ld	hl,(0000)	; 20 cycles
+	ld	hl,(0000)	; 20 cycles
+	ld	hl,(0000)	; 20 cycles
+	xor	#FF		; 7 cycles
+	djnz	VDP_VS2		; 13 cycles
+
+	ei
+	pop	hl
+	pop	bc
+	dec	h		; reset the flag when called second time
+	ld	a,#40		; simulate end of frame (1/50 second delay)
+	ret
+
+VDP_VSDO:
+	pop	af
+	di
+	out	(#99),a
+	ld	a,#8F
+	out	(#99),a
+	push	hl
+	pop	hl
+	in	a,(#99)
+	push	af
+	xor	a
+	out	(#99),a
+	ld	a,#8F
+	out	(#99),a
+	pop	af
+	ei
+	ret
+
 
 ;
 ; DATA AREA
@@ -2465,20 +2610,20 @@ helpmsg:
   endif
 	db	#8C,#20,#01,#57,"[LEFT],[RIGHT] - previous/next page ",#8D
 	db	#8C,#20,#01,#57,"[UP],[DOWN] - select ROM/CFG entry  ",#8D
-	db	#8C,#20,#01,#57,"[SPACE]     - start entry normally  ",#8D
-	db	#8C,#20,#01,#57,"[SHIFT]+[G] - start entry directly  ",#8D
-	db	#8C,#20,#01,#57,"[SHIFT]+[R] - reset and start entry ",#8D
-	db	#8C,#20,#01,#57,"[SHIFT]+[A] - entry's autostart ON  ",#8D
-	db	#8C,#20,#01,#57,"[SHIFT]+[D] - entry's autostart OFF ",#8D
+	db	#8C,#20,#01,#57,"[SPACE],[ENTER] - start an entry    ",#8D
+	db	#8C,#20,#01,#57,"[G] - start an entry directly       ",#8D
+	db	#8C,#20,#01,#57,"[R] - reset MSX and start an entry  ",#8D
+	db	#8C,#20,#01,#57,"[A] - select an entry for autostart ",#8D
+	db	#8C,#20,#01,#57,"[D] - disable autostart option      ",#8D
 	db	#8C,#20,#01,#56,"[F] - select 50Hz or 60Hz frequency ",#8D
 	db	#8C,"                                      ",#8D
-	db	#8C," Startup Option Keys:                 ",#8D
+	db	#8C," Boot Option Keys:                    ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#20,#01,#50,"[F4] - disable autostart option     ",#8D
 	db	#8C,#20,#01,#56,"[F5] - disable startup menu         ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
-	db	"             Press any key to return..."
+	db	" v1.80       Press any key to return..."
 	db	0
 
 
@@ -2508,8 +2653,14 @@ PALmsg:
 	db	"[50",#96,"Hz]",0
 NTSCmsg:
 	db	"[60",#96,"Hz]",0
+AutoMSG:
+	db	"Autostart is active.",10,13,"ESC, TAB or F4 to abort",0
+AutoDot:
+	db	".",0
+ResetCMSG:
+	db	"New configuration applied.",10,13,"Rebooting MSX...",0
 ResetMSG:
-	db	"Rebooting MSX...",0
+	db	"Necessary changes applied.",10,13,"Rebooting MSX...",0
 PageNum:
 	db	"[PAGE:  ",#96,"  ]",0
 VolumeL:

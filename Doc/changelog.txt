@@ -1,0 +1,105 @@
+Changelog for Carnifore2 MultiFunctional Cartridge
+Copyright (c) 2017 RBSC
+English verison
+--------------------------------------------------
+
+16.11.2017
+
+1. When autostart is set on any entry, after reboot there will be a note shown and there will be a 3 second
+   delay before this entry is activated. During these 3 seconds a user can abort autostart
+
+2. Now the entry can be started with default settings by using Enter key in addition to Space
+
+3. You no longer need to press Shift in boot block to do some action. Both upper and lower case characters are
+   accepted and action is taken regardles of the case
+
+4. The help screen was updated with the changes (keys assignments) and it now shows the boot block's version
+   number. Thanks to 8bits4ever for the idea!
+
+5. Fixed a bug: now the configuration entries can't be started with G/g key
+
+6. Fixed a bug: the C2RAMLDR utility was showing incorrect error message when copying a file to cartridge's RAM
+   was failing
+
+7. The C2RAMLDR utility no longer puts "R" into the mapper field for the "RAM: name" entries, now the detected or
+   manually selected mapper type is put there
+
+8. The C2RAMLDR utility can be instructed to skip the creation of a directory entry with /D option or during the
+   user interaction
+ 
+9. The C2SRAM utility has been created for saving and loading the contents of the emulated SRAM area for the
+   FMPAC device
+
+
+
+04.11.2017
+
+1. The cursor is completely removed (thanks to Grauw and Nyyrikki), mapper symbols have been changed and improved,
+   help and volume control screens were slightly changed (a line was added to the bottom)
+
+2. The C2MAN_40 utility now sets the 40 symbol screen width when started. The C2MAN utility has been updated to
+   detect the VDP and show a note if it's started in screen mode with less than 80 symbols witdth. This note
+   is skipped when the command line is not empty to allow automatic flashing mode to work without user interaction
+
+
+03.11.2017
+
+1. The font has been updated so that the status line is not touching the border. A few new symbols were added:
+   copyright sign, 'V' and 'H' key symbols. The selection marker has been changed to a better one
+
+2. The colors and palette for the main, help and volume screens have been moved to variables. Now you can easily
+   compile yourself a custom color scheme boot block without much hassle
+
+3. An attempt was made to remove the cursor. Also the key click sound was disabled
+
+4. The main, help and volume screens on MSX1 now look similar to those on MSX2, the colors have been changed to
+   match those on MSX2
+
+
+22.10.2017
+
+1. The schematics has been changed. The part numbers of T3-T6 transistors were incorrect there. This doesn't
+   affect the device, it's just a cosmetic bug
+
+
+02.10.2017
+
+1. Now the VDP frequency can be changed between 50 and 60 Herz with the "F" key in the main menu. The setting is
+   saved into an additional configuration EEPROM
+
+2. The status line has been added to the bottom of the main screen. It shows the current VDP frequency, FMPAC
+   and SCC volume as well as the current directory page vs. total number of pages
+
+
+13.09.2017 (firmware update is required)
+
+1. The volume of FMPAC and SCC can be now saved into the additional configuration EEPROM on board. The change
+   requires updating the firmware and boot block
+
+
+02.09.2017 (firmware update is required)
+
+1. The DAC output has been drastically improved. The sound of FMPAC is way better now. The change requires
+   updating the firmware and boot block
+
+2. The volume of SCC and FMPAC can now be controlled from the boot block
+
+3. SCC+ support has been added
+
+4. Fixed a bug with video effects on MSX1. The palette effects on VDPs earlier than v9938 have been disabled
+
+
+10.02.2017  (firmware update is required)
+
+1. The function of the register configuration for slot expansion has been improved. Also a check was added to
+   prevent illegal values to be saved into this register
+
+
+2. All configuration registers are now visible at addresses 4F80h-4FA1h. This is done for easier debugging.
+   These registers can be changed on-the-fly and the changes will be immediately taken into action
+
+
+03.02.2017 (firmware update is required)
+
+1. The expanded slot functionality has been added. Please refer to the cartridge's documentation for more info
+
