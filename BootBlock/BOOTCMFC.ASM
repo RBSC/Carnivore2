@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
 ; Portions (c) Grauw
-; Version 1.80
+; Version 1.85
 ;
 
 ; !COMPILATION OPTIONS!
@@ -47,6 +47,7 @@ VDPVER	equ	#F56A
 PALNTSC	equ	#F56C
 XYPOS	equ	#F56E
 AUTOST	equ	#F570
+PSGCFG	equ	#F572
 VDPR10	equ	#FFE8
 
 ; Card configuration registers
@@ -75,7 +76,7 @@ L_STR	equ	16
 	db	"CSCCFRC"
   endif
 	db	0
-	db	"v1.80"  ; Version | also update it on the help screen!
+Vers	db	"v1.85"  ; Version | also update it in the header!
 	db	0
 
 
@@ -93,6 +94,7 @@ C2BPALM	equ	#4301		; default
 ;C2BPALM	equ	#1101	; black
 ;C2BPALM	equ	#1401	; blue
 ;C2BPALM	equ	#1304	; green
+;C2BPALM	equ	#4101	; red
 
 ; Colors for volume screen -------------
 ; First value - foreground color
@@ -108,6 +110,23 @@ C2BPALV	equ	#1304		; default
 ;C2BPALV	equ	#1101	; black
 ;C2BPALV	equ	#1401	; blue
 ;C2BPALV	equ	#1304	; green
+;C2BPALV	equ	#4101	; red
+
+; Colors for PSG setup screen -------------
+; First value - foreground color
+; Second value - foreground color palette
+; Third value - background color
+; Fourth value - background color palette
+
+C2FCOLP	equ	15
+C2FPALP	equ	#7707
+
+C2BCOLP	equ	6
+C2BPALP	equ	#4101		; default
+;C2BPALP	equ	#1101	; black
+;C2BPALP	equ	#1401	; blue
+;C2BPALP	equ	#1304	; green
+;C2BPALP	equ	#4101	; red
 
 ; Colors for help screen -------------
 ; First value - foreground color
@@ -123,6 +142,7 @@ C2BPALH	equ	#1401		; default
 ;C2BPALH	equ	#1101	; black
 ;C2BPALH	equ	#1401	; blue
 ;C2BPALH	equ	#1304	; green
+;C2BPALH	equ	#4101	; red
 
 
 ; Default colors and palette on MSX startup
@@ -181,7 +201,7 @@ Boot:
 	ld	bc,6
 	ldir
 
-; Load audio volume data from small EEPROM
+; Load FMPAC/SCC/SCC+ audio volume data from small EEPROM
   if CV=2
 	ld	a,1
 	call	EERD		; read volume setting from EEPROM
@@ -190,7 +210,7 @@ Boot:
 	cp	%10000000	; volume was set from boot block? (bit 7 = 1, bit 6 = 0)
 	jr	nz,TA_0A
 	ld	a,b
-	ld	(CardMDR+#22),a	; set the previously stored volume
+	ld	(CardMDR+#22),a	; set the previously stored FMPAC/SCC/SCC+ volume
 
 ; Read 50/60Hz status from EEPROM
 TA_0A:
@@ -216,7 +236,12 @@ TA_0A:
 	ld	c,a
 	call	WRITVDP		; write to VDP register (set 50 or 60 HZ mode)
 TA_0B:
+	ld	a,3
+	call	EERD		; read volume setting from EEPROM
+	ld	(CardMDR+#24),a	; set the previously stored PSG volume
+	ld 	(PSGCFG),a
   endif
+
 
 ; Check for autostart
 	xor	a
@@ -534,7 +559,7 @@ sCur:
 	call	CHPUT
 	inc	hl
 
-; spaces
+; clear cursor area
 	ld	a,' '
 	call	CHPUT		; output space for cursor
 	ld	a,' '
@@ -646,6 +671,10 @@ Wait0:
 	jp	z,ChangeFreq	; change frequency
 	cp	"f"
 	jp	z,ChangeFreq	; change frequency
+	cp	"P"
+	jp	z,PSGVolume	; set PSG volume
+	cp	"p"
+	jp	z,PSGVolume	; set PSG volume
    endif
 	jp	CH01
 
@@ -850,10 +879,6 @@ RUN_CT2:
 	ld	bc,26
 	ldir
 
-;	ld	a,(hl)
-;	or	%00001100
-;	ld	(de),a
-	
 	ld	hl,RJP
 	ld	de,R_Base
 	ld	bc,RJPE-RJP
@@ -1014,6 +1039,7 @@ RUN_CJ2:
 	ld	de,R_Base
 	ld	bc,RJPE-RJP
 	ldir
+
 	ld	a,(ix+#3E)
 	bit	2,a
 	jp	z,R_Base
@@ -1104,7 +1130,7 @@ ATR_04:	exx
 	cp	#FF
 	jr	nz,ATR_03
 
-	ld	hl,Spaces	; clear autostart record are
+	ld	hl,Spaces	; clear autostart record area
 	call	print	
 	jp	CH00
 
@@ -1276,8 +1302,10 @@ Help1:
 	ld	hl,helpmsg
 	call	print
 
-	ld	hl,#2404	; position cursor
+	ld	hl,#0218
 	call    POSIT
+	ld	hl,Vers
+	call	print		; print boot block version
 
 	ld	de,C2FPALH
 	ld	hl,C2BPALH
@@ -1328,266 +1356,6 @@ Wait1:
 	call	PALETTE
 
 	jp	Pagep
-
-
-; Set volume screen
-  if CV=2
-SetVolume:
-	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
-	or	a
-	jr	nz,SetVol1
-	call	DISDISP		; disable display
-
-SetVol1:
-  if CV=2
-	ld	de,C2BPALM
-  else
-	ld	de,#1304
-  endif
-	ld	hl,C2FPALM
-	ld	b,C2FCOLM
-	ld	c,#0D
-	call	FadeOut		; fade out text
-
-	call	CLS
-
-	ld	de,#1101
-	ld	hl,C2BPALM
-	ld	b,C2BCOLM
-	ld	c,#0D
-	call	FadeOut		; fade out background
-
-	ld	a,C2BCOLV
-	ld	hl,#1101
-	call	PALETTE
-	ld	a,C2FCOLV
-	ld	(FORCLR),a
-	ld	a,C2BCOLV
-	ld	(BAKCLR),a
-	ld	(BDRCLR),a
-	call	CHCOLOR		; set screen colors (foreground=background)
-
-	ld	a,C2FCOLV
-	ld	hl,C2BPALV
-	call	PALETTE
-
-	ld	de,C2BPALV
-	ld	hl,#1101
-	ld	b,C2BCOLV
-	ld	c,#0D
-	call	FadeIn		; fade in background
-
-	ld	hl,VolumeScr	; print volume control screen
-	call	print
-
-	ld	de,C2FPALV
-	ld	hl,C2BPALV
-	ld	b,C2FCOLV
-	ld	c,#0D
-	call	FadeIn		; fade in text
-
-VolPrint:
-	ld	hl,#110D	; position cursor for FMPAC volume printing
-	call    POSIT
-	ld	a,(CardMDR+#22)
-	rra
-	rra
-	rra
-	and	7
-	ld	b,a
-	inc	b
-	add	"1"
-	call	CHPUT
-
-	ld	hl,#050F	; FMPAC indicator position 1
-	call	POSIT
-	ld	hl,IndEmpty
-	call	print
-	ld	hl,#0510	; FMPAC indicator position 2
-	call	POSIT
-	ld	hl,IndEmpty
-	call	print
-	ld	hl,#050F	; FMPAC indicator position 1
-IndPrn1:
-	call	POSIT
-	push	hl
-	push	hl
-	ld	hl,VolumeInd	; output current volume
-	call	print
-	pop	hl
-	inc	l
-	call	POSIT
-	ld	hl,VolumeInd	; output current volume
-	call	print
-	pop	hl
-	inc	h
-	inc	h
-	inc	h
-	inc	h
-	djnz	IndPrn1
-
-	ld	hl,#1412	; position cursor for SCC volume printing
-	call	POSIT
-	ld	a,(CardMDR+#22)
-	and	7
-	ld	b,a
-	inc	b
-	add	"1"
-	call	CHPUT
-
-	ld	hl,#0514	; SCC indicator position 1
-	call	POSIT
-	ld	hl,IndEmpty
-	call	print
-	ld	hl,#0515	; SCC indicator position 2
-	call	POSIT
-	ld	hl,IndEmpty
-	call	print
-	ld	hl,#0514	; SCC indicator position 1
-IndPrn2:
-	call	POSIT
-	push	hl
-	push	hl
-	ld	hl,VolumeInd	; output current volume
-	call	print
-	pop	hl
-	inc	l
-	call	POSIT
-	ld	hl,VolumeInd	; output current volume
-	call	print
-	pop	hl
-	inc	h
-	inc	h
-	inc	h
-	inc	h
-	djnz	IndPrn2
-
-	ld	hl,#1804	; position cursor
-	call    POSIT
-
-VolLoop:
-	call	ENADISP		; enable display
-
-	call	KILBUF
-
-Wait2:
-	call	CHSNS		; wait for key and avoid displaying cursor
-	jr	z,Wait2
-
-	call	CHGET		; wait for a key
-	cp	27		; ESC
-	jp	z,VolEnd
-	cp	30		; UP
-	jr	z,VFM_UP
-	cp	31		; DOWN
-	jr	z,VFM_DOWN
-	cp	28		; LEFT
-	jr	z,VSCC_UP
-	cp	29		; RIGTH
-	jr	z,VSCC_DOWN
-	cp	11		; HOME
-	jr	z,VolReset
-	jr	VolLoop
-
-VFM_UP:
-	ld	a,(CardMDR+#22)
-	rra
-	rra
-	rra
-	inc	a
-	rla
-	rla
-	rla
-	and	%00111000
-	ld	b,a
-	ld	a,(CardMDR+#22)
-	and	%11000111
-	or	b
-	ld	(CardMDR+#22),a
-	jp	VolPrint
-
-VFM_DOWN:
-	ld	a,(CardMDR+#22)
-	rra
-	rra
-	rra
-	dec	a
-	rla
-	rla
-	rla
-	and	%00111000
-	ld	b,a
-	ld	a,(CardMDR+#22)
-	and	%11000111
-	or	b
-	ld	(CardMDR+#22),a
-	jp	VolPrint
-
-VSCC_UP:
-	ld	a,(CardMDR+#22)
-	inc	a
-	and	%00000111
-	ld	b,a
-	ld	a,(CardMDR+#22)
-	and	%11111000
-	or	b
-	ld	(CardMDR+#22),a
-	jp	VolPrint
-
-VSCC_DOWN:
-	ld	a,(CardMDR+#22)
-	dec	a
-	and	%00000111
-	ld	b,a
-	ld	a,(CardMDR+#22)
-	and	%11111000
-	or	b
-	ld	(CardMDR+#22),a
-	jp	VolPrint
-
-VolReset:
-        ld	hl,DefVol	; default volume for FMPAC and SCC
-	ld	a,(hl)
-	ld	(CardMDR+#22),a
-	jp      VolPrint
-
-
-VolEnd:
-	ld	a,%01100000	; write enable
-	call	EEWEN
-	ld	a,(CardMDR+#22)
-	and	%10111111
-	or	%10000000	; set flag for manually set volume (bit 7 = 1 while bit 6 = 0)
-	ld	e,a             ; data
-	ld	a,1		; address
-	call	EEWR		; save volume data to EEPROM
-
-	ld	de,C2BPALV
-	ld	hl,C2FPALV
-	ld	b,C2FCOLV
-	ld	c,#0D
-	call	FadeOut		; fade out text
-
-	call	CLS
-
-	ld	de,#1101
-	ld	hl,C2BPALV
-	ld	b,C2BCOLV
-	ld	c,#0D
-	call	FadeOut		; fade out background
-
-	ld	de,C2BPALM
-	ld	hl,#1101
-	ld	b,C2BCOLM
-	ld	c,#0D
-	call	FadeIn		; fade in background
-
-	ld	a,C2FCOLM
-	ld	hl,C2BPALM
-	call	PALETTE
-
-	jp	Pagep
-  endif
 
 
 ; Exit from boot block
@@ -2243,7 +2011,7 @@ PrintInf:
 	push	de
 	push	bc
 
-	ld	hl,#1C18
+	ld	hl,#2118
 	call    POSIT
 	ld	hl,PageNum	; print page number string
 	call	print	
@@ -2300,7 +2068,7 @@ PrintVol:
 	ld	hl,VolumeL	; print volume
 	call	print
 
-	ld	hl,#1118
+	ld	hl,#0F18
 	call    POSIT
 	ld	a,(CardMDR+#22)
 	rra
@@ -2310,12 +2078,22 @@ PrintVol:
 	inc	a
 	call	hexout		; print fmpac volume
 
-	ld	hl,#1818
+	ld	hl,#1618
 	call    POSIT
 	ld	a,(CardMDR+#22)
 	and	7
 	inc	a
 	call	hexout		; print scc volume
+
+	ld	hl,#1D18
+	call    POSIT
+	ld	a,(CardMDR+#24)
+	rra
+	rra
+	rra
+	and	7
+	inc	a
+	call	hexout		; print PSG volume
 
 	pop	bc
 	pop	de
@@ -2525,22 +2303,595 @@ VDP_VSDO:
 
 ;
 ; DATA AREA
-; The data area must start above the registers (#4F80...)
+; The extra code and data area must start above the control registers (#4F80-#4FFF)!
 ;	
 
 	org	#5000
+
+; Set FMPAC/SCC/SCC+ volume screen
+;
+  if CV=2
+SetVolume:
+	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
+	or	a
+	jr	nz,SetVol1
+	call	DISDISP		; disable display
+
+SetVol1:
+  if CV=2
+	ld	de,C2BPALM
+  else
+	ld	de,#1304
+  endif
+	ld	hl,C2FPALM
+	ld	b,C2FCOLM
+	ld	c,#0D
+	call	FadeOut		; fade out text
+
+	call	CLS
+
+	ld	de,#1101
+	ld	hl,C2BPALM
+	ld	b,C2BCOLM
+	ld	c,#0D
+	call	FadeOut		; fade out background
+
+	ld	a,C2BCOLV
+	ld	hl,#1101
+	call	PALETTE
+	ld	a,C2FCOLV
+	ld	(FORCLR),a
+	ld	a,C2BCOLV
+	ld	(BAKCLR),a
+	ld	(BDRCLR),a
+	call	CHCOLOR		; set screen colors (foreground=background)
+
+	ld	a,C2FCOLV
+	ld	hl,C2BPALV
+	call	PALETTE
+
+	ld	de,C2BPALV
+	ld	hl,#1101
+	ld	b,C2BCOLV
+	ld	c,#0D
+	call	FadeIn		; fade in background
+
+	ld	hl,VolumeScr	; print volume control screen
+	call	print
+
+	ld	de,C2FPALV
+	ld	hl,C2BPALV
+	ld	b,C2FCOLV
+	ld	c,#0D
+	call	FadeIn		; fade in text
+
+VolPrint:
+	ld	hl,#110D	; position cursor for FMPAC volume printing
+	call    POSIT
+	ld	a,(CardMDR+#22)
+	rra
+	rra
+	rra
+	and	7
+	ld	b,a
+	inc	b
+	add	"1"
+	call	CHPUT
+
+	ld	hl,#050F	; FMPAC indicator position 1
+	call	POSIT
+	ld	hl,IndEmpty
+	call	print
+	ld	hl,#0510	; FMPAC indicator position 2
+	call	POSIT
+	ld	hl,IndEmpty
+	call	print
+	ld	hl,#050F	; FMPAC indicator position 1
+IndPrn1:
+	call	POSIT
+	push	hl
+	push	hl
+	ld	hl,VolumeInd	; output current volume
+	call	print
+	pop	hl
+	inc	l
+	call	POSIT
+	ld	hl,VolumeInd	; output current volume
+	call	print
+	pop	hl
+	inc	h
+	inc	h
+	inc	h
+	inc	h
+	djnz	IndPrn1
+
+	ld	hl,#1412	; position cursor for SCC volume printing
+	call	POSIT
+	ld	a,(CardMDR+#22)
+	and	7
+	ld	b,a
+	inc	b
+	add	"1"
+	call	CHPUT
+
+	ld	hl,#0514	; SCC indicator position 1
+	call	POSIT
+	ld	hl,IndEmpty
+	call	print
+	ld	hl,#0515	; SCC indicator position 2
+	call	POSIT
+	ld	hl,IndEmpty
+	call	print
+	ld	hl,#0514	; SCC indicator position 1
+IndPrn2:
+	call	POSIT
+	push	hl
+	push	hl
+	ld	hl,VolumeInd	; output current volume
+	call	print
+	pop	hl
+	inc	l
+	call	POSIT
+	ld	hl,VolumeInd	; output current volume
+	call	print
+	pop	hl
+	inc	h
+	inc	h
+	inc	h
+	inc	h
+	djnz	IndPrn2
+
+	ld	hl,#1804	; position cursor
+	call    POSIT
+
+VolLoop:
+	call	ENADISP		; enable display
+
+	call	KILBUF
+
+Wait2:
+	call	CHSNS		; wait for key and avoid displaying cursor
+	jr	z,Wait2
+
+	call	CHGET		; wait for a key
+	cp	27		; ESC
+	jp	z,VolEnd
+	cp	30		; UP
+	jr	z,VFM_UP
+	cp	31		; DOWN
+	jr	z,VFM_DOWN
+	cp	28		; LEFT
+	jr	z,VSCC_UP
+	cp	29		; RIGTH
+	jr	z,VSCC_DOWN
+	cp	11		; HOME
+	jr	z,VolReset
+	jr	VolLoop
+
+VFM_UP:
+	ld	a,(CardMDR+#22)
+	rra
+	rra
+	rra
+	inc	a
+	rla
+	rla
+	rla
+	and	%00111000
+	ld	b,a
+	ld	a,(CardMDR+#22)
+	and	%11000111
+	or	b
+	ld	(CardMDR+#22),a
+	jp	VolPrint
+
+VFM_DOWN:
+	ld	a,(CardMDR+#22)
+	rra
+	rra
+	rra
+	dec	a
+	rla
+	rla
+	rla
+	and	%00111000
+	ld	b,a
+	ld	a,(CardMDR+#22)
+	and	%11000111
+	or	b
+	ld	(CardMDR+#22),a
+	jp	VolPrint
+
+VSCC_UP:
+	ld	a,(CardMDR+#22)
+	inc	a
+	and	%00000111
+	ld	b,a
+	ld	a,(CardMDR+#22)
+	and	%11111000
+	or	b
+	ld	(CardMDR+#22),a
+	jp	VolPrint
+
+VSCC_DOWN:
+	ld	a,(CardMDR+#22)
+	dec	a
+	and	%00000111
+	ld	b,a
+	ld	a,(CardMDR+#22)
+	and	%11111000
+	or	b
+	ld	(CardMDR+#22),a
+	jp	VolPrint
+
+VolReset:
+        ld	hl,DefVol	; default volume for FMPAC and SCC
+	ld	a,(hl)
+	ld	(CardMDR+#22),a
+	jp      VolPrint
+
+
+VolEnd:
+	ld	a,%01100000	; write enable
+	call	EEWEN
+	ld	a,(CardMDR+#22)
+	and	%10111111
+	or	%10000000	; set flag for manually set volume (bit 7 = 1 while bit 6 = 0)
+	ld	e,a             ; data
+	ld	a,1		; address
+	call	EEWR		; save volume data to EEPROM
+
+	ld	de,C2BPALV
+	ld	hl,C2FPALV
+	ld	b,C2FCOLV
+	ld	c,#0D
+	call	FadeOut		; fade out text
+
+	call	CLS
+
+	ld	de,#1101
+	ld	hl,C2BPALV
+	ld	b,C2BCOLV
+	ld	c,#0D
+	call	FadeOut		; fade out background
+
+	ld	de,C2BPALM
+	ld	hl,#1101
+	ld	b,C2BCOLM
+	ld	c,#0D
+	call	FadeIn		; fade in background
+
+	ld	a,C2FCOLM
+	ld	hl,C2BPALM
+	call	PALETTE
+
+	jp	Pagep
+  endif
+
+
+; Set PSG volume screen
+;
+  if CV=2
+PSGVolume:
+	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
+	or	a
+	jr	nz,SetPSG1
+	call	DISDISP		; disable display
+
+SetPSG1:
+  if CV=2
+	ld	de,C2BPALM
+  else
+	ld	de,#1304
+  endif
+	ld	hl,C2FPALM
+	ld	b,C2FCOLM
+	ld	c,#0D
+	call	FadeOut		; fade out text
+
+	call	CLS
+
+	ld	de,#1101
+	ld	hl,C2BPALM
+	ld	b,C2BCOLM
+	ld	c,#0D
+	call	FadeOut		; fade out background
+
+	ld	a,C2BCOLP
+	ld	hl,#1101
+	call	PALETTE
+	ld	a,C2FCOLP
+	ld	(FORCLR),a
+	ld	a,C2BCOLP
+	ld	(BAKCLR),a
+	ld	(BDRCLR),a
+	call	CHCOLOR		; set screen colors (foreground=background)
+
+	ld	a,C2FCOLP
+	ld	hl,C2BPALP
+	call	PALETTE
+
+	ld	de,C2BPALP
+	ld	hl,#1101
+	ld	b,C2BCOLP
+	ld	c,#0D
+	call	FadeIn		; fade in background
+
+	ld	hl,PSGScr	; print PSG control screen
+	call	print
+
+	ld	de,C2FPALP
+	ld	hl,C2BPALP
+	ld	b,C2FCOLP
+	ld	c,#0D
+	call	FadeIn		; fade in text
+
+PSGPrint:
+	ld	hl,#0F10	; position cursor for PSG volume printing
+	call    POSIT
+	ld	a,(CardMDR+#24)
+	rra
+	rra
+	rra
+	and	7
+	ld	b,a
+	inc	b
+	add	"1"
+	call	CHPUT
+
+	ld	hl,#0511	; PSG indicator position 1
+	call	POSIT
+	ld	hl,IndEmpty
+	call	print
+	ld	hl,#0512	; PSG indicator position 2
+	call	POSIT
+	ld	hl,IndEmpty
+	call	print
+	ld	hl,#0511	; PSG indicator position 1
+PSGPrn1:
+	call	POSIT
+	push	hl
+	push	hl
+	ld	hl,VolumeInd	; output current volume
+	call	print
+	pop	hl
+	inc	l
+	call	POSIT
+	ld	hl,VolumeInd	; output current volume
+	call	print
+	pop	hl
+	inc	h
+	inc	h
+	inc	h
+	inc	h
+	djnz	PSGPrn1
+
+	ld	hl,#1714	; position cursor for SCC volume printing
+	call	POSIT
+	ld	a,(CardMDR+#24)
+	and	7
+	ld	b,a
+	inc	b
+	add	"1"
+	call	CHPUT
+
+	ld	hl,#0515	; Clicker indicator position 1
+	call	POSIT
+	ld	hl,IndEmpty
+	call	print
+	ld	hl,#0516	; Clicker indicator position 2
+	call	POSIT
+	ld	hl,IndEmpty
+	call	print
+	ld	hl,#0515	; Clicker indicator position 1
+PSGPrn2:
+	call	POSIT
+	push	hl
+	push	hl
+	ld	hl,VolumeInd	; output current volume
+	call	print
+	pop	hl
+	inc	l
+	call	POSIT
+	ld	hl,VolumeInd	; output current volume
+	call	print
+	pop	hl
+	inc	h
+	inc	h
+	inc	h
+	inc	h
+	djnz	PSGPrn2
+
+PSGStPr:
+	ld	hl,#1004
+	call    POSIT	
+	ld	a,' '
+	call	CHPUT		; mark device as disabled
+	ld	a,(CardMDR+#24)
+	bit	7,a
+	jr	z,PSGPrn3
+	ld	hl,#1004
+	call    POSIT	
+	ld	a,#96
+	call	CHPUT		; mark device as disabled
+PSGPrn3:
+	ld	hl,#2504
+	call    POSIT	
+	ld	a,' '
+	call	CHPUT		; mark device as disabled
+	ld	a,(CardMDR+#24)
+	bit	6,a
+	jr	z,PSGLoop
+	ld	hl,#2504
+	call    POSIT	
+	ld	a,#96
+	call	CHPUT		; mark device as disabled
+
+
+PSGLoop:
+	call	ENADISP		; enable display
+
+	call	KILBUF
+
+Wait3:
+	call	CHSNS		; wait for key and avoid displaying cursor
+	jr	z,Wait3
+
+	call	CHGET		; wait for a key
+	cp	27		; ESC
+	jp	z,PSGEnd
+	cp	30		; UP
+	jr	z,PSG_UP
+	cp	31		; DOWN
+	jr	z,PSG_DOWN
+	cp	28		; LEFT
+	jr	z,CLKR_UP
+	cp	29		; RIGTH
+	jr	z,CLKR_DOWN
+	cp	11		; HOME
+	jp	z,PSGReset
+	cp	13		; Enter
+	jr	z,PSG_ED
+	cp	32		; Space
+	jr	z,CLKR_ED
+	jr	PSGLoop
+
+PSG_ED:
+	ld	a,(CardMDR+#24)
+	bit	7,a
+	jr	z,PSG_ED1
+	res	7,a
+	jr	PSG_ED2
+PSG_ED1:
+	set	7,a
+PSG_ED2:
+	ld	(CardMDR+#24),a
+	jp	PSGStPr
+
+	
+CLKR_ED:
+	ld	a,(CardMDR+#24)
+	bit	6,a
+	jr	z,CLKR_ED1
+	res	6,a
+	jr	CLKR_ED2
+CLKR_ED1:
+	set	6,a
+CLKR_ED2:
+	ld	(CardMDR+#24),a
+	jp	PSGStPr
+
+
+PSG_UP:
+	ld	a,(CardMDR+#24)
+	rra
+	rra
+	rra
+	inc	a
+	rla
+	rla
+	rla
+	and	%00111000
+	ld	b,a
+	ld	a,(CardMDR+#24)
+	and	%11000111
+	or	b
+	ld	(CardMDR+#24),a
+	jp	PSGPrint
+
+PSG_DOWN:
+	ld	a,(CardMDR+#24)
+	rra
+	rra
+	rra
+	dec	a
+	rla
+	rla
+	rla
+	and	%00111000
+	ld	b,a
+	ld	a,(CardMDR+#24)
+	and	%11000111
+	or	b
+	ld	(CardMDR+#24),a
+	jp	PSGPrint
+
+CLKR_UP:
+	ld	a,(CardMDR+#24)
+	inc	a
+	and	%00000111
+	ld	b,a
+	ld	a,(CardMDR+#24)
+	and	%11111000
+	or	b
+	ld	(CardMDR+#24),a
+	jp	PSGPrint
+
+CLKR_DOWN:
+	ld	a,(CardMDR+#24)
+	dec	a
+	and	%00000111
+	ld	b,a
+	ld	a,(CardMDR+#24)
+	and	%11111000
+	or	b
+	ld	(CardMDR+#24),a
+	jp	PSGPrint
+
+PSGReset:
+        ld	hl,DefPSG	; default volume and configuration for PSG and Clicker
+	ld	a,(hl)
+	ld	(CardMDR+#24),a
+	jp      PSGPrint
+
+
+PSGEnd:
+	ld	a,%01100000	; write enable
+	call	EEWEN
+	ld	a,(CardMDR+#24)
+	ld	e,a             ; data
+	ld	a,3		; address
+	call	EEWR		; save PSG configuration data to EEPROM
+
+	ld	de,C2BPALP
+	ld	hl,C2FPALP
+	ld	b,C2FCOLP
+	ld	c,#0D
+	call	FadeOut		; fade out text
+
+	call	CLS
+
+	ld	de,#1101
+	ld	hl,C2BPALP
+	ld	b,C2BCOLP
+	ld	c,#0D
+	call	FadeOut		; fade out background
+
+	ld	de,C2BPALM
+	ld	hl,#1101
+	ld	b,C2BCOLM
+	ld	c,#0D
+	call	FadeIn		; fade in background
+
+	ld	a,C2FCOLM
+	ld	hl,C2BPALM
+	call	PALETTE
+
+	jp	Pagep
+  endif
+
 
 StMSG_S:
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
   if CV=2
 	db	#8C," Carnivore2 MultiFunctional Cartridge ",#8D
-	db	#8C,"   ",#90,#91,"2017 RBSC. Help: ",#92,#91," Volume: ",#93,#91,"   ",#8D
+	db	#8C," ",#90,#91," RBSC. Help: ",#92,#91," Volume: ",#93,#91," PSG: ",#99,#91," ",#8D
   else
 	db	#8C,"  Carnivore MultiFlash SCC Cartridge  ",#8D
 	db	#8C,"    ",#90,#91,"2017 RBSC. Press ",#93,#91," for Help    ",#8D
   endif
 	db	#8C,"                                      ",#8D
-	db	#8C,"  Entry selected for autostart: [  ]  ",#8D
+	db	#8C,"  Entry selected for autostart: [",#96,#96,"]  ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#01,#50,"                                    ",#01,#52,#8D
 	db	#8C,#01,#57,"                                    ",#01,#53,#8D
@@ -2566,14 +2917,14 @@ VolumeScr:
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
 	db	#8C," Carnivore2 Cartridge's Volume Screen ",#8D
 	db	#8C,"                                      ",#8D
-	db	#8C," Volume Control Keys:                 ",#8D
+	db	#8C," Control Keys:                        ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#8D
 	db	#8C,#20,#01,#57,"[UP]    - increase FMPAC volume     ",#8D
 	db	#8C,#20,#01,#57,"[DOWN]  - decrease FMPAC volume     ",#8D
 	db	#8C,#20,#01,#57,"[RIGHT] - increase SCC",#96,"SCC+ volume  ",#8D
 	db	#8C,#20,#01,#57,"[LEFT]  - decrease SCC",#96,"SCC+ volume  ",#8D
-	db	#8C,#20,#01,#56,"[HOME]  - reset to default value    ",#8D
+	db	#8C,#20,#01,#56,"[HOME]  - reset to default values   ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," FMPAC Volume:                        ",#8D
 	db	#8C,"                                      ",#8D
@@ -2587,6 +2938,35 @@ VolumeScr:
 	db	#8C,"                                      ",#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 	db	"              Set the desired volume..."
+	db	0
+  endif
+
+  if CV=2
+PSGScr:
+	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
+	db	#8C," Carnivore2 Cartridge's PSG Screen    ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C," PSG Enabled [ ]  Clicker Enabled [ ] ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C," Control Keys:                        ",#8D
+	db	#8C,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#8D
+	db	#8C,#20,#01,#57,"[ENTER] - enable/disable PSG        ",#8D
+	db	#8C,#20,#01,#57,"[SPACE] - enable/disable Clicker    ",#8D
+	db	#8C,#20,#01,#57,"[UP]    - increase PSG volume       ",#8D
+	db	#8C,#20,#01,#57,"[DOWN]  - decrease PSG volume       ",#8D
+	db	#8C,#20,#01,#57,"[RIGHT] - increase Clicker volume   ",#8D
+	db	#8C,#20,#01,#57,"[LEFT]  - decrease Clicker volume   ",#8D
+	db	#8C,#20,#01,#56,"[HOME]  - reset to default values   ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C," PSG Volume:                          ",#8D
+	db	#8C,#20,#20,#01,#50,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#52,#20,#20,#8D
+	db	#8C,#20,#20,#01,#56,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#54,#20,#20,#8D
+	db	#8C,"                                      ",#8D
+	db	#8C," PPI Clicker Volume:                  ",#8D
+	db	#8C,#20,#20,#01,#50,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#52,#20,#20,#8D
+	db	#8C,#20,#20,#01,#56,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#54,#20,#20,#8D
+	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
+	db	"       Set up PSG and desired volume..."   
 	db	0
   endif
 
@@ -2623,7 +3003,7 @@ helpmsg:
 	db	#8C,#20,#01,#56,"[F5] - disable startup menu         ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
-	db	" v1.80       Press any key to return..."
+	db	" v1.00       Press any key to return..."
 	db	0
 
 
@@ -2648,7 +3028,8 @@ DefPal:
 
 ; Various text and data
 Spaces:
-	db	"  ",0
+;	db	"  ",0
+	db	#96,#96,0
 PALmsg:
 	db	"[50",#96,"Hz]",0
 NTSCmsg:
@@ -2662,15 +3043,18 @@ ResetCMSG:
 ResetMSG:
 	db	"Necessary changes applied.",10,13,"Rebooting MSX...",0
 PageNum:
-	db	"[PAGE:  ",#96,"  ]",0
+	db	"[  ",#96,"  ]",0
 VolumeL:
-	db	"[FMPAC:  ",#96,"SCC:  ]",0
+;	db	"[FMPAC:  ",#96,"SCC:  ]",0
+	db	"[FMP:  ",#96,"SCC:  ",#96,"PSG:  ]",0
 VolumeInd:
-	db	#98,#98,#98,#98,0
+	db	#98,#98,#98,#98,0,0
 IndEmpty:
 	db	#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,0
 DefVol:
-	db	#1B
+	db	#1B		; 00011011
+DefPSG:
+	db	#1B		; 00011011
 B2ON:
 	db	#F0,#70,#01,#15,#7F,#80
 

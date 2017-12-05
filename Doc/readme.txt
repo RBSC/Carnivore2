@@ -1,6 +1,6 @@
 Carnivore2 MultiFunctional Cartridge Readme File
 Copyright (c) 2017 RBSC
-Last updated: 17.11.2017
+Last updated: 05.12.2017
 ------------------------------------------------
 
 WARNING! To avoid damage to the Carnivore2 cartridge and your MSX computer hardware never insert or remove the cartridge
@@ -113,7 +113,24 @@ from the main menu. The following keys can be used in this screen:
 	[DOWN]  - decrease FMPAC volume
 	[RIGHT] - increase SCC/SCC+ volume
 	[LEFT]  - decrease SCC/SCC+ volume
-	[HOME]  - reset to default value
+	[HOME]  - reset to default values
+
+The volume's value is stored within the small EEPROM on the cartridge board. The value is saved when ESC key is used to return to
+the main menu. If the small EEPROM is not present, then the volume setting is only preserved until the power-off. So setting the
+volume once allows to play games and listening to the music until the computer is completely switched off.
+
+The latest Boot Block also supports enabling or disabling the internal PSG and PPI's Clicker emulation as well as setting the
+volume for both of them. Use the 'P' key to enter the PSG control screen from the main menu. The following keys can be used in
+this screen:
+
+	[ESC]   - save & exit to main menu
+	[ENTER] - enable/disable PSG
+	[SPACE] - enable/disable PPI Clicker
+	[UP]    - increase PSG volume
+	[DOWN]  - decrease PSG volume
+	[RIGHT] - increase Clicker volume
+	[LEFT]  - decrease Clicker volume
+	[HOME]  - reset to default values
 
 The volume's value is stored within the small EEPROM on the cartridge board. The value is saved when ESC key is used to return to
 the main menu. If the small EEPROM is not present, then the volume setting is only preserved until the power-off. So setting the

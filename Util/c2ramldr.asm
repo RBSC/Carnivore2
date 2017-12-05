@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's ROM->RAM Loader
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.10
+; Version 1.11
 ;
 
 
@@ -532,13 +532,10 @@ FMRM01:					; fix size
 	print	ONE_NL_S
 
 ; !!!! file attribute fix by Alexey !!!!
-	ld	a,(FCB+#11)
-	cp	#20
-	jr	nz,Fptl
 	ld	a,(FCB+#0D)
-	cp	#21
-	jr	nz,Fptl
-	dec	a
+	cp	#20
+	jr	z,Fptl
+	ld	a,#20
 	ld	(FCB+#0D),a
 ; !!!! file attribute fix by Alexey !!!!
 
@@ -1714,13 +1711,10 @@ Fpr03:	ld	(C8k),hl		; save Counter 8kB blocks
 Fpr02:	
 
 ; !!!! file attribute fix by Alexey !!!!
-	ld	a,(FCB+#11)
-	cp	#20
-	jr	nz,Fpr02a
 	ld	a,(FCB+#0D)
-	cp	#21
-	jr	nz,Fpr02a
-	dec	a
+	cp	#20
+	jr	z,Fpr02a
+	ld	a,#20
 	ld	(FCB+#0D),a
 ; !!!! file attribute fix by Alexey !!!!
 
@@ -3498,7 +3492,7 @@ TestRDT:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.10",13,10
+	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.11",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"

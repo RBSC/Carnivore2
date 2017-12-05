@@ -3,6 +3,20 @@ Copyright (c) 2017 RBSC
 English verison
 --------------------------------------------------
 
+05.12.2017 (firmware update is required)
+
+1. Fixed the attribute correction bug in C2MAN, C2MAN_40 and C2RAMLDR utilities. Now files with all attributes
+   are read correctly
+
+2. The firmware now supports enabling or disabling the internal PSG and PPI Clicker devices and setting the
+   volumes for both of them
+
+3. The boot block was updated to support PSG and PPI enabling/disabling as well as setting the volumes for
+   both devices
+
+4. The boot block is now also available in red color scheme
+
+
 16.11.2017
 
 1. When autostart is set on any entry, after reboot there will be a note shown and there will be a 3 second

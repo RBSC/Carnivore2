@@ -2,7 +2,7 @@
 Carnivore2 Technical Details
 Copyright (c) 2017 RBSC
 English version
-Last updated on 12.11.2017
+Last updated on 05.12.2017
 --------------------------------------------------------------------------------
 
 NOTE: The hexadecimal numbers are shown as #90, 90h or 0x90
@@ -160,6 +160,11 @@ at address 0x1.
 
 The VDP's frequency setting is stored as 0 (NTSC) or 1 (PAL) at address 0x2. Only
 bits 0 and 1 are used to store the frequency value.
+
+The PSG's configuration and volume control register is located at address 0x4FA4.
+Bits 6 and 7 are used to enable the PSG and Clicker, bits 3,4,5 are responsible for
+PSG volume, bits 0,1,2 are responsible for Clicker volume. The default values are 4
+(PSG) and 4 (Clicker). In the EEPROM the volume byte is stored at address 0x3.
 
 Writing to EEPROM is done via the configuration register CardMDR+#23. The commands
 for EEPROM are saved into this register in a sequence that is described in the
@@ -345,7 +350,6 @@ Fourth bank configuration registers
 
 	The default value of this register is 02h
 
-
 +#21 	NSReg - Non standart Register
 	The default value of this register is #00, please don't change it!
 
@@ -355,7 +359,7 @@ Fourth bank configuration registers
 	5,4,3 - FMPAC audio level
 	2,1,0 - SCC/SCC+ audio level
 
-	The default value of this register is 33h (00011011b)
+	The default value of this register is 1Bh (00011011b)
 
 +#23	CfgEEPR	- register for controlling additional configuration EEPROM (93C46)
 
@@ -364,6 +368,19 @@ Fourth bank configuration registers
 	2 bit	- EECK signal CLK (sync)
 	1 bit	- EEDI signal Data Input (data sent to EEPROM)
 	0 bit	- EEDO signal Data Output (data received from EEPROM); read-only
+
++#24	PSGCtrl - PSG control register
+
+	7 bit	- enable/disable PSG
+		0 - PSG disabled
+		1 - PSG enabled
+	6 bit	- enable/disable PPI Clicker
+		0 - Clicker disabled
+		1 - Clicker enabled
+	5,4,3	- PSG audio level (0-7)
+	2,1,0	- PPI Clicker audio level (0-7)
+
+	The default value of this register is 1Bh (00011011b)
 
 
 --------------------------------------------------------------------------------

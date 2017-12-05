@@ -19,6 +19,7 @@ MANB2RAM.RCP	- RCP file for "Space Manbow 2" game in RAM mode (use C2RAMLDR util
 XEVIOUS.RCP	- RCP file for "Xevious" game
 ALESTE2.RCP	- RCP file for "Aleste 2" game
 MANBOW2.RCP	- RCP file for "Manbow 2" game, R1 and R2 (see the patch note below)
+1942.RCP	- RCP file for "1942" MSX2 game (shared by Carmeloco)
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
 more information about this file.

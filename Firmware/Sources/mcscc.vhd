@@ -85,7 +85,7 @@ entity mcscc is
 	CKS		: OUT std_logic;
 	IC_n	: OUT std_logic;
 --	PDIN_n
---   SDOpo	: INOUT std_logic;
+    SDOpo	: INOUT std_logic;
 --  EEPROM
     EECS	: OUT std_logic;
     EECK	: OUT std_logic;
@@ -161,6 +161,18 @@ architecture RTL of mcscc is
 	    level		: IN std_logic_vector(2 downto 0)
     );  
   end component;
+  
+  component psg_wave
+    port(
+      pSltClk_n : IN std_logic;
+      pSltRst_n : IN std_logic;
+      PsgRegPtr : IN std_logic_vector(3 downto 0);
+      pSltDat   : INOUT std_logic_vector(7 downto 0);
+      PsgAmp    : OUT std_logic_vector(9 downto 0);
+      PsgRegWe  : IN std_logic
+    );
+  end component;
+  
   
   signal pSltClk_n   : std_logic;
   signal DevHit      : std_logic;
@@ -371,6 +383,24 @@ architecture RTL of mcscc is
   signal LVF		:std_logic_vector(2 downto 0);
   signal LVS		:std_logic_vector(2 downto 0);
   signal LVL	    :std_logic_vector(7 downto 0) := "00011011" ;
+  signal LVL1	    :std_logic_vector(7 downto 0) := "00011011" ;  
+  signal rsta0    	:std_logic;
+  signal rsta1    	:std_logic;
+  signal LVP		:std_logic_vector(2 downto 0);
+  signal LVB		:std_logic_vector(2 downto 0);
+  signal SCP		:std_logic_vector(9 downto 0); 
+  signal SCB		:std_logic_vector(9 downto 0);  
+  signal ACP		:std_logic_vector(18 downto 0); 
+  signal ACB		:std_logic_vector(15 downto 0); 
+  signal resP		:std_logic;  
+  signal resB		:std_logic;  
+  signal MACP		:std_logic_vector(15 downto 0);
+  signal MACB		:std_logic_vector(15 downto 0);
+  signal MPL		:std_logic_vector(15 downto 0);    
+  signal MBL		:std_logic_vector(15 downto 0);  
+  signal MACB_f		:std_logic_vector(15 downto 0);
+  signal MACB_i		:std_logic_vector(15 downto 0);    
+  
 -- Sltsel
   signal pSltSltsl_n :std_logic;
   signal SltslEn	: std_logic;
@@ -383,6 +413,11 @@ architecture RTL of mcscc is
   signal EECS1 : std_logic;
   signal EECK1 : std_logic;
   signal EEDI1 : std_logic;
+-- PSG
+  signal PsgRegPtr   : std_logic_vector(3 downto 0);
+  signal PsgRegWe    : std_logic;
+  signal KC    : std_logic;
+  signal PsgAmp      : std_logic_vector(9 downto 0);
   
 begin
   ----------------------------------------------------------------
@@ -541,7 +576,7 @@ begin
 			else LVL  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100010"
 			else "0000" & EECS1 & EECK1 & EEDI1 & EEDO 
 			          when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100011"
-
+			else LVL1 when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100100"
 --	          				   					
 					else pFlDat ;
   
@@ -743,6 +778,7 @@ begin
         if (pSltAdr(5 downto 0) = "100011") then EECS1 <= pSltDat(3);
                                                  EECK1 <= pSltDat(2);
                                                  EEDI1 <= pSltDat(1);  end if;
+        if (pSltAdr(5 downto 0) = "100100") then LVL1    <= pSltDat(7 downto 0); end if;                                                 
                
       end if;
  -- delayed reconfiguration
@@ -1513,96 +1549,65 @@ begin
 
 --  SCL <= ("0"&MO&"0")+('0'&(SccAmp+"100 0000 0000")) ;
 --  SCR <= ("0"&RO&"0")+('0'&(SccAmp+"10000000000")) ;
-  SCL <= "100000000000" + SccAmp;
-  SCR <= "100000000000" + SccAmp;
+  SCL <= "100000000000" + SccAmp ;--+ PsgAmp + KC ;
+  SCR <= "100000000000" + SccAmp;-- + PsgAmp + KC ;
   process (pSltClk_n)
   begin
-    if pSltClk_n'event and pSltClk_n = '1' then
+    if pSltRst_n = '0' then FDIV <= "00000000";
+    elsif pSltClk_n'event and pSltClk_n = '1' then
       FDIV <= FDIV + "00000001";
     end if;
   end process;
 -- problem detector (test) :)
 --  SDOpo <= '0' when SDOp = '1' or Key1_n = '0' else '1';
 --  SDOp <= '1' when SDOc /= "0000111111111111"  else '0';
- 
----  process (ADACDiv(7),SDO)
----    begin
----    if SDO = '1' then
----	  SDOc <= (others =>'0');
----    elsif ADACDiv(7)'event and ADACDiv(7) = '1' then
----      if SDOp = '1'  then
----        SDOc <= SDOc + 1;  
----      end if;
----    end if;
----  end process;
---  filter SCC (alternate)
---  process (pSltClk_n,pSltRst_n)
---  begin 
---   if pSltRst_n = '0' then ACL <= "10000000000000000000"; ACR <= "10000000000000000000";--(0)
---    elsif pSltClk_n'event and pSltClk_n ='1' then
---	  ACL <= ACL+(DCL(11)&DCL(11)&DCL(11)&DCL(11)&DCL(11)&DCL(11)&DCL(11)&DCL(11)&DCL);
---      ACR <= ACR+(DCR(11)&DCR(11)&DCR(11)&DCR(11)&DCR(11)&DCR(11)&DCR(11)&DCR(11)&DCR);
---    end if; 
---  end process;
---  DCL <= SCL - ACL(19 downto 8);
---  DCR <= SCR - ACR(19 downto 8);
+--  SDOpo <='0' when pSltIorq_n = '0' and pSltWr_n = '0'and pSltAdr(7 downto 0) = "10100001" else 'Z'; --#A0
+  SDOpo <= not KC; 
+
 -- filter SCC
+
+  process (pSltClk_n,LRCKe,pSltClk2)
+  begin
+    if LRCKe = '0' then rsta1 <= '0';
+    elsif pSltClk2'event and pSltClk2 ='1' then
+      if LRCKe = '1' and pSltClk_n ='0' and rsta1 = '0' then
+         rsta1 <= '1'; rsta0 <='1';
+      else 
+         rsta0 <= '0';
+      end if;
+     end if;
+  end process;
   process (pSltClk_n,LRCKe)
   begin
     if  LRCKe = '1' then ACL <= "00000000000000000000"; ACR <= "00000000000000000000"; --(0)
     elsif pSltClk_n'event and pSltClk_n ='0' then
- --     ACL <= ACL + ("00000000"&SCL) ;   -- (19-0)       
- --     ACR <= ACR + ("00000000"&SCR) ; SCL(11-0)
       ACL <= ACL + (not SCL(11) & not SCL(11) & not SCL(11) & not SCL(11) & 
                     not SCL(11) & not SCL(11) & not SCL(11) & not SCL(11) & 
                     not SCR(11) & SCL(10 downto 0) ) ;   -- (19-0)       
-    --  ACR <= ACR + (not SCR(11) & not SCR(11) & not SCR(11) & not SCR(11) & 
-    --                not SCR(11) & not SCR(11) & not SCR(11) & not SCR(11) & 
-    --                not SCR(11) & SCR(10 downto 0) ) ;   -- (19-0)    
     end if;
   end process;
   process (FDIV(7),FDIV(0))
   begin
     if pSltClk_n ='0' then LRCKe <= '0';
     elsif FDIV(7)'event and FDIV(7) = '0' then
---      L_AOUT <= (not ACL(19))&ACL(18 downto 4);
---      R_AOUT <= (not ACR(19))&ACR(18 downto 4);
       MACL <=  ACL(18 downto 3);-- (not ACL(19)) & ACL(18 downto 4);
       MACR <=  ACL(18 downto 3);-- (not ACL(19)) & ACL(18 downto 4);
 --    MACR <=  ACR(18 downto 3);-- (not ACR(19)) & ACR(18 downto 4);
       LRCKe <= '1';
     end if;
   end process;
--- filter FMPAK
---  process (pSltClk_n,SDO)
---  begin
---    if
---	elsif
---    end if;
---  end process;
-  	
-
+-- Mixer
  process(c0)
  begin
    if c0'event and c0 = '0' then
---     if pSltClk_nt = '0' then
---       L_AOUT <= BCMO(15 downto 1)+ ACL(19 downto 5);
---       R_AOUT <= BCRO(15 downto 1)+ ACR(19 downto 5);      
---       L_AOUT <= BCRO + (ACL(19)&ACL(19 downto 5));
---       R_AOUT <= BCMO + (ACR(19)&ACR(19 downto 5)); 
---       L_AOUT <= "1000000000000000"+BCMO(15 downto 0);
---       R_AOUT <= "1000000000000000"+BCRO(15 downto 0); 
---     end if;
      pSltClk_nt <= pSltClk_n;
    end if; 
  end process;
  process (pSltClk_nt)
  begin
    if pSltClk_nt'event and pSltClk_nt = '0' then
---     L_AOUT <= (BCMO(15)&BCMO(15 downto 1)) + (ACL(19)&ACL(19 downto 5));
---     R_AOUT <= (BCRO(15)&BCRO(15 downto 1)) + (ACR(19)&ACR(19 downto 5));
-     L_AOUT <= MFL + MSL;
-     R_AOUT <= MFR + MSL; -- MSR;
+     L_AOUT <= MFL + MSL + MPL + MBL;
+     R_AOUT <= MFR + MSL + MPL + MBL; -- MSR;
    end if;
  end process;  
 ----------------------------------------------------------------
@@ -1611,22 +1616,71 @@ begin
   VMFL : mv16 port map (BCMO, MFL, LVF);
   VMFR : mv16 port map (BCRO, MFR, LVF);
   VMSL : mv16 port map (MACL, MSL, LVS);
---  VMSR : mv16 port map (MACR, MSR, LVS);
---  MACL <= (not ACL(19)) & ACL(18 downto 4);
---  MACR <= (not ACR(19)) & ACR(18 downto 4);
-  LVF <= LVL(5 downto 3);
-  LVS <= LVL(2 downto 0);        
+  VMGL : mv16 port map (MACP, MPL, LVP);
+  VMBL : mv16 port map (MACB, MBL, LVB);
+
+  LVF <= LVL(5 downto 3); -- Level FM PAK
+  LVS <= LVL(2 downto 0); -- Level SCC, SCC+
+  LVP <= LVL1(5 downto 3); -- Level PSG
+  LVB <= LVL1(2 downto 0); -- Level Beeper 
+----------------------------------------------------------------
+-- Filter PSG
+----------------------------------------------------------------
+-- MACP <= PsgAmp;
+  SCP <= PsgAmp(9 downto 0);
+  process (pSltClk_n,resP)
+  begin
+    if resP = '1' or LVL1(7) = '0' then ACP <= (others => '0');
+    elsif pSltClk_n'event and pSltClk_n ='0' then  
+       ACP <= ACP + ("000000000" & SCP);     
+    end if;
+  end process;
+  process (FDIV(6),pSltClk_n)
+  begin
+    if pSltClk_n ='0' then resP <= '0';
+    elsif FDIV(6)'event and FDIV(6) = '0' then
+      MACP <=  ACP(18 downto 3);-- & '0';
+      resP <= '1';
+	end if;
+  end process;
+ 
+----------------------------------------------------------------
+-- Filter Beeper
+----------------------------------------------------------------    
+--  MACB <=  KC & "000000"
+  process (pSltClk_n,resB)
+  begin
+    if resB = '1' or LVL1(6) = '0' then ACB <= (others => '0');
+    elsif pSltClk_n'event and pSltClk_n ='0' then  
+       ACB <= ACB - ("000000000" & KC & "000000");     
+    end if;
+  end process;
+  process (FDIV(6),pSltClk_n)
+  begin
+    if pSltClk_n ='0' then resB <= '0';
+    elsif FDIV(6)'event and FDIV(6) = '0' then
+      MACB_f <= ACB;-- & '0';
+      resB <= '1';
+	end if;
+  end process;  
+  MACB <= MACB_f;-- + MACB_i;
+--  process (FDIV(1))
+--  begin
+--    if FDIV(1)'event and FDIV(1) = '0' then
+--      if MACB(15) = '0' then
+--        MACB_i <= MACB_i + "1111111111111111";
+--      else
+--        MACB_i <= MACB_i + "0000000000000001";
+--      end if;   
+--    end if;
+--  end process;
+   
 ----------------------------------------------------------------
 -- PLL OUT
 ----------------------------------------------------------------
   U2 : mpll1 port map (areset,pSltClk2,c0,open);
   areset <= not pSltRst_n;
---  U3 : mpll2 port map (areset,pSltClk2,clk21m,open);
--- clk21m <= c0;
---  process (clk21m)
---  begin
---    if (clk21m'event and clk21m = '0') then c0 <= not c0; end if;
---  end process;   
+ 
 ----------------------------------------------------------------
 -- DAC control -- Audio DAC YAC516 ( -1 = 8000, 0=0, +1 = 7FFF
 ----------------------------------------------------------------
@@ -1669,6 +1723,51 @@ begin
   EECS <= '1' when EECS1 = '1' else '0';
   EECK <= '1' when EECK1 = '1' else '0';
   EEDI <= '1' when EEDI1 = '1' else '0';
-  
+
+----------------------------------------------------------------
+-- PSG  (SSG + PPI Sound)
+----------------------------------------------------------------
+
+  process(pSltClk_n, pSltRst_n)
+
+  begin
+
+    if (pSltRst_n = '0') then
+
+      PsgRegPtr <= (others => '1');
+      KC  <= '1';
+
+    elsif (pSltClk_n'event and pSltClk_n = '1') then
+
+      -- I/O port access on A0h ... Resister number setting
+      if (DevHit = '1' and pSltIorq_n = '0' and pSltWr_n = '0' and pSltAdr(7 downto 0) = "10100000") then
+        PsgRegPtr <= pSltDat(3 downto 0);
+      end if;
+
+      -- I/O port access on AAh ... 1 bit sound port write (not PSG)
+      if (DevHit = '1' and pSltIorq_n = '0' and pSltWr_n = '0' and pSltAdr(7 downto 1) = "1010101") then
+        if (pSltAdr(0) = '0') then
+          KC <= pSltDat(7);
+        elsif (pSltDat(3 downto 1) = "111" and pSltDat(7) = '0') then
+          KC <= pSltDat(0);
+        end if;
+      end if;
+
+    end if;
+
+  end process;
+
+
+
+  -- I/O port access on A1h ... Resister write
+  PsgRegWe <= '1' when DevHit = '1' and pSltIorq_n = '0' and pSltWr_n = '0' and pSltAdr(7 downto 0) = "10100001" else '0';
+  -- Connect component
+  PsgCh  : psg_wave
+    port map(
+      pSltClk_n, pSltRst_n, PsgRegPtr, pSltDat, PsgAmp,
+      PsgRegWe
+    );
+
+
 end RTL;
 

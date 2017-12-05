@@ -229,6 +229,12 @@ set_location_assignment PIN_34 -to MCLK
 set_location_assignment PIN_35 -to IC_n
 set_location_assignment PIN_43 -to CLK50
 set_global_assignment -name USE_CONFIGURATION_DEVICE ON
+set_location_assignment PIN_189 -to SDOpo
+set_location_assignment PIN_12 -to EECS
+set_location_assignment PIN_13 -to EECK
+set_location_assignment PIN_14 -to EEDI
+set_location_assignment PIN_15 -to EEDO
+set_global_assignment -name VHDL_FILE psg_wave.vhd
 set_global_assignment -name VHDL_FILE OPLL2/AttackTable.vhd
 set_global_assignment -name VHDL_FILE OPLL2/Controller.vhd
 set_global_assignment -name VHDL_FILE OPLL2/EnvelopeGenerator.vhd
@@ -255,5 +261,4 @@ set_global_assignment -name VHDL_FILE scc_wave.vhd
 set_global_assignment -name CDF_FILE scc.cdf
 set_global_assignment -name QIP_FILE MPLL1.qip
 set_global_assignment -name QIP_FILE MPLL2.qip
-set_location_assignment PIN_189 -to SDOpo
 set_global_assignment -name VHDL_FILE mv16.vhd
