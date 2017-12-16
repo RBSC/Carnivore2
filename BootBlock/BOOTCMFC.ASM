@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
 ; Portions (c) Grauw
-; Version 1.85
+; Version 1.86
 ;
 
 ; !COMPILATION OPTIONS!
@@ -76,7 +76,7 @@ L_STR	equ	16
 	db	"CSCCFRC"
   endif
 	db	0
-Vers	db	"v1.85"  ; Version | also update it in the header!
+Vers	db	"v1.86"  ; Version | also update it in the header!
 	db	0
 
 
@@ -2373,10 +2373,9 @@ VolPrint:
 	rra
 	rra
 	and	7
+	inc	a
 	ld	b,a
-	inc	b
-	add	"1"
-	call	CHPUT
+	call	hexout
 
 	ld	hl,#050F	; FMPAC indicator position 1
 	call	POSIT
@@ -2409,10 +2408,9 @@ IndPrn1:
 	call	POSIT
 	ld	a,(CardMDR+#22)
 	and	7
+	inc	a
 	ld	b,a
-	inc	b
-	add	"1"
-	call	CHPUT
+	call	hexout
 
 	ld	hl,#0514	; SCC indicator position 1
 	call	POSIT
@@ -2634,10 +2632,9 @@ PSGPrint:
 	rra
 	rra
 	and	7
+	inc	a
 	ld	b,a
-	inc	b
-	add	"1"
-	call	CHPUT
+	call	hexout
 
 	ld	hl,#0511	; PSG indicator position 1
 	call	POSIT
@@ -2670,10 +2667,9 @@ PSGPrn1:
 	call	POSIT
 	ld	a,(CardMDR+#24)
 	and	7
+	inc	a
 	ld	b,a
-	inc	b
-	add	"1"
-	call	CHPUT
+	call	hexout
 
 	ld	hl,#0515	; Clicker indicator position 1
 	call	POSIT
@@ -2712,7 +2708,7 @@ PSGStPr:
 	jr	z,PSGPrn3
 	ld	hl,#1004
 	call    POSIT	
-	ld	a,#96
+	ld	a,OnSym
 	call	CHPUT		; mark device as disabled
 PSGPrn3:
 	ld	hl,#2504
@@ -2724,7 +2720,7 @@ PSGPrn3:
 	jr	z,PSGLoop
 	ld	hl,#2504
 	call    POSIT	
-	ld	a,#96
+	ld	a,OnSym
 	call	CHPUT		; mark device as disabled
 
 
@@ -2885,13 +2881,13 @@ StMSG_S:
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
   if CV=2
 	db	#8C," Carnivore2 MultiFunctional Cartridge ",#8D
-	db	#8C," ",#90,#91," RBSC. Help: ",#92,#91," Volume: ",#93,#91," PSG: ",#99,#91," ",#8D
+	db	#8C,"  ",#90,#91," RBSC ",#96," Help",#A5,#92,#91," Volume",#A5,#93,#91," PSG",#A5,#99,#91,"  ",#8D
   else
 	db	#8C,"  Carnivore MultiFlash SCC Cartridge  ",#8D
 	db	#8C,"    ",#90,#91,"2017 RBSC. Press ",#93,#91," for Help    ",#8D
   endif
-	db	#8C,"                                      ",#8D
-	db	#8C,"  Entry selected for autostart: [",#96,#96,"]  ",#8D
+	db	#8C," ",#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A," ",#8D
+	db	#8C,"  Entry selected for autostart: [  ]  ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#01,#50,"                                    ",#01,#52,#8D
 	db	#8C,#01,#57,"                                    ",#01,#53,#8D
@@ -2915,8 +2911,8 @@ StMSG_S:
   if CV=2
 VolumeScr:
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
-	db	#8C," Carnivore2 Cartridge's Volume Screen ",#8D
-	db	#8C,"                                      ",#8D
+	db	#8C,"  Carnivore2 Cartridge's Sound Setup  ",#8D
+	db	#8C,"  ",#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,"  ",#8D
 	db	#8C," Control Keys:                        ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#8D
@@ -2928,13 +2924,13 @@ VolumeScr:
 	db	#8C,"                                      ",#8D
 	db	#8C," FMPAC Volume:                        ",#8D
 	db	#8C,"                                      ",#8D
-	db	#8C,#20,#20,#01,#50,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#52,#20,#20,#8D
-	db	#8C,#20,#20,#01,#56,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#54,#20,#20,#8D
+	db	#8C,#20,#20,#A0,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A2,#20,#20,#8D
+	db	#8C,#20,#20,#A1,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A3,#20,#20,#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," SCC",#96,"SCC+ Volume:                     ",#8D
 	db	#8C,"                                      ",#8D
-	db	#8C,#20,#20,#01,#50,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#52,#20,#20,#8D
-	db	#8C,#20,#20,#01,#56,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#54,#20,#20,#8D
+	db	#8C,#20,#20,#A0,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A2,#20,#20,#8D
+	db	#8C,#20,#20,#A1,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A3,#20,#20,#8D
 	db	#8C,"                                      ",#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 	db	"              Set the desired volume..."
@@ -2944,8 +2940,8 @@ VolumeScr:
   if CV=2
 PSGScr:
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
-	db	#8C," Carnivore2 Cartridge's PSG Screen    ",#8D
-	db	#8C,"                                      ",#8D
+	db	#8C,"   Carnivore2 Cartridge's PSG Setup   ",#8D
+	db	#8C,"   ",#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,"   ",#8D
 	db	#8C," PSG Enabled [ ]  Clicker Enabled [ ] ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," Control Keys:                        ",#8D
@@ -2959,12 +2955,12 @@ PSGScr:
 	db	#8C,#20,#01,#56,"[HOME]  - reset to default values   ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," PSG Volume:                          ",#8D
-	db	#8C,#20,#20,#01,#50,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#52,#20,#20,#8D
-	db	#8C,#20,#20,#01,#56,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#54,#20,#20,#8D
+	db	#8C,#20,#20,#A0,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A2,#20,#20,#8D
+	db	#8C,#20,#20,#A1,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A3,#20,#20,#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," PPI Clicker Volume:                  ",#8D
-	db	#8C,#20,#20,#01,#50,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#52,#20,#20,#8D
-	db	#8C,#20,#20,#01,#56,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#01,#54,#20,#20,#8D
+	db	#8C,#20,#20,#A0,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A2,#20,#20,#8D
+	db	#8C,#20,#20,#A1,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A3,#20,#20,#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 	db	"       Set up PSG and desired volume..."   
 	db	0
@@ -2977,7 +2973,7 @@ helpmsg:
   else
 	db	#8C,"  Carnivore Cartridge's Help Screen   ",#8D
   endif
-	db	#8C,"                                      ",#8D
+	db	#8C,"  ",#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,"  ",#8D
 	db	#8C," Menu Navigation and Action Keys:     ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#20,#01,#50,"[ESC] - boot MSX using the default  ",#8D
@@ -3026,10 +3022,12 @@ DefPal:
 	dw	#5505		; 14
 	dw	#7707		; 15
 
-; Various text and data
+; Various variables, text and data
+
+OnSym	equ	#A4
+
 Spaces:
-;	db	"  ",0
-	db	#96,#96,0
+	db	"  ",0
 PALmsg:
 	db	"[50",#96,"Hz]",0
 NTSCmsg:
@@ -3045,8 +3043,7 @@ ResetMSG:
 PageNum:
 	db	"[  ",#96,"  ]",0
 VolumeL:
-;	db	"[FMPAC:  ",#96,"SCC:  ]",0
-	db	"[FMP:  ",#96,"SCC:  ",#96,"PSG:  ]",0
+	db	"[FMP",#A5,"  ",#96,"SCC",#A5,"  ",#96,"PSG",#A5,"  ]",0
 VolumeInd:
 	db	#98,#98,#98,#98,0,0
 IndEmpty:

@@ -3,6 +3,14 @@ Copyright (c) 2017 RBSC
 English verison
 --------------------------------------------------
 
+16.12.2017
+
+1. Fixed a bug in C2MAN and C2MAN_40 utilities - when the reset was selected for a ROM, the second reset flag
+   was not set in configuration registers, that led to a conflict
+
+2. Improved font for boot block, changed a few symbols, added horizontal lines after screen titles
+
+
 05.12.2017 (firmware update is required)
 
 1. Fixed the attribute correction bug in C2MAN, C2MAN_40 and C2RAMLDR utilities. Now files with all attributes

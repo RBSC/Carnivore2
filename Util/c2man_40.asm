@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.32
+; Version 1.33
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -1428,7 +1428,8 @@ Csm06:
 
 	ld	a,01			; start on reset
 Csm05:	ld	(Record+#3E),a		
-	jp	Csm70
+	jp	Csm80
+
 Csmj4:	ld	a,2
 	jr	Csm05
 Csmj8:	ld	a,6
@@ -1589,19 +1590,31 @@ Csm01:
 	ld	a,(ix+1)		; ROMJT1 (#8000)
 	or	a
 	jr	z,Csm02	
-Csm03:	ld	a,01			; Complex start
+Csm03:
+	ld	a,01			; Complex start
 	ld	(Record+#3E),a		; need Reset
-	jp	Csm80
+	jr	Csm80
 Csm02:
 	ld	a,(ix)			; ROMJT0 (#4000)
 	cp	#41
 	jr	nz,Csm03		; Reset
 	ld	a,02			; Start to jump (#4002)	
 	ld	(Record+#3E),a
-Csm70:
 
+Csm80:	cp	1			; reset needed?
+	jr	nz,Csm80a
+	ld	a,(Record+#3C)
+	and	%11111011		; set reset bit to match 01 at #3E
+	ld	(Record+#3C),a
+	jr	Csm80b
+Csm80a:
+	cp	2
+	jr	nz,Csm80b
+	ld	a,(Record+#3C)
+	or	%00000100		; zero reset bit to match 02 at #3E
+	ld	(Record+#3C),a
 
-Csm80:
+Csm80b:
 ; test print Size-start metod
 	ld	a,(F_V)			; verbose mode?
 	or	a
@@ -4630,6 +4643,24 @@ rdt301:
 	ld	b,2			; start #4000
 rdt31:	ld	a,b
 	ld	(BUFFER+2+#3E),a
+
+; correct reset preset *************
+	cp	1			; start on reset?
+	jr	nz,rdt31_1
+	push	af
+	ld	a,(BUFFER+2+#3C)
+	and	%11111011		; set reset bit to match 01 at #3E
+	ld	(BUFFER+2+#3C),a
+	pop	af
+	jr	rdt31_2
+rdt31_1:
+	cp	2
+	jr	nz,rdt31_2
+	ld	a,(BUFFER+2+#3C)
+	or	%00000100		; zero reset bit to match 02 at #3E
+	ld	(BUFFER+2+#3C),a
+
+rdt31_2:
 ; select adress ROM start
 	bit	1,a
 	jr	z,rdt36			; no start address
@@ -7328,7 +7359,7 @@ BUFTOP:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v1.32",13,10
+	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v1.33",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found.",10,13
@@ -7346,7 +7377,7 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v1.32",13,10
+	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v1.33",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found.",10,13

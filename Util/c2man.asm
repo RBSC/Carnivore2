@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.32
+; Version 1.33
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -1433,7 +1433,8 @@ Csm06:
 
 	ld	a,01			; start on reset
 Csm05:	ld	(Record+#3E),a		
-	jp	Csm70
+	jp	Csm80
+
 Csmj4:	ld	a,2
 	jr	Csm05
 Csmj8:	ld	a,6
@@ -1594,19 +1595,31 @@ Csm01:
 	ld	a,(ix+1)		; ROMJT1 (#8000)
 	or	a
 	jr	z,Csm02	
-Csm03:	ld	a,01			; Complex start
+Csm03:
+	ld	a,01			; Complex start
 	ld	(Record+#3E),a		; need Reset
-	jp	Csm80
+	jr	Csm80
 Csm02:
 	ld	a,(ix)			; ROMJT0 (#4000)
 	cp	#41
 	jr	nz,Csm03		; Reset
 	ld	a,02			; Start to jump (#4002)	
 	ld	(Record+#3E),a
-Csm70:
 
+Csm80:	cp	1			; reset needed?
+	jr	nz,Csm80a
+	ld	a,(Record+#3C)
+	and	%11111011		; set reset bit to match 01 at #3E
+	ld	(Record+#3C),a
+	jr	Csm80b
+Csm80a:
+	cp	2
+	jr	nz,Csm80b
+	ld	a,(Record+#3C)
+	or	%00000100		; zero reset bit to match 02 at #3E
+	ld	(Record+#3C),a
 
-Csm80:
+Csm80b:
 ; test print Size-start metod
 	ld	a,(F_V)			; verbose mode?
 	or	a
@@ -4635,6 +4648,24 @@ rdt301:
 	ld	b,2			; start #4000
 rdt31:	ld	a,b
 	ld	(BUFFER+2+#3E),a
+
+; correct reset preset *************
+	cp	1			; start on reset?
+	jr	nz,rdt31_1
+	push	af
+	ld	a,(BUFFER+2+#3C)
+	and	%11111011		; set reset bit to match 01 at #3E
+	ld	(BUFFER+2+#3C),a
+	pop	af
+	jr	rdt31_2
+rdt31_1:
+	cp	2
+	jr	nz,rdt31_2
+	ld	a,(BUFFER+2+#3C)
+	or	%00000100		; zero reset bit to match 02 at #3E
+	ld	(BUFFER+2+#3C),a
+
+rdt31_2:
 ; select adress ROM start
 	bit	1,a
 	jr	z,rdt36			; no start address
@@ -5760,7 +5791,8 @@ NUMTOASC:
 	ld	(ix+10),l		; Internal buffer
 	ld	(ix+11),h
 
-ChkTipo:	ld	a,(ix+0)	; Set divisor to 2 or 16,
+ChkTipo:
+	ld	a,(ix+0)	; Set divisor to 2 or 16,
 	or	a			; or leave it to 10
 	jr	z,ChkBoH
 	cp	5
@@ -6186,90 +6218,11 @@ KEYON:	ld	ix, #00CF
 	ret
 
 
-F_Key:
-; Input A - Num parameter
-; Output C,Z Flags, set key variable
-
-	ld	de,BUFFER
-	call	EXTPAR
-	ret	c			; no parameter C- Flag
-	ld	hl,BUFFER
-	ld	a,(hl)
-fkey01:	cp	"/"
-	ret	nz			; no Flag NZ - Flag
-	inc	hl
-	ld	a,(hl)
-	and	%11011111
-	cp	"S"
-	jr	nz,fkey02
-	inc	hl
-	ld	a,(hl)
-	and	%11011111
-	cp	"U"
-	jr	nz,fkey02
-	inc	hl
-	ld	a,(hl)
-	or	a
-	jr	nz,fkey02
-	ld	a,1
-	ld	(F_SU),a
-	ret
-fkey02:	ld	hl,BUFFER+1
-	ld	a,(hl)
-	and	%11011111
-	cp	"A"
-	jr	nz,fkey03
-	inc	hl
-	ld	a,(hl)
-	or	a
-	jr	nz,fkey03
-	ld	a,2
-	ld	(F_A),a
-	ret
-fkey03:	ld	hl,BUFFER+1
-	ld	a,(hl)
-	and	%11011111
-	cp	"V"
-	jr	nz,fkey04
-	inc	hl
-	ld	a,(hl)
-	or	a
-	jr	nz,fkey04
-	ld	a,3
-	ld	(F_V),a			; verbose mode flag
-	ret
-fkey04:	ld	hl,BUFFER+1
-	ld	a,(hl)
-	and	%11011111
-	cp	"H"
-	jr	nz,fkey05
-	inc	hl
-	ld	a,(hl)
-	or	a
-	jr	nz,fkey05
-	ld	a,4
-	ld	(F_H),a			; show help
-	ret
-fkey05:
-	xor	a
-	dec	a			; S - Illegal flag
-	ret
-
-
 ;------------------------------------------------------------------------------
 
 ;
 ; Main data area for strings, must be below #4000!
 ;
-
-;MAP_E_SCC:
-;	db	#00,#FF,00,00,"C"
-;	db	"Config: SCC sound cartridge   "
-;	db	#F8,#50,#00,#85,#3F,#40
-;	db	#F8,#70,#01,#8C,#3F,#60		
-;	db      #F8,#90,#02,#8C,#3F,#80		
-;	db	#F8,#B0,#03,#8C,#3F,#A0	
-;	db	#01,#BC,#00,#00,#FF			; correction by Alexey: first byte > 01 (all disabled except MLTMAP/SCC)
 
 DEF_CFG:
 	db	#00,#FF,00,00,"C"
@@ -7338,6 +7291,77 @@ BUFTOP:
 ;
 	org #C000
 
+
+F_Key:
+; Input A - Num parameter
+; Output C,Z Flags, set key variable
+
+	ld	de,BUFFER
+	call	EXTPAR
+	ret	c			; no parameter C- Flag
+	ld	hl,BUFFER
+	ld	a,(hl)
+fkey01:	cp	"/"
+	ret	nz			; no Flag NZ - Flag
+	inc	hl
+	ld	a,(hl)
+	and	%11011111
+	cp	"S"
+	jr	nz,fkey02
+	inc	hl
+	ld	a,(hl)
+	and	%11011111
+	cp	"U"
+	jr	nz,fkey02
+	inc	hl
+	ld	a,(hl)
+	or	a
+	jr	nz,fkey02
+	ld	a,1
+	ld	(F_SU),a
+	ret
+fkey02:	ld	hl,BUFFER+1
+	ld	a,(hl)
+	and	%11011111
+	cp	"A"
+	jr	nz,fkey03
+	inc	hl
+	ld	a,(hl)
+	or	a
+	jr	nz,fkey03
+	ld	a,2
+	ld	(F_A),a
+	ret
+fkey03:	ld	hl,BUFFER+1
+	ld	a,(hl)
+	and	%11011111
+	cp	"V"
+	jr	nz,fkey04
+	inc	hl
+	ld	a,(hl)
+	or	a
+	jr	nz,fkey04
+	ld	a,3
+	ld	(F_V),a			; verbose mode flag
+	ret
+fkey04:	ld	hl,BUFFER+1
+	ld	a,(hl)
+	and	%11011111
+	cp	"H"
+	jr	nz,fkey05
+	inc	hl
+	ld	a,(hl)
+	or	a
+	jr	nz,fkey05
+	ld	a,4
+	ld	(F_H),a			; show help
+	ret
+fkey05:
+	xor	a
+	dec	a			; S - Illegal flag
+	ret
+
+
 ; Print note for MSX1 and MSX1 with VDP 9938
 PrintNote:
 	ld	a,(SCR0WID)
@@ -7426,7 +7450,7 @@ DetVDPE:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge Manager v1.32",13,10
+	db	"Carnivore2 MultiFunctional Cartridge Manager v1.33",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -7440,7 +7464,7 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC Cartridge Manager v1.32",13,10
+	db	"Carnivore MultiFlash SCC Cartridge Manager v1.33",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found. Please specify its slot number - $"
