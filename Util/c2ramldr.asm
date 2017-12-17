@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's ROM->RAM Loader
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.11
+; Version 1.12
 ;
 
 
@@ -1174,7 +1174,8 @@ Csm06:
 
 	ld	a,01			; start on reset
 Csm05:	ld	(Record+#3E),a		
-	jp	Csm70
+	jp	Csm80
+
 Csmj4:	ld	a,2
 	jr	Csm05
 Csmj8:	ld	a,6
@@ -1344,10 +1345,21 @@ Csm02:
 	jr	nz,Csm03		; Reset
 	ld	a,02			; Start to jump (#4002)	
 	ld	(Record+#3E),a
-Csm70:
 
+Csm80:	cp	1			; reset needed?
+	jr	nz,Csm80a
+	ld	a,(Record+#3C)
+	and	%11111011		; set reset bit to match 01 at #3E
+	ld	(Record+#3C),a
+	jr	Csm80b
+Csm80a:
+	cp	2
+	jr	nz,Csm80b
+	ld	a,(Record+#3C)
+	or	%00000100		; zero reset bit to match 02 at #3E
+	ld	(Record+#3C),a
 
-Csm80:
+Csm80b:
 ; test print Size-start metod
 	ld	a,(F_V)			; verbose mode?
 	or	a
@@ -3492,7 +3504,7 @@ TestRDT:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.11",13,10
+	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.12",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
