@@ -3,6 +3,13 @@ Copyright (c) 2017 RBSC
 English verison
 --------------------------------------------------
 
+26.12.2017
+
+1. Slightly improved font and volume indicators in the boot block
+
+2. Improved presets DSK2ROM and LIFEMARS
+
+
 16.12.2017
 
 1. Fixed a bug in C2MAN, C2MAN_40 and C2RAMLDR utilities - when the reset was selected for a ROM, the second

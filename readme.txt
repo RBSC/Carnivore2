@@ -1,6 +1,6 @@
 Carnivore2 MultiFunctional Cartridge Readme File
 Copyright (c) 2017 RBSC
-Last updated: 05.12.2017
+Last updated: 26.12.2017
 ------------------------------------------------
 
 WARNING! To avoid damage to the Carnivore2 cartridge and your MSX computer hardware never insert or remove the cartridge
@@ -319,6 +319,9 @@ has the expanded slot disabled and the only enabled device there is IDE. Otherwi
 The audio socket of the Carnivore2 cartridge may not be suitable for connecting the headphones. It's recommended to connect it to the
 speakers or to the amplifier. This socket will only output SCC or FMPAC music and sounds. For the full experience please use the MSX's
 standard sound output - it will have the amplified SCC and FMPAC sound and music as well as the PSG sound and music.
+
+When booting to DOS on a Panasonic A1 computer (also on A1 MK2), please hold the DEL key while computer reboots after selection on the
+default configuration entry and until you see the DOS prompt.
 
 
 IMPORTANT!

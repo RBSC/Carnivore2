@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2017 RBSC
 ; Portions (c) Grauw
-; Version 1.86
+; Version 1.87
 ;
 
 ; !COMPILATION OPTIONS!
@@ -76,7 +76,7 @@ L_STR	equ	16
 	db	"CSCCFRC"
   endif
 	db	0
-Vers	db	"v1.86"  ; Version | also update it in the header!
+Vers	db	"v1.87"  ; Version | also update it in the header!
 	db	0
 
 
@@ -2379,11 +2379,11 @@ VolPrint:
 
 	ld	hl,#050F	; FMPAC indicator position 1
 	call	POSIT
-	ld	hl,IndEmpty
+	ld	hl,IndEmpty1
 	call	print
 	ld	hl,#0510	; FMPAC indicator position 2
 	call	POSIT
-	ld	hl,IndEmpty
+	ld	hl,IndEmpty2
 	call	print
 	ld	hl,#050F	; FMPAC indicator position 1
 IndPrn1:
@@ -2414,11 +2414,11 @@ IndPrn1:
 
 	ld	hl,#0514	; SCC indicator position 1
 	call	POSIT
-	ld	hl,IndEmpty
+	ld	hl,IndEmpty1
 	call	print
 	ld	hl,#0515	; SCC indicator position 2
 	call	POSIT
-	ld	hl,IndEmpty
+	ld	hl,IndEmpty2
 	call	print
 	ld	hl,#0514	; SCC indicator position 1
 IndPrn2:
@@ -2638,11 +2638,11 @@ PSGPrint:
 
 	ld	hl,#0511	; PSG indicator position 1
 	call	POSIT
-	ld	hl,IndEmpty
+	ld	hl,IndEmpty1
 	call	print
 	ld	hl,#0512	; PSG indicator position 2
 	call	POSIT
-	ld	hl,IndEmpty
+	ld	hl,IndEmpty2
 	call	print
 	ld	hl,#0511	; PSG indicator position 1
 PSGPrn1:
@@ -2673,11 +2673,11 @@ PSGPrn1:
 
 	ld	hl,#0515	; Clicker indicator position 1
 	call	POSIT
-	ld	hl,IndEmpty
+	ld	hl,IndEmpty1
 	call	print
 	ld	hl,#0516	; Clicker indicator position 2
 	call	POSIT
-	ld	hl,IndEmpty
+	ld	hl,IndEmpty2
 	call	print
 	ld	hl,#0515	; Clicker indicator position 1
 PSGPrn2:
@@ -2924,12 +2924,12 @@ VolumeScr:
 	db	#8C,"                                      ",#8D
 	db	#8C," FMPAC Volume:                        ",#8D
 	db	#8C,"                                      ",#8D
-	db	#8C,#20,#20,#A0,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A2,#20,#20,#8D
+	db	#8C,#20,#20,#A0,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A2,#20,#20,#8D
 	db	#8C,#20,#20,#A1,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A3,#20,#20,#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," SCC",#96,"SCC+ Volume:                     ",#8D
 	db	#8C,"                                      ",#8D
-	db	#8C,#20,#20,#A0,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A2,#20,#20,#8D
+	db	#8C,#20,#20,#A0,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A2,#20,#20,#8D
 	db	#8C,#20,#20,#A1,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A3,#20,#20,#8D
 	db	#8C,"                                      ",#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
@@ -2955,11 +2955,11 @@ PSGScr:
 	db	#8C,#20,#01,#56,"[HOME]  - reset to default values   ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," PSG Volume:                          ",#8D
-	db	#8C,#20,#20,#A0,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A2,#20,#20,#8D
+	db	#8C,#20,#20,#A0,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A2,#20,#20,#8D
 	db	#8C,#20,#20,#A1,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A3,#20,#20,#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," PPI Clicker Volume:                  ",#8D
-	db	#8C,#20,#20,#A0,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A2,#20,#20,#8D
+	db	#8C,#20,#20,#A0,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A2,#20,#20,#8D
 	db	#8C,#20,#20,#A1,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#A3,#20,#20,#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 	db	"       Set up PSG and desired volume..."   
@@ -3046,7 +3046,9 @@ VolumeL:
 	db	"[FMP",#A5,"  ",#96,"SCC",#A5,"  ",#96,"PSG",#A5,"  ]",0
 VolumeInd:
 	db	#98,#98,#98,#98,0,0
-IndEmpty:
+IndEmpty1:
+	db	#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,0
+IndEmpty2:
 	db	#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,0
 DefVol:
 	db	#1B		; 00011011
