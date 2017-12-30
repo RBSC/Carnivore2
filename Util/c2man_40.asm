@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.33
+; Version 1.34
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -213,9 +213,8 @@ Stfp08:
 	print	M_Wnvc
 	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"y"
-	jr	z,Stfp30
-	cp	"Y"
 	jr	z,Stfp30
 	jp	Exit
 
@@ -303,6 +302,7 @@ AddConfig:
 	print	ExtSlot
 ADCQ1:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	call	SymbOut
 	cp	"n"
 	jr	z,ADCQ2
@@ -321,6 +321,7 @@ ADCQ2:
 	print	MapRAM
 ADCQ3:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	call	SymbOut
 	cp	"n"
 	jr	z,ADCQ4
@@ -339,6 +340,7 @@ ADCQ4:
 	print	FmOPLL
 ADCQ5:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	call	SymbOut
 	cp	"n"
 	jr	z,ADCQ6
@@ -357,6 +359,7 @@ ADCQ6:
 	print	IDEContr
 ADCQ7:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	call	SymbOut
 	cp	"n"
 	jr	z,ADCQ8
@@ -375,6 +378,7 @@ ADCQ8:
 	print	MultiSCC
 ADCQ9:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	call	SymbOut
 	cp	"n"
 	jr	z,ADCQ10
@@ -431,6 +435,7 @@ ADC01:
 	print	DirOver_S
 ADC02:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"y"
 	jr	z,ADC03
 	cp	"n"
@@ -1235,6 +1240,7 @@ DTME1:
 	print	MRSQ_S
 FPT03:	ld	c,_INNOE		; 32 < ROM =< 64
 	call	DOS
+	or	%00100000
 	cp	"n"
 	jp	z,MTC			; no minirom (mapper), select manually
 	cp	"y"			; yes minirom
@@ -1282,6 +1288,7 @@ DTME22:
 	print	CTC_S			; (y/n)?
 DTME4:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"y"
 	jp	z,DE_F1
 	cp	"n"
@@ -1825,6 +1832,7 @@ DEF09:	call	FrDIR
 	print	DirOver_S
 DEF07:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"y"
 	jr	z,DEF08
 	cp	"n"
@@ -1918,6 +1926,7 @@ DEF10:
 DEF10A:
 	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"y"
 	jr	z,DEF11
 	cp	"n"
@@ -3246,6 +3255,7 @@ ChipErase:
 	print	EraseWRN1
 	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	call	SymbOut
 	cp	"y"
 	jr	z,CEra1
@@ -3256,6 +3266,7 @@ CEra1:
 	print	EraseWRN2
 	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	call	SymbOut
 	cp	"y"
 	jr	z,CEra2
@@ -3364,6 +3375,7 @@ D_Compr:
 	print	DirComr_S
 DCMPR1:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	call	SymbOut
 	cp	"y"
 	jr	z,DCMPR2
@@ -3843,6 +3855,7 @@ R_DEL1:	ld	hl,256+23
 
 R_DEL1a:ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"y"
 	pop	de
 	jr	z,R_DEL1b
@@ -3924,6 +3937,7 @@ E_RD3:	call	FrDIR
 	print	DirOver_S
 E_RD2:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"n"
 	jp	z,E_RD0
 	cp	"y"
@@ -3983,6 +3997,7 @@ E_RD4:
 
 E_RD5:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"n"
 	jr	z,E_RD0
 	cp	"y"
@@ -4132,6 +4147,7 @@ rdt13:;ESC
 	print	EWS_S
 	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"y"
 	ret	z
 	jp	rdt08
@@ -4236,6 +4252,7 @@ rdt92:					; save
 	print	F_EXIST_S
 rdt922:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"n"
 	jp	z,Redit
 	cp	"y"
@@ -4425,6 +4442,7 @@ rdt15:;Save end exit (save late)
 	print	SAE_S
 	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"y"
 	jp	nz,rdt08
 	cp	#FF			; set C,nZ
@@ -5309,6 +5327,7 @@ UT02:	ld	c,_INNOE
 	ld	c,_CONOUT
 	call	DOS
 	pop	af
+	or	%00100000
 	cp	"y"
 	jr	z,UT03
 	cp	"n"
@@ -5359,6 +5378,7 @@ UT05:
 QFYN:
 	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	call	SymbOut
 	push	af
 	print	ONE_NL_S
@@ -7359,7 +7379,7 @@ BUFTOP:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v1.33",13,10
+	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v1.34",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found.",10,13
@@ -7377,7 +7397,7 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v1.33",13,10
+	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v1.34",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found.",10,13

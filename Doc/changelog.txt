@@ -3,6 +3,11 @@ Copyright (c) 2017 RBSC
 English verison
 --------------------------------------------------
 
+30.12.2017
+
+1. Modified C2MAN, C2MAN_40, C2RAMLDR and C2SRAM utilities for case-insensitive input
+
+
 26.12.2017
 
 1. Slightly improved font and volume indicators in the boot block

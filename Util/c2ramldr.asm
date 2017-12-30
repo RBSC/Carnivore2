@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's ROM->RAM Loader
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.12
+; Version 1.13
 ;
 
 
@@ -1009,6 +1009,7 @@ DTME1:
 	print	MRSQ_S
 FPT03:	ld	c,_INNOE		; 32 < ROM =< 64
 	call	DOS
+	or	%00100000
 	cp	"n"
 	jp	z,MTC			; no minirom (mapper), select manually
 	cp	"y"			; yes minirom
@@ -1055,6 +1056,7 @@ DTME22:
 	print	CTC_S			; (y/n)?
 DTME4:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"y"
 	jp	z,DE_F1
 	cp	"n"
@@ -1498,6 +1500,7 @@ DEF09:	call	FrDIR
 	print	DirOver_S
 DEF07:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"y"
 	jr	z,DEF08
 	cp	"n"
@@ -1595,6 +1598,7 @@ DEF10:
 DEF10A:
 	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"y"
 	jr	z,DEF10AA
 	cp	"n"
@@ -1609,6 +1613,7 @@ DEF10AA:
 DEF10B:
 	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	cp	"y"
 	jr	z,DEF11
 	cp	"n"
@@ -3504,7 +3509,7 @@ TestRDT:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.12",13,10
+	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.13",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"

@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's SRAM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.00
+; Version 1.01
 ;
 
 
@@ -271,11 +271,10 @@ DownSRAM:
 	print	F_EXIST_S
 rdt922:	ld	c,_INNOE
 	call	DOS
+	or	%00100000
 	call	SymbOut
 	cp	"y"
 	jp	z,rdt921
-	cp	"Y"
-	jr	z,rdt921
 	print	ONE_NL_S
 	jp	MainM
 	
@@ -2241,7 +2240,7 @@ MD_Fail:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge SRAM Manager v1.00",13,10
+	db	"Carnivore2 MultiFunctional Cartridge SRAM Manager v1.01",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
