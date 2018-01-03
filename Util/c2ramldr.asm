@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's ROM->RAM Loader
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.13
+; Version 1.14
 ;
 
 
@@ -3287,10 +3287,10 @@ CARTTAB: ; (N x 64 byte)
 
 CRTT1:	db	"k"
 	db	"Konami (Konami 4)                $"
-	db	#E8,#50,#00,#24,#FF,#40			
-	db	#E8,#60,#01,#A4,#FF,#60				
-	db      #E8,#80,#02,#A4,#FF,#80				
-	db	#E8,#A0,#03,#A4,#FF,#A0			
+	db	#F8,#50,#00,#24,#FF,#40			
+	db	#F8,#60,#01,#A4,#FF,#60				
+	db      #F8,#80,#02,#A4,#FF,#80				
+	db	#F8,#A0,#03,#A4,#FF,#A0			
 	db	#FF,#AC,#00,#02,#FF
 CRTT2:	db	"K"
 	db	"Konami SCC (Konami 5)            $"
@@ -3509,7 +3509,7 @@ TestRDT:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.13",13,10
+	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.14",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"

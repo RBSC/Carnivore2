@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.34
+; Version 1.35
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -6283,10 +6283,10 @@ CARTTAB: ; (N x 64 byte)
 
 CRTT1:	db	"k"
 	db	"Konami (Konami 4)                $"
-	db	#E8,#50,#00,#04,#FF,#40			
-	db	#E8,#60,#01,#84,#FF,#60				
-	db      #E8,#80,#02,#84,#FF,#80				
-	db	#E8,#A0,#03,#84,#FF,#A0			
+	db	#F8,#50,#00,#04,#FF,#40			
+	db	#F8,#60,#01,#84,#FF,#60				
+	db      #F8,#80,#02,#84,#FF,#80				
+	db	#F8,#A0,#03,#84,#FF,#A0			
 	db	#FF,#AC,#00,#02,#FF
 CRTT2:	db	"K"
 	db	"Konami SCC (Konami 5)            $"
@@ -7469,7 +7469,7 @@ DetVDPE:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge Manager v1.34",13,10
+	db	"Carnivore2 MultiFunctional Cartridge Manager v1.35",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -7483,7 +7483,7 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC Cartridge Manager v1.34",13,10
+	db	"Carnivore MultiFlash SCC Cartridge Manager v1.35",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found. Please specify its slot number - $"
