@@ -1,8 +1,8 @@
 --------------------------------------------------------------------------------
 Carnivore2 Technical Details
-Copyright (c) 2017 RBSC
+Copyright (c) 2017-2018 by RBSC
 English version
-Last updated on 05.12.2017
+Last updated on 03.02.2017
 --------------------------------------------------------------------------------
 
 NOTE: The hexadecimal numbers are shown as #90, 90h or 0x90
@@ -19,6 +19,8 @@ Main features:
  - 720KB shadow RAM at physical address range 040000h-0F0000h
  - Additional 1kb configuration EEPROM (M93C46MN1), works in 8-bit mode
  - User-selectable volume for SCC and FMPAC (8 steps), saved in 93C46 EEPROM
+ - User-selectable volume for PSG and Clicker (8 steps), saved in 93C46 EEPROM
+ - User-controlled PSG and Clicker device on/off switch
  - User-selectable VDP frequency (50/60Hz), saved in the 93C46 EEPROM
 
 

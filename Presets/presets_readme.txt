@@ -1,6 +1,6 @@
 Register Configuration Presets
 Carnivore and Carnivore2 Cartridges
-Copyright (C) 2017 RBSC
+Copyright (C) 2017-2018 by RBSC
 
 The RCP files should be loaded for certain ROM files or for ROM files of certain size.
 Below is the list of currently available RCP files and their descriptions.
@@ -21,6 +21,12 @@ ALESTE2.RCP	- RCP file for "Aleste 2" game
 MANBOW2.RCP	- RCP file for "Manbow 2" game, R1 and R2 (see the patch note below)
 1942.RCP	- RCP file for "1942" MSX2 game (shared by Carmeloco)
 LIFEMARS.RCP	- RCP file for "Life on Mars" game
+ZOMBIE.RCP	- RCP file for "Zombie Outbreak" game
+IKARI.RCP	- RCP file for "Ikari Warrior" game
+LIFEMARS.RCP	- RCP file for "Life on Mars" game
+GMASTER.RCP	- RCP file for "Konami Game Master 1" ROM (must be located in the first page of the 64kb block)
+GMASTER2.RCP	- RCP file for "Konami Game Master 2" ROM
+
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
 more information about this file.

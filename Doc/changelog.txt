@@ -1,7 +1,14 @@
 Changelog for Carnifore2 MultiFunctional Cartridge
-Copyright (c) 2017 RBSC
+Copyright (c) 2017-2018 by RBSC
 English verison
 --------------------------------------------------
+
+03.02.2018
+
+1. Fixed an error in the directory record deletion dialog in the C2MAN and C2MAN_40 utilities
+
+2. A few RCP files have been added
+
 
 03.01.2018
 

@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
-; Copyright (c) 2015-2017 RBSC
-; Version 1.35
+; Copyright (c) 2015-2018 RBSC
+; Version 1.36
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -3861,6 +3861,7 @@ R_DEL1a:ld	c,_INNOE
 	jr	z,R_DEL1b
 	cp	"n"
 	jp	z,Pagep			; do not delete
+	push	de
 	jr	R_DEL1a
 
 R_DEL1b:call	c_dir
@@ -7379,8 +7380,8 @@ BUFTOP:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v1.35",13,10
-	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v1.36",13,10
+	db	"(C) 2015-2018 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found.",10,13
 	db	"Please specify its slot number - $"
@@ -7397,8 +7398,8 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v1.35",13,10
-	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v1.36",13,10
+	db	"(C) 2015-2018 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found.",10,13
 	db	"Please specify its slot number - $"
@@ -7460,7 +7461,7 @@ BAT:	; BAT table ( 8MB/64kB = 128 )
 	ds	128	
 
 	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000:2017"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000:2018"
 	db	0,0,0
 
 
