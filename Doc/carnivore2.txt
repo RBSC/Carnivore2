@@ -2,7 +2,7 @@
 Carnivore2 Technical Details
 Copyright (c) 2017-2018 by RBSC
 English version
-Last updated on 03.02.2017
+Last updated on 20.02.2017
 --------------------------------------------------------------------------------
 
 NOTE: The hexadecimal numbers are shown as #90, 90h or 0x90
@@ -17,7 +17,7 @@ Main features:
  - FMPAC (OPLL) emulation in subslot 3, supports 8kb SRAM emulation
  - 1024KB RAM with mapper in subslot 2
  - 720KB shadow RAM at physical address range 040000h-0F0000h
- - Additional 1kb configuration EEPROM (M93C46MN1), works in 8-bit mode
+ - Additional 128 byte configuration EEPROM (M93C46MN1), works in 8-bit mode
  - User-selectable volume for SCC and FMPAC (8 steps), saved in 93C46 EEPROM
  - User-selectable volume for PSG and Clicker (8 steps), saved in 93C46 EEPROM
  - User-controlled PSG and Clicker device on/off switch
@@ -150,7 +150,7 @@ To enable 8kb of SRAM at address 4000h-5FFFh, set 4Dh to 5FFEh and 69h to 5FFFh.
 --------------------------------------------------------------------------------
 [Additional Configuration EEPROM]
 
-Model: M93C46MN1 (1kb)
+Model: M93C46MN1 (128 bytes/1 kbit)
 Datasheet: http://www.atmel.com/Images/doc5140.pdf
 The EEPROM is used in 8-bit mode
 
@@ -184,7 +184,7 @@ first byte. The main control register is called "CardMDR".
 
 After power on the registers are located at address #4F80. All registers are write-
 only except the pseudo-register for sending/receiving the data when accessing the
-FlashROM.
+FlashROM and the register for the configuration EEPROM.
 
 Below you can find the description of configuration registers.
 
@@ -210,9 +210,9 @@ Below you can find the description of configuration registers.
 		1 - BIOS data (boot block, IDE controller, FMPAC) is read from RAM
 		Warning! The data must be copied into DAM before setting this bit!
 	0 bit - configuration registers visibility control
-		0 - configuration registers are visible at addresses 0F80h/4F80h/8F80h/CF80h
+		0 - all configuration registers are visible at addresses 0F80h/4F80h/8F80h/CF80h
 		depending on the values of bits 5 and 6
-		1 - configuration registers are not visible, the data from the corresponding
+		1 - configuration registers are not visible, 1 byte of data from the corresponding
 		block in the FlashROM is available at those addresses
 
 +#01	AddrM0	- lower address register (bits 7-0) for accessing the FlashROM
@@ -319,7 +319,7 @@ Fourth bank configuration registers
 	6 bit - mapper port reading
 		1 - MMM mapper ports FC,FD,FE,FF reading is enabled
 		0 - MMM mapper ports FC,FD,FE,FF reading is disabled
-	5 bit - FMPAC (YM2413) ports 3Ch,3Dh control
+	5 bit - FMPAC (YM2413) ports 7Ch,7Dh control
 		1 - FMPAC ports are enabled
 		0 - FMPAC ports are disabled
 	4 bit - MMM mapper port 3Ch control
