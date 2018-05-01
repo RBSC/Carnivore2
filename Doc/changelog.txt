@@ -22,7 +22,7 @@ English verison
    are asking whether to load the RCP data. In autoloading mode the RCP data is loaded automatically
 
 8. The C2RAMLDR utility can now reset the computer on-demand or automatically after loading the ROM file
-   if the /r command line option is used
+   if the /r command line option is used; the restart option has been added into the menu
 
 9. After writing IDE or FMPAC BIOS into the cartridge there's no longer a problem with directory editing.
    In the past the directory was shown as corrupted because of incorrect configuration after BIOS flashing.
