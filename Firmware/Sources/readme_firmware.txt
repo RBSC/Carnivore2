@@ -1,8 +1,8 @@
 Carnivore2 MultiFunctional Cartridge version 2.2
-Copyright (c) 2017 RBSC
+Copyright (c) 2017-2018 RBSC
 Portions (c) Mitsutaka Okazaki
 Portions (c) Kazuhiro Tsujikawa
-Last release: 04.12.2017
+Last updated: 29.04.2018
 
 The Altera firmware was created by RBSC. Commercial usage is not allowed!
 

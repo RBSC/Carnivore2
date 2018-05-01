@@ -8,7 +8,8 @@ Below is the list of currently available RCP files and their descriptions.
 48K_GAME.RCP	- generic RCP file for 49152 byte ROMs without mapper (except for "Spy vs Spy")
 64K_GAME.RCP	- generic RCP file for 65535 byte ROMs without mapper
 64K_MAPP.RCP	- generic RCP file for 65535 byte ROMs with mapper
-DSK2ROM.RCP	- generic RCP file for DSK images converted into ROM with the DSK2ROM utility (Konami SCC mapper)
+DSK2ROM1.RCP	- generic RCP file for DSK images converted into ROM with the DSK2ROM utility (Konami SCC mapper)
+DSK2ROM2.RCP	- generic RCP file for DSK images converted into ROM with the DSK2ROM utility (ASCII 8-bit mapper)
 MGEAR2.RCP	- RCP file for "Metal Gear 2: Solid Snake game" (any version)
 NEWGOONI.RCP	- RCP file for "Goonies 'r' good enough" (remake of Goonies)
 SM_WORLD.RCP	- RCP file for "Super Mario World" game
@@ -26,7 +27,7 @@ IKARI.RCP	- RCP file for "Ikari Warrior" game
 LIFEMARS.RCP	- RCP file for "Life on Mars" game
 GMASTER.RCP	- RCP file for "Konami Game Master 1" ROM (must be located in the first page of the 64kb block)
 GMASTER2.RCP	- RCP file for "Konami Game Master 2" ROM
-
+NEM3E102.RCP	- RCP file for "Nemesis 3 Enhanced v1.02" game (shared by Carmeloco)
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
 more information about this file.

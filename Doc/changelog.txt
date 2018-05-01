@@ -3,6 +3,33 @@ Copyright (c) 2017-2018 by RBSC
 English verison
 --------------------------------------------------
 
+29.04.2018 (firmware update is highly recommended)
+
+1. Added Z80/R800 mode toggle for Turbo-R machines with 'T' button
+
+2. Added Turbo mode toggle for Panasonic MSX2+ machines with 'T' button
+
+3. Added indication of Z80/Turbo/R800 mode to the status screen
+
+4. The CF card's clock speed is now independent from the CPU's clock speed. So the IDE will work correctly
+   even if the CPU speed is above normal. Also a few minor errors in the firmware were fixed
+
+5. The selected VDP frequency and/or Turbo/R800 mode is preserved for ROMs after system restart
+
+6. Corrections were made into the documentation regarding the PosSiz register and the Turbo/R800 modes
+
+7. When an RCP file with the same name as ROM file is found, the C2MAN, C2MAN40 and C2RAMLDR utilities
+   are asking whether to load the RCP data. In autoloading mode the RCP data is loaded automatically
+
+8. The C2RAMLDR utility can now reset the computer on-demand or automatically after loading the ROM file
+   if the /r command line option is used
+
+9. After writing IDE or FMPAC BIOS into the cartridge there's no longer a problem with directory editing.
+   In the past the directory was shown as corrupted because of incorrect configuration after BIOS flashing.
+
+10. A few RCP files have been added
+
+
 03.02.2018
 
 1. Fixed an error in the directory record deletion dialog in the C2MAN and C2MAN_40 utilities

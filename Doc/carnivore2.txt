@@ -2,7 +2,7 @@
 Carnivore2 Technical Details
 Copyright (c) 2017-2018 by RBSC
 English version
-Last updated on 20.02.2017
+Last updated on 21.04.2018
 --------------------------------------------------------------------------------
 
 NOTE: The hexadecimal numbers are shown as #90, 90h or 0x90
@@ -231,9 +231,9 @@ First bank configuration registers
 ----------------------------------
 
 +#06	R1Mask	- bitmask for bank's register address
-		This value is normally mirrored into several addresses, for example for Konami 5
-		cartridges those addresses for the first bank are 5000h-57FFh. Here we use only
-		the high byte's address - F8h (11111000b)
+	This value is normally mirrored into several addresses, for example for Konami 5
+	cartridges those addresses for the first bank are 5000h-57FFh. Here we use only
+	the high byte's address - F8h (11111000b)
 	The default value of this register is F8h
 
 +#07	R1Addr	- high byte of the bank's address register (example: 50h for address 5000h)
@@ -248,8 +248,8 @@ First bank configuration registers
 		1 - bank's register is enabled
 		0 - bank's control is disabled
 	6 bit - mirroring control
-		1 - mirroring is enabled
-		0 - mirroring is disabled
+		1 - mirroring is disabled
+		0 - mirroring is enabled
 	5 bit - media type selection
 		0 - FlashROM
 		1 - RAM
@@ -270,8 +270,8 @@ First bank configuration registers
 	The default value of this register is 85h
 
 +#0A	B1MaskR - bitmask for bank's addressing mode into the FlashROM
-		This is the ROM's emulated size and the number of pages. For example for a
-		128kb ROM we will need 16 pages of 8kb, so we set the 0Fh (00001111b) mask.
+	This is the ROM's emulated size and the number of pages. For example for a
+	128kb ROM we will need 16 pages of 8kb, so we set the 0Fh (00001111b) mask.
 	The default value of this register is 03h
 
 +#0B	B1AdrD - high byte of the bank's address (example: 40h for address 4000h)
@@ -416,11 +416,13 @@ Each directory entry occupies 40h (64 bytes) and has the following format:
 +#3D	PosSiz - size and position in 64kb block for mini ROMs
 
 	7 bit - reserved
-	6,5,4 bits - offset of mini ROM in 64kb block
-		000b = 0 kb
-		001b = 8 kb
-		010b = 16 kb
-		011b = 24 kb
+	6,5,4 bits - offset of mini ROM in 64kb block based on ROM's size
+                	8 kb  16 kb  32 kb
+        	--------------------------
+		000b =  0 kb   0 kb   0 kb
+		001b =  8 kb  16 kb  32 kb
+		010b = 16 kb  32 kb
+		011b = 24 kb  48 kb
 		100b = 32 kb
 		101b = 40 kb
 		110b = 48 kb
@@ -515,6 +517,18 @@ Each directory entry occupies 40h (64 bytes) and has the following format:
 
 The physical address of the RAM allocated for the mapper is 100000h-1FFFFFh, which
 means that the second part of the RAM chip is used for it.
+
+
+--------------------------------------------------------------------------------
+[CONFIGURATION_EEPROM]
+
+The address allocation for the data in the configuration EEPROM (93C46) can be found below.
+
+[01] - FMPAC and SCC volume, 3 bits per value, max volume is 8, first 2 bits are used as flags
+
+[02] - 50 or 60 Hz VDP frequency flag, bit 1 from this byte is used - if this bit is zero then 60 Hz is used
+
+[03] - PSG and clicker enable/disable flags and volumes, 3 bits per volume, max volume is 8, first 2 bits are used as enable/disable flags
 
 
 --------------------------------------------------------------------------------

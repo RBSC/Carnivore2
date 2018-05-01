@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's ROM->RAM Loader
-; Copyright (c) 2015-2017 RBSC
-; Version 1.14
+; Copyright (c) 2015-2018 RBSC
+; Version 1.20
 ;
 
 
@@ -28,47 +28,47 @@ CSRY	equ	#F3DC
 CSRX	equ	#F3DD
 ARG:	equ	#F847
 EXTBIO:	equ	#FFCA
-MNROM:   equ    #FCC1		; Main-ROM Slot number & Secondary slot flags table
+MNROM:	equ	#FCC1		; Main-ROM Slot number & Secondary slot flags table
 
-CardMDR: equ	#4F80
-AddrM0: equ	#4F80+1
-AddrM1: equ	#4F80+2
-AddrM2: equ	#4F80+3
-DatM0: equ	#4F80+4
+CardMDR:	equ	#4F80
+AddrM0:	equ	#4F80+1
+AddrM1:	equ	#4F80+2
+AddrM2:	equ	#4F80+3
+DatM0:	equ	#4F80+4
 
-AddrFR: equ	#4F80+5
+AddrFR:	equ	#4F80+5
 
-R1Mask: equ	#4F80+6
-R1Addr: equ	#4F80+7
-R1Reg:  equ	#4F80+8
-R1Mult: equ	#4F80+9
-B1MaskR: equ	#4F80+10
+R1Mask:	equ	#4F80+6
+R1Addr:	equ	#4F80+7
+R1Reg:	equ	#4F80+8
+R1Mult:	equ	#4F80+9
+B1MaskR:	equ	#4F80+10
 B1AdrD:	equ	#4F80+11
 
-R2Mask: equ	#4F80+12
-R2Addr: equ	#4F80+13
-R2Reg:  equ	#4F80+14
-R2Mult: equ	#4F80+15
-B2MaskR: equ	#4F80+16
+R2Mask:	equ	#4F80+12
+R2Addr:	equ	#4F80+13
+R2Reg:	equ	#4F80+14
+R2Mult:	equ	#4F80+15
+B2MaskR:	equ	#4F80+16
 B2AdrD:	equ	#4F80+17
 
-R3Mask: equ	#4F80+18
-R3Addr: equ	#4F80+19
-R3Reg:  equ	#4F80+20
-R3Mult: equ	#4F80+21
-B3MaskR: equ	#4F80+22
+R3Mask:	equ	#4F80+18
+R3Addr:	equ	#4F80+19
+R3Reg:	equ	#4F80+20
+R3Mult:	equ	#4F80+21
+B3MaskR:	equ	#4F80+22
 B3AdrD:	equ	#4F80+23
 
-R4Mask: equ	#4F80+24
-R4Addr: equ	#4F80+25
-R4Reg:  equ	#4F80+26
-R4Mult: equ	#4F80+27
-B4MaskR: equ	#4F80+28
+R4Mask:	equ	#4F80+24
+R4Addr:	equ	#4F80+25
+R4Reg:	equ	#4F80+26
+R4Mult:	equ	#4F80+27
+B4MaskR:	equ	#4F80+28
 B4AdrD:	equ	#4F80+29
 
-CardMod: equ	#4F80+30
+CardMod:	equ	#4F80+30
 
-CardMDR2: equ   #4F80+31
+CardMDR2:	equ	#4F80+31
 ConfFl:	equ	#4F80+32
 ADESCR:	equ	#4010
 
@@ -230,15 +230,29 @@ Ma01:	ld	c,_INNOE
 	call	DOS	
 	cp	27
 	jp	z,Exit
+	cp	"3"
+	jr	z,Reset
 	cp	"0"
 	jp	z,Exit
 	cp	"1"
-	jp	z,ADDimage
+	jr	z,ADDimage
 	cp	"2"
-	jp	nz,Ma01
+	jr	nz,Ma01
 	xor 	a
 	jr	ADDimgR
 
+Reset:
+; Restore slot configuration!
+        ld      a,(ERMSlt)
+        ld      h,#40
+        call    ENASLT
+        ld      a,(ERMSlt)
+        ld      h,#80
+        call    ENASLT
+
+	rst	#30			; call to BIOS
+	db	0			; slot
+	dw	0			; address
 
 ;
 ; ADD ROM image
@@ -406,7 +420,87 @@ opf3:	push	bc
 	ld	c,_STROUT
 	call	DOS
 
-; file open
+; load RCP file if exists
+	xor	a
+	ld	(RCPData),a		; erase RCP data
+
+	ld	hl,FCB
+	ld	de,FCBRCP
+	ld	bc,40
+	ldir				; copy FCB
+	ld	hl,RCPExt
+	ld	de,FCBRCP+9
+	ld	bc,3
+	ldir				; change extension to .RCP
+
+	ld	de,FCBRCP
+	ld	c,_FOPEN
+	call	DOS			; Open RCP file
+	or	a
+	jr	nz,opf4
+	ld      hl,30
+	ld      (FCBRCP+14),hl     	; Record size = 30 bytes
+
+	ld      c,_SDMA
+	ld      de,BUFTOP
+	call    DOS
+
+	ld	hl,1
+	ld      c,_RBREAD
+	ld	de,FCBRCP
+	call    DOS			; read RCP file
+
+	push	af
+	push	hl
+	ld	de,FCBRCP
+	ld	c,_FCLOSE
+	call	DOS			; close RCP file
+	pop	hl
+	pop	af
+	or	a
+	jr	nz,opf4
+	ld	a,l
+	cp	1			; 1 record (30 bytes) read?
+	jr	nz,opf4
+
+	ld	a,(F_A)
+	or	a
+	jr	nz,opf32		; skip question
+
+	print	RCPFound		; ask to skip autodetection
+
+opf31:	ld	c,_INNOE		; load RCP?
+	call	DOS
+	or	%00100000
+	cp	"n"
+	jr	z,opf4
+	cp	"y"
+	jr	nz,opf31
+
+opf32:
+	ld	hl,BUFTOP
+	ld	de,RCPData
+	ld	bc,30
+	ldir				; copy read RCP data to its place
+	ld	hl,RCPData+#04
+	ld	a,(hl)
+	or	%00100000		; for ROM use and %11011111
+	ld	(hl),a			; set RAM as source
+	ld	hl,RCPData+#0A
+	ld	a,(hl)
+	or	%00100000		; for ROM use and %11011111
+	ld	(hl),a			; set RAM as source
+	ld	hl,RCPData+#10
+	ld	a,(hl)
+	or	%00100000		; for ROM use and %11011111
+	ld	(hl),a			; set RAM as source
+	ld	hl,RCPData+#16
+	ld	a,(hl)
+	or	%00100000		; for ROM use and %11011111
+	ld	(hl),a			; set RAM as source
+
+; ROM file open
+opf4:
 	ld	de,FCB
 	ld	c,_FOPEN
 	call	DOS			; Open file
@@ -428,6 +522,7 @@ Fpo:
 	ld      c,_SDMA
 	ld      de,BUFTOP
 	call    DOS
+
 ; get file size
 	ld	hl,FCB+#10
 	ld	bc,4
@@ -564,7 +659,6 @@ Fptl:	ld	hl,#8000
 	ld	(hl),b
 	ldir				; clear descr tab
 
-
 	ld	ix,BUFTOP		; test #0000
 	call	fptl00
 	ld	(ROMJT0),a
@@ -614,11 +708,9 @@ fpt08:
 	ld	(ROMJI2),a
 
 fpt03:
-
 	ld      c,_SDMA
 	ld      de,BUFTOP
 	call    DOS
-	
 	jp	FPT10
 
 fptl00:
@@ -720,9 +812,9 @@ vrb02:
 ; Map / miniROm select
 	ld	a,(SRSize)
 	and	#0F
-	jr	z,FPT01			; MAPPER ROM
+	jr	z,FPT01A		; MAPPER ROM
 	cp	7
-	jp	c,FPT02			; MINI ROM
+	jp	c,FPT04			; MINI ROM
 
 ;	print	MRSQ_S
 ;FPT03:	ld	c,_INNOE		; 32 < ROM =< 64
@@ -732,15 +824,33 @@ vrb02:
 ;	cp	"y"			; yes minirom
 ;	jr	nz,FPT03
 
-	jr	FPT04			; Mapper detected!
+	jr	FPT01B			; Mapper detected!
 
-
-
-
-FPT01:
+FPT01A:
 	xor	a
 	ld	(SRSize),a	
-FPT04:
+FPT01B:
+	ld	a,(RCPData)
+	or	a			; RCP data available?
+	jp	z,DTMAP
+
+	ld	de,FCB
+	ld	c,_FCLOSE
+	call	DOS			; close file
+
+	ld	hl,RCPData
+	ld	de,Record+#04
+	ld	a,(hl)
+	ld	(de),a			; copy mapper type
+	inc	hl
+	ld	de,Record+#23
+	ld	bc,29
+	ldir				; copy the RCP record to directory record
+
+	print	UsingRCP
+	jp	SFM80
+
+
 ; Mapper types Singature
 ; Konami:
 ;    LD    (#6000),a
@@ -1004,7 +1114,7 @@ DTME1:
 
 	ld	a,(F_A)
 	or	a
-	jr	nz,FPT02		; flag auto yes
+	jr	nz,FPT04		; flag auto yes
 
 	print	MRSQ_S
 FPT03:	ld	c,_INNOE		; 32 < ROM =< 64
@@ -1015,7 +1125,24 @@ FPT03:	ld	c,_INNOE		; 32 < ROM =< 64
 	cp	"y"			; yes minirom
 	jr	nz,FPT03
 
-FPT02:
+FPT04:
+	ld	a,(RCPData)
+	or	a			; RCP data available?
+	jp	z,FPT05
+
+	ld	hl,RCPData
+	ld	de,Record+#04
+	ld	a,(hl)
+	ld	(de),a			; copy mapper type
+	inc	hl
+	ld	de,Record+#23
+	ld	bc,29
+	ldir				; copy the RCP record to directory record
+
+	print	UsingRCP
+	jp	SFM80
+
+FPT05:
 ; Mini ROM set
 	print	NoAnalyze
 	ld	a,5
@@ -1031,7 +1158,6 @@ DTME22:
 	ld	de,FCB
 	ld	c,_FCLOSE
 	call	DOS
-
 
 	ld	a,(DMAP)
 	ld	b,a
@@ -1147,8 +1273,8 @@ DE_F1:
 	ld	ix,ROMJT0
 	and	#0F
 	jp	z,Csm01			; mapper ROM
+
 ;Mini ROM-image
-;;	
 	cp	5			; =< 8Kb
 	jr	nc,Csm04
 
@@ -1377,12 +1503,11 @@ Csm80b:
 	call	HEXOUT
 	print	ONE_NL_S
 
-
-; Search free space in flash
 Csm81:	ld	a,(Record+#3D)
 	and	#0F
 	jp	SFM80			; mapper ROM
 
+; Search free space in flash
 SFM01:
 ;find
 	ld	e,a
@@ -1457,11 +1582,8 @@ SFM80:
 	xor	a
 	ld	(multi),a
 
-sfm81:
 ; Size  - size file 4 byte
-; 
 ; calc blocks len
-;
 	ld	a,(Size+3)
 	or	a
 	jr	nz,DEFOver
@@ -1494,7 +1616,7 @@ DEF09:	call	FrDIR
 
 	ld	a,(F_A)
 	or	a
-	jp	nz,DEF08			; Automatic action
+	jp	nz,DEF08		; Automatic action
 
 ; Directory overfilling?
 	print	DirOver_S
@@ -1648,11 +1770,27 @@ DEF11:
 	call	SaveDIR			; save directory
 
 DEF11A:
-	ld	a,(F_A)
-	or	a
-	jp	nz,Exit			; automatic exit
-	jp	MainM
+	ld	a,(F_R)
+	or	a			; restart?
+	jr	nz,Reset1
 
+	ld	a,(F_A)
+	or	a			; auto mode?
+	jp	nz,Exit
+	jp	MainM	
+
+Reset1:
+; Restore slot configuration!
+        ld      a,(ERMSlt)
+        ld      h,#40
+        call    ENASLT
+        ld      a,(ERMSlt)
+        ld      h,#80
+        call    ENASLT
+
+	rst	#30			; call to BIOS
+	db	0			; slot
+	dw	0			; address
 
 ;-----------------------------------------------------------------------------
 LoadImage:
@@ -1796,14 +1934,14 @@ SaveDIR:
         ld      a,(TPASLOT1)
         ld      h,#40
         call    ENASLT
-; 
+ 
 	ld	a,1	
 	ld	(PreBnk),a
 
         ld      a,(ERMSlt)
         ld      h,#80
         call    ENASLT
-;
+
 	ld	a,(Record)
 	ld	d,a
 	call	c_dir			; calc address directory record
@@ -1813,6 +1951,22 @@ SaveDIR:
 	xor	a
 	ld	(Record+03),a		; correct image size for RAM -> 0
 
+	ld	a,(RCPData)
+	or	a			; RCP data available?
+	jr	z,SaveDIR0
+
+	push	de
+	ld	hl,RCPData
+	ld	de,Record+#04
+	ld	a,(hl)
+	ld	(de),a			; copy mapper type
+	inc	hl
+	ld	de,Record+#23
+	ld	bc,29
+	ldir				; copy the RCP record to directory record
+	pop	de
+
+SaveDIR0:
 	ld	a,(protect)
 	or	a
 	jr	nz,SaveDIR1
@@ -1851,6 +2005,7 @@ SaveDIR2:
 	call	FBProg			; save
 	jr	c,PR_Fail
 	print	Prg_Su_S
+
 LIF04:
 ; file close
 	push	af
@@ -2475,7 +2630,7 @@ he2:	ld	b,a
 
 
 NO_FND:
-;;;;;;;;;;;;;;;;;;;;;
+;
 AutoSeek:
 ; return reg A - slot
 ;	    
@@ -3257,6 +3412,19 @@ fkey05:
 	ld	(F_D),a			; disable directory creation
 	ret
 fkey06:
+	ld	hl,BUFFER+1
+	ld	a,(hl)
+	and	%11011111
+	cp	"R"
+	jr	nz,fkey07
+	inc	hl
+	ld	a,(hl)
+	or	a
+	jr	nz,fkey07
+	ld	a,4
+	ld	(F_R),a			; reset after loading ROM
+	ret
+fkey07:
 	xor	a
 	dec	a			; S - Illegal flag
 	ret
@@ -3359,6 +3527,15 @@ Bi_FNAM db	14,0,"D:FileName.ROM",0
 FCB:	db	0
 	db	"           "
 	ds	28
+	db	0
+
+FCBRCP:	db	0
+	db	"           "
+	ds	28
+	db	0
+
+RCPExt:	db	"RCP"
+
 FILENAME:
 	db	"                                $"
 	db	0
@@ -3385,6 +3562,7 @@ F_P	db	0
 F_A	db	0
 F_V	db	0
 F_D	db	0
+F_R	db	0
 p1e	db	0
 
 ZeroB:	db	0
@@ -3424,6 +3602,7 @@ MAIN_S:	db	13,10
 	db	"---------",13,10
 	db	" 1 - Write ROM image into cartridge's RAM with protection",13,10
 	db	" 2 - Write ROM image into cartridge's RAM without protection",13,10
+	db	" 3 - Restart the computer",13,10
 	db	" 0 - Exit to MSX-DOS",13,10,"$"
 
 EXIT_S:	db	10,13,"Thanks for using the RBSC's products!",13,10,"$"
@@ -3443,6 +3622,11 @@ NoMatch:
 	db	10,13,"No ROM files found in the current directory!",10,13,"$"
 OpFile_S:
 	db	10,13,"Opening file: ","$"
+RCPFound:
+	db	"RCP file with the same name found!"
+	db	10,13,"Use loaded RCP data for this ROM? (y/n)",10,13,"$"
+UsingRCP:
+	db	"Autodetection ignored, using data from RCP file...",10,13,"$"
 F_NOT_F_S:
 	db	"File not found!",13,10,"$"
 F_NOT_FS:
@@ -3509,7 +3693,7 @@ TestRDT:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.14",13,10
+	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.20",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -3551,10 +3735,14 @@ H_PAR_S:
 	db	" /v  - verbose mode (show detailed information)",13,10
 	db	" /p  - switch RAM protection off after copying the ROM",10,13
 	db	" /d  - don't create a directory entry for the uploaded ROM",13,10
-	db	" /a  - autodetect and write ROM image (no user interaction)",13,10,"$"
+	db	" /a  - autodetect and write ROM image (no user interaction)",13,10
+	db	" /r  - restart computer after loading the ROM automatically",10,13,"$"
+
+RCPData:
+	ds	30
 
 	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000:2017"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000:2018"
 	db	0,0,0
 
 BUFTOP:

@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2018 RBSC
-; Version 1.36
+; Version 1.40
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -38,47 +38,47 @@ CSRY	equ	#F3DC
 CSRX	equ	#F3DD
 ARG:	equ	#F847
 EXTBIO:	equ	#FFCA
-MNROM:	equ    #FCC1		; Main-ROM Slot number & Secondary slot flags table
+MNROM:	equ	#FCC1		; Main-ROM Slot number & Secondary slot flags table
 
-CardMDR: equ	#4F80
-AddrM0: equ	#4F80+1
-AddrM1: equ	#4F80+2
-AddrM2: equ	#4F80+3
-DatM0: equ	#4F80+4
+CardMDR:	equ	#4F80
+AddrM0:	equ	#4F80+1
+AddrM1:	equ	#4F80+2
+AddrM2:	equ	#4F80+3
+DatM0:	equ	#4F80+4
 
-AddrFR: equ	#4F80+5
+AddrFR:	equ	#4F80+5
 
-R1Mask: equ	#4F80+6
-R1Addr: equ	#4F80+7
-R1Reg:  equ	#4F80+8
-R1Mult: equ	#4F80+9
-B1MaskR: equ	#4F80+10
+R1Mask:	equ	#4F80+6
+R1Addr:	equ	#4F80+7
+R1Reg:	equ	#4F80+8
+R1Mult:	equ	#4F80+9
+B1MaskR:	equ	#4F80+10
 B1AdrD:	equ	#4F80+11
 
-R2Mask: equ	#4F80+12
-R2Addr: equ	#4F80+13
-R2Reg:  equ	#4F80+14
-R2Mult: equ	#4F80+15
-B2MaskR: equ	#4F80+16
+R2Mask:	equ	#4F80+12
+R2Addr:	equ	#4F80+13
+R2Reg:	equ	#4F80+14
+R2Mult:	equ	#4F80+15
+B2MaskR:	equ	#4F80+16
 B2AdrD:	equ	#4F80+17
 
-R3Mask: equ	#4F80+18
-R3Addr: equ	#4F80+19
-R3Reg:  equ	#4F80+20
-R3Mult: equ	#4F80+21
-B3MaskR: equ	#4F80+22
+R3Mask:	equ	#4F80+18
+R3Addr:	equ	#4F80+19
+R3Reg:	equ	#4F80+20
+R3Mult:	equ	#4F80+21
+B3MaskR:	equ	#4F80+22
 B3AdrD:	equ	#4F80+23
 
-R4Mask: equ	#4F80+24
-R4Addr: equ	#4F80+25
-R4Reg:  equ	#4F80+26
-R4Mult: equ	#4F80+27
-B4MaskR: equ	#4F80+28
+R4Mask:	equ	#4F80+24
+R4Addr:	equ	#4F80+25
+R4Reg:	equ	#4F80+26
+R4Mult:	equ	#4F80+27
+B4MaskR:	equ	#4F80+28
 B4AdrD:	equ	#4F80+29
 
-CardMod: equ	#4F80+30
+CardMod:	equ	#4F80+30
 
-CardMDR2: equ   #4F80+31
+CardMDR2:	equ	#4F80+31
 ConfFl:	equ	#4F80+32
 ADESCR:	equ	#4010
 
@@ -131,7 +131,6 @@ PRGSTART:
 	call	KEYOFF
 
 ;--- Checks the DOS version and sets DOS2 flag
-
 	ld	c,_DOSVER
 	call	DOS
 	or	a
@@ -145,68 +144,12 @@ PRGSTART:
 ;	print	USEDOS2_S		; !!! Commented out by Alexey !!!
 	jp	PrintNote
 
-;--- Prints the title
+; Print the title
 PRTITLE:
 	print	PRESENT_S
 
-; Command line options processing
-	ld	a,1
-	call	F_Key			; C- no parameter; NZ- not flag; S(M)-ilegal flag
-	jr	c,Stfp01
-	jr	nz,Stfp07
-	jp	p,Stfp02
-Stfp03:
-	print	I_FLAG_S
-	jr	Stfp09
-Stfp07:
-	ld	a,1
-	ld	(p1e),a			; File parameter exists!
-
-Stfp02:
-	ld	a,2
-	call	F_Key
-	jr	c,Stfp01
-	jp	m,Stfp03
-	jr	z,Stfp04
-Stfp05:
-	print	I_PAR_S
-Stfp09:	
-	print	H_PAR_S
-	ret
-Stfp04:
-	ld	a,3
-	call	F_Key
-	jr	c,Stfp01
-	jp	m,Stfp03
-	jr	nz,Stfp05
-	ld	a,4
-	call	F_Key
-	jr	c,Stfp01
-	jp	m,Stfp03
-	jr	nz,Stfp05
-	ld	a,5
-	call	F_Key
-	jr	c,Stfp01
-	jp	m,Stfp03
-	jr	nz,Stfp05
-	print	I_MPAR_S
-	jr	Stfp09
-Stfp01:
-	ld	a,(p1e)
-	jr	nz,Stfp06		; if not file parameter
-	xor	a
-	ld	(F_A),a			; Automatic flag not active
-Stfp06:
-	ld	a,(F_SU)
-	or	a
-	jr	z,Stfp08
-	xor	a
-	ld	(protect),a
-
-Stfp08:
-	ld	a,(F_H)
-	or	a
-	jr	nz,Stfp09
+; Process command line options
+	call	CmdLine
 
 ; Find used slot and make shadow copy
 	call	FindSlot
@@ -642,7 +585,91 @@ opf3:	push	bc
 	ld	c,_STROUT
 	call	DOS
 
-; file open
+; load RCP file if exists
+	xor	a
+	ld	(RCPData),a		; erase RCP data
+
+	ld	hl,FCB
+	ld	de,FCBRCP
+	ld	bc,40
+	ldir				; copy FCB
+	ld	hl,RCPExt
+	ld	de,FCBRCP+9
+	ld	bc,3
+	ldir				; change extension to .RCP
+
+	ld	de,FCBRCP
+	ld	c,_FOPEN
+	call	DOS			; Open RCP file
+	or	a
+	jr	nz,opf4
+	ld      hl,30
+	ld      (FCBRCP+14),hl     	; Record size = 30 bytes
+
+	ld      c,_SDMA
+	ld      de,BUFTOP
+	call    DOS
+
+	ld	hl,1
+	ld      c,_RBREAD
+	ld	de,FCBRCP
+	call    DOS			; read RCP file
+
+	push	af
+	push	hl
+	ld	de,FCBRCP
+	ld	c,_FCLOSE
+	call	DOS			; close RCP file
+	pop	hl
+	pop	af
+	or	a
+	jr	nz,opf4
+	ld	a,l
+	cp	1			; 1 record (30 bytes) read?
+	jr	nz,opf4
+
+	ld	a,(F_A)
+	or	a
+	jr	nz,opf32		; skip question
+
+	print	RCPFound		; ask to skip autodetection
+
+opf31:	ld	c,_INNOE		; load RCP?
+	call	DOS
+	or	%00100000
+	call	SymbOut
+	push	af
+	print	ONE_NL_S
+	pop	af
+	cp	"n"
+	jr	z,opf4
+	cp	"y"
+	jr	nz,opf31
+
+opf32:
+	ld	hl,BUFTOP
+	ld	de,RCPData
+	ld	bc,30
+	ldir				; copy read RCP data to its place
+;	ld	hl,RCPData+#04
+;	ld	a,(hl)
+;	and	%11011111
+;	ld	(hl),a			; set ROM as source
+;	ld	hl,RCPData+#0A
+;	ld	a,(hl)
+;	and	%11011111
+;	ld	(hl),a			; set ROM as source
+;	ld	hl,RCPData+#10
+;	ld	a,(hl)
+;	and	%11011111
+;	ld	(hl),a			; set ROM as source
+;	ld	hl,RCPData+#16
+;	ld	a,(hl)
+;	and	%11011111
+;	ld	(hl),a			; set ROM as source
+
+; ROM file open
+opf4:
 	ld	de,FCB
 	ld	c,_FOPEN
 	call	DOS			; Open file
@@ -956,9 +983,9 @@ vrb02:
 ; Map / miniROm select
 	ld	a,(SRSize)
 	and	#0F
-	jr	z,FPT01			; MAPPER ROM
+	jr	z,FPT01A		; MAPPER ROM
 	cp	7
-	jp	c,FPT02			; MINI ROM
+	jp	c,FPT04			; MINI ROM
 
 ;	print	MRSQ_S
 ;FPT03:	ld	c,_INNOE		; 32 < ROM =< 64
@@ -968,15 +995,32 @@ vrb02:
 ;	cp	"y"			; yes minirom
 ;	jr	nz,FPT03
 
-	jr	FPT04			; Mapper detected!
+	jr	FPT01B			; Mapper detected!
 
-
-
-
-FPT01:
+FPT01A:
 	xor	a
 	ld	(SRSize),a	
-FPT04:
+FPT01B:
+	ld	a,(RCPData)
+	or	a			; RCP data available?
+	jp	z,DTMAP
+
+	ld	de,FCB
+	ld	c,_FCLOSE
+	call	DOS			; close file
+
+	ld	hl,RCPData
+	ld	de,Record+#04
+	ld	a,(hl)
+	ld	(de),a			; copy mapper type
+	inc	hl
+	ld	de,Record+#23
+	ld	bc,29
+	ldir				; copy the RCP record to directory record
+
+	print	UsingRCP
+	jp	SFM80
+
 ; Mapper types Singature
 ; Konami:
 ;    LD    (#6000),a
@@ -1240,7 +1284,7 @@ DTME1:
 
 	ld	a,(F_A)
 	or	a
-	jr	nz,FPT02		; flag auto yes
+	jr	nz,FPT04		; flag auto yes
 
 	print	MRSQ_S
 FPT03:	ld	c,_INNOE		; 32 < ROM =< 64
@@ -1251,8 +1295,25 @@ FPT03:	ld	c,_INNOE		; 32 < ROM =< 64
 	cp	"y"			; yes minirom
 	jr	nz,FPT03
 
-FPT02:
+FPT04:
+	ld	a,(RCPData)
+	or	a			; RCP data available?
+	jp	z,FPT05
+
+	ld	hl,RCPData
+	ld	de,Record+#04
+	ld	a,(hl)
+	ld	(de),a			; copy mapper type
+	inc	hl
+	ld	de,Record+#23
+	ld	bc,29
+	ldir				; copy the RCP record to directory record
+
+	print	UsingRCP
+	jp	SFM80
+
 ; Mini ROM set
+FPT05:
 	print	NoAnalyze
 	ld	a,5
 	ld	(DMAP),a		; Minirom
@@ -1945,7 +2006,7 @@ DEF10B:
 DEF11:
 	print	ONE_NL_S
 	call	LoadImage
-	call	LoadDIR
+	call	SaveDIR
 
 	ld	a,(F_A)
 	or	a
@@ -2072,8 +2133,6 @@ LIFM4:	add	a,c
 
 LIFM2:	ld	(PreBnk),a
 
-
-
 	print	LFRI_S
 ;calc loading cycles
 ; Size 3 = 0 ( or oversize )
@@ -2130,7 +2189,7 @@ Fpr02a:	ld	c,_RBREAD
 ;	call	WRTSLT
 
 	call	FBProg2
-	jr	c,PR_Fail
+	jp	c,PR_Fail
 	ld	e,">"			; flashing indicator
 	ld	c,_CONOUT
 	call	DOS
@@ -2152,9 +2211,8 @@ FPr01:	ld	bc,(C8k)
 	ret
 
 
-LoadDIR:
 ; save directory record
-
+SaveDIR:
         ld      a,(ERMSlt)
         ld      h,#40
         call    ENASLT
@@ -2166,24 +2224,42 @@ LoadDIR:
         ld      a,(TPASLOT1)
         ld      h,#40
         call    ENASLT
-; 
+ 
 	ld	a,1	
 	ld	(PreBnk),a
 
         ld      a,(ERMSlt)
         ld      h,#80
         call    ENASLT
-;
+
 	ld	a,(Record)
 	ld	d,a
 	call	c_dir			; calc address directory record
 	push	ix
 	pop	de			; set flash destination
+
+	ld	a,(RCPData)
+	or	a			; RCP data available?
+	jr	z,SaveDIR0
+
+	push	de
+	ld	hl,RCPData
+	ld	de,Record+#04
+	ld	a,(hl)
+	ld	(de),a			; copy mapper type
+	inc	hl
+	ld	de,Record+#23
+	ld	bc,29
+	ldir				; copy the RCP record to directory record
+	pop	de
+
+SaveDIR0:
 	ld	hl,Record		; set source
 	ld	bc,#40			; record size
 	call	FBProg			; save
 	jr	c,PR_Fail
 	print	Prg_Su_S
+
 LIF04:
 ; file close
 	push	af
@@ -2671,6 +2747,7 @@ sfr00:
 	ld	(B1AdrD),a
 	scf
 	ret	
+
 CBAT: 
 ; compile BAT table ( 8MB/64kB = 128 )
 
@@ -2680,7 +2757,6 @@ CBAT:
         ld      (hl),b
         ldir                    	; Initialize with zero
 	
-
 ; Set flash configuration
 	ld	a,(ERMSlt)
 	ld	h,#40			; set 1 page
@@ -2696,7 +2772,6 @@ CBAT:
 	ld	h,#80
 	call	ENASLT
 	xor	a
-
 
 	ld	a,1
 	ld	(CardMDR+#0E),a 	; set 2nd bank to directory map
@@ -2873,254 +2948,6 @@ SymbOut:
 	pop	af
 	ret
 
-
-FindSlot:
-; Auto-detection 
-	ld	ix,TRMSlt		; Tabl Find Slt cart
-        ld      b,3             	; B=Primary Slot
-BCLM:
-        ld      c,0             	; C=Secondary Slot
-BCLMI:
-        push    bc
-        call    AutoSeek
-        pop     bc
-        inc     c
-	bit	7,a	
-	jr      z,BCLM2			; not extended slot	
-        ld      a,c
-        cp      4
-        jr      nz,BCLMI		; Jump if Secondary Slot < 4
-BCLM2:  dec     b
-        jp      p,BCLM			; Jump if Primary Slot < 0
-	ld	a,#FF
-	ld	(ix),a			; finish autodetect
-; slot analise
-	ld	ix,TRMSlt
-	ld	a,(ix)
-	or	a
-	jr	z,BCLNS			; No detection
-; print slot table
-	ld	(ERMSlt),a		; save first detected slot
-
-	print	Findcrt_S
-
-BCLT1:	ld	a,(ix)
-	cp	#FF
-	jr	z,BCLTE
-	and	3
-	add	a,"0"
-	ld	c,_CONOUT
-	ld	e,a
-	call	DOS			; print primary slot number
-	ld	a,(ix)
-	bit	7,a
-	jr	z,BCLT2			; not extended
-	rrc	a
-	rrc	a
-	and	3
-	add	a,"0"
-	ld	e,a
-	ld	c,_CONOUT
-	call	DOS			; print extended slot number
-BCLT2:	ld	e," "
-	ld	c,_CONOUT
-	call	DOS	
-	inc	ix
-	jr	BCLT1
-
-BCLTE:
-	ld	a,(F_A)
-	or	a               
-	jr	nz,BCTSF 		; Automatic flag (No input slot)
-	print	FindcrI_S
-	jp	BCLNE
-BCLNS:
-	print	NSFin_S
-	jp	BCLNE1
-BCLNE:
-	ld	a,(F_A)
-	or	a
-	jr	nz,BCTSF 		; Automatic flag (No input slot)
-
-; input slot number
-BCLNE1:	ld	de,Binpsl
-	ld	c,_BUFIN
-	call	DOS
-	ld	a,(Binpsl+1)
-	or	a
-	jr	z,BCTSF			; no input slot
-	ld	a,(Binpsl+2)
-	sub	a,"0"
-	and	3
-	ld	(ERMSlt),a
-	ld	a,(Binpsl+1)
-	cp	2
-	jr	nz,BCTSF		; no extended
-	ld	a,(Binpsl+3)
-	sub	a,"0"
-	and	3
-	rlc	a
-	rlc	a
-	ld	hl,ERMSlt
-	or	(hl)
-	or	#80
-	ld	(hl),a	
-
-BCTSF:
-; test flash
-;*********************************
-	ld	a,(ERMSlt)
-;TestROM:
-	ld	(cslt),a
-	ld	h,#40
-	call	ENASLT
-	ld	a,#21
-	ld	(CardMDR),a
-	ld	hl,B1ON
-	ld	de,CardMDR+#06		; set Bank1
-	ld	bc,6
-	ldir
-
-	ld	a,#95			; enable write  to bank (current #85)
-	ld	(R1Mult),a  
-
-	di
-	ld	a,#AA
-	ld	(#4AAA),a
-	ld	a,#55
-	ld	(#4555),a
-	ld	a,#90
-	ld	(#4AAA),a		; Autoselect Mode ON
-
-	ld	a,(#4000)
-	ld	(Det00),a		; Manufacturer Code 
-	ld	a,(#4002)
-	ld	(Det02),a		; Device Code C1
-	ld	a,(#401C)
-	ld	(Det1C),a		; Device Code C2
-	ld	a,(#401E)
-	ld	(Det1E),a		; Device Code C3
-	ld	a,(#4006)
-	ld	(Det06),a		; Extended Memory Block Verify Code
-
-	ld	a,#F0
-	ld	(#4000),a		; Autoselect Mode OFF
-	ei
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT          	; Select Main-RAM at bank 4000h~7FFFh
-
-	
-; Print result
-	
-	print 	SltN_S
-	ld	a,(cslt)
-	ld	b,a
-	cp	#80
-	jp	nc,Trp01		; exp slot number
-	and	3
-	jr	Trp02
-Trp01:	rrc	a
-	rrc	a
-	and	%11000000
-	ld	c,a
-	ld	a,b
-	and	%00001100
-	or	c
-	rrc	a
-	rrc	a
-Trp02:	call	HEXOUT	
-	print	ONE_NL_S
-
-	ld	a,(F_V)			; verbose mode?
-	or	a
-	jr	z,Trp02a
-
-	print	MfC_S
-	ld	a,(Det00)
-	call	HEXOUT
-	print	ONE_NL_S
-
-	print	DVC_S
-	ld	a,(Det02)
-	call	HEXOUT
-	ld	e," "
-	ld	c,_CONOUT
-	call	DOS	
-	ld	a,(Det1C)
-	call	HEXOUT
-	ld	e," "
-	ld	c,_CONOUT
-	call	DOS
-	ld	a,(Det1E)
-	call	HEXOUT
-	print	ONE_NL_S
-
-	print	EMB_S
-	ld	a,(Det06)
-	call	HEXOUT
-	print	ONE_NL_S
-
-Trp02a:	ld	a,(Det00)
-	cp	#20
-	jr	nz,Trp03	
-	ld	a,(Det02)
-	cp	#7E
-	jr	nz,Trp03
-	print	M29W640
-	ld	e,"x"
-	ld	a,(Det1C)
-	cp	#0C
-	jr	z,Trp05
-	cp	#10
-	jr	z,Trp08
-	jr	Trp04
-Trp05:	ld	a,(Det1E)
-	cp	#01
-	jr	z,Trp06
-	cp	#00
-	jr	z,Trp07
-	jr	Trp04
-Trp08:	ld	a,(Det1E)
-	cp	#01
-	jr	z,Trp09
-	cp	#00
-	jr	z,Trp10
-	jr	Trp04
-Trp06:	ld	e,"H"
-	jr	Trp04
-Trp07:	ld	e,"L"
-	jr	Trp04
-Trp09:	ld	e,"T"
-	jr	Trp04
-Trp10:	ld	e,"B"
-Trp04:	ld	c,_CONOUT
-	call	DOS
-	print	ONE_NL_S
-
-	ld	a,(Det06)
-	cp	80
-	jp	c,Trp11		
-
-	ld	a,(F_V)			; verbose mode?
-	or	a
-	ret	z
-
-	print	EMBF_S
-	xor	a
-	ret
-Trp11:
-	ld	a,(F_V)			; verbose mode?
-	or	a
-	ret	z
-
-	print	EMBC_S	
-	xor	a
-	ret	
-Trp03:
-	print	NOTD_S
-	scf
-	ret
 
 ;---- Out to conlose HEX byte
 ; A - byte
@@ -5393,8 +5220,8 @@ QFYN:
 	ret	z
 	pop	af
 	print	ONE_NL_S
+	pop	hl
 	jp	UTIL
-
 
 
   if CV=2
@@ -5487,7 +5314,7 @@ Ifop:
 	print	ONE_NL_S
 
 Ifop0:
-; load
+; load BIOS
 	xor	a
 	ld	(multi),a
 	call	LoadImage
@@ -5497,6 +5324,13 @@ Ifop0a:
 	print	ANIK_S
 	ld	c,_INNOE
 	call	DOS
+
+	ld	a,(ERMSlt)
+	ld	h,#40			; Set 1 page
+	call	ENASLT
+	xor	a
+	ld	(AddrFR),a		; Set back the first 64kb
+
 	jp	UTIL
 
 Ifop1:
@@ -5540,7 +5374,7 @@ Boot03:	ld      c,_SDMA
 	ld	bc,(Size+2)
 	ld	a,(Size+1)	
 	dec	a
-	and	%11000000		 ; 2000h 0010 0000
+	and	%11000000		; 2000h 0010 0000
 	or	b
 	or	c
 	jr	z,Boot04
@@ -6906,13 +6740,33 @@ BootFNam:
 	db	0,"BOOTCSCCBIN"
   endif
 Bi_FNAM db	14,0,"D:FileName.ROM",0
-;--- File Control Block
+
+RCPData:
+	ds	30
+
+;--- File Control Blocks
 FCB:	db	0
 	db	"           "
 	ds	28
+
+FCBRCP:	db	0
+	db	"           "
+	ds	28
+
+FCB2:	db	0
+	db	"        RCP"
+	ds	28
+
+FCBROM:	db	0
+	db	"????????ROM"
+	ds	28
+
+RCPExt:	db	"RCP"
+
 FILENAME:
 	db    "                                $"
-Size:	db 0,0,0,0
+
+Size:	db	0,0,0,0
 Record:	ds	#40
 SRSize:	db	0
 multi	db	0
@@ -6945,14 +6799,6 @@ Bracket:
 
 CPCFN:	db	0
 	db	"        RCP"
-FCB2:	
-	db	0
-	db	"        RCP"
-	ds	28
-FCBROM:	
-	db	0
-	db	"????????ROM"
-	ds	28
 
 CPC_B:					; 30 byte
 	ds	1			; type descriptor symbol
@@ -6969,7 +6815,6 @@ BUFFER:	ds	256
 
 
 ;------------------------------------------------------------------------------
-
 ;
 ; Text strings
 ;
@@ -7023,9 +6868,6 @@ DIRINC_F:
 Boot_I_S:
 	db	10,13,"WARNING! The Boot Block will be overwritten! Proceed? (y/n) $"
   if CV=2
-NO_B_UPD:
-	db	10,13,"BIOS shadowing failed, so no BIOS update is possible!"
-	db	10,13,"To override, use the '/su' option at your own risk...",10,13,"$"
 IDE_I_S:
 	db	10,13,"WARNING! The IDE BIOS will be overwritten! Proceed? (y/n) $"
 FMPAC_I_S:
@@ -7055,6 +6897,11 @@ NoMatch:
 	db	10,13,"No ROM files found in the current directory!",10,13,"$"
 OpFile_S:
 	db	10,13,"Opening file: ","$"
+RCPFound:
+	db	"RCP file with the same name found!"
+	db	10,13,"Use loaded RCP data for this ROM? (y/n) $"
+UsingRCP:
+	db	"Autodetection ignored, using data from RCP file...",10,13,"$"
 F_NOT_F_S:
 	db	"File not found!",13,10,"$"
 F_NOT_FS:
@@ -7307,11 +7154,318 @@ BUFTOP:
 ;------------------------------------------------------------------------------
 
 ;
-; Extra data area from #C000 due to lack of code space before control registers
-; Warning! This area may become re-used, so only use data that is needed only once at the startup
+; Extra data area from #C000 due to lack of code space before control registers.
+; Warning! This area may become re-used, so only use data that is needed only once at the startup!
 ;
 	org #C000
 
+FindSlot:
+; Auto-detection 
+	ld	ix,TRMSlt		; Tabl Find Slt cart
+        ld      b,3             	; B=Primary Slot
+BCLM:
+        ld      c,0             	; C=Secondary Slot
+BCLMI:
+        push    bc
+        call    AutoSeek
+        pop     bc
+        inc     c
+	bit	7,a	
+	jr      z,BCLM2			; not extended slot	
+        ld      a,c
+        cp      4
+        jr      nz,BCLMI		; Jump if Secondary Slot < 4
+BCLM2:  dec     b
+        jp      p,BCLM			; Jump if Primary Slot < 0
+	ld	a,#FF
+	ld	(ix),a			; finish autodetect
+; slot analise
+	ld	ix,TRMSlt
+	ld	a,(ix)
+	or	a
+	jr	z,BCLNS			; No detection
+; print slot table
+	ld	(ERMSlt),a		; save first detected slot
+
+	print	Findcrt_S
+
+BCLT1:	ld	a,(ix)
+	cp	#FF
+	jr	z,BCLTE
+	and	3
+	add	a,"0"
+	ld	c,_CONOUT
+	ld	e,a
+	call	DOS			; print primary slot number
+	ld	a,(ix)
+	bit	7,a
+	jr	z,BCLT2			; not extended
+	rrc	a
+	rrc	a
+	and	3
+	add	a,"0"
+	ld	e,a
+	ld	c,_CONOUT
+	call	DOS			; print extended slot number
+BCLT2:	ld	e," "
+	ld	c,_CONOUT
+	call	DOS	
+	inc	ix
+	jr	BCLT1
+
+BCLTE:
+	ld	a,(F_A)
+	or	a               
+	jr	nz,BCTSF 		; Automatic flag (No input slot)
+	print	FindcrI_S
+	jp	BCLNE
+BCLNS:
+	print	NSFin_S
+	jp	BCLNE1
+BCLNE:
+	ld	a,(F_A)
+	or	a
+	jr	nz,BCTSF 		; Automatic flag (No input slot)
+
+; input slot number
+BCLNE1:	ld	de,Binpsl
+	ld	c,_BUFIN
+	call	DOS
+	ld	a,(Binpsl+1)
+	or	a
+	jr	z,BCTSF			; no input slot
+	ld	a,(Binpsl+2)
+	sub	a,"0"
+	and	3
+	ld	(ERMSlt),a
+	ld	a,(Binpsl+1)
+	cp	2
+	jr	nz,BCTSF		; no extended
+	ld	a,(Binpsl+3)
+	sub	a,"0"
+	and	3
+	rlc	a
+	rlc	a
+	ld	hl,ERMSlt
+	or	(hl)
+	or	#80
+	ld	(hl),a	
+
+
+BCTSF:
+; test flash
+;*********************************
+	ld	a,(ERMSlt)
+;TestROM:
+	ld	(cslt),a
+	ld	h,#40
+	call	ENASLT
+	ld	a,#21
+	ld	(CardMDR),a
+	ld	hl,B1ON
+	ld	de,CardMDR+#06		; set Bank1
+	ld	bc,6
+	ldir
+
+	ld	a,#95			; enable write  to bank (current #85)
+	ld	(R1Mult),a  
+
+	di
+	ld	a,#AA
+	ld	(#4AAA),a
+	ld	a,#55
+	ld	(#4555),a
+	ld	a,#90
+	ld	(#4AAA),a		; Autoselect Mode ON
+
+	ld	a,(#4000)
+	ld	(Det00),a		; Manufacturer Code 
+	ld	a,(#4002)
+	ld	(Det02),a		; Device Code C1
+	ld	a,(#401C)
+	ld	(Det1C),a		; Device Code C2
+	ld	a,(#401E)
+	ld	(Det1E),a		; Device Code C3
+	ld	a,(#4006)
+	ld	(Det06),a		; Extended Memory Block Verify Code
+
+	ld	a,#F0
+	ld	(#4000),a		; Autoselect Mode OFF
+	ei
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT          	; Select Main-RAM at bank 4000h~7FFFh
+	
+; Print result
+	print 	SltN_S
+	ld	a,(cslt)
+	ld	b,a
+	cp	#80
+	jp	nc,Trp01		; exp slot number
+	and	3
+	jr	Trp02
+Trp01:	rrc	a
+	rrc	a
+	and	%11000000
+	ld	c,a
+	ld	a,b
+	and	%00001100
+	or	c
+	rrc	a
+	rrc	a
+Trp02:	call	HEXOUT	
+	print	ONE_NL_S
+
+	ld	a,(F_V)			; verbose mode?
+	or	a
+	jr	z,Trp02a
+
+	print	MfC_S
+	ld	a,(Det00)
+	call	HEXOUT
+	print	ONE_NL_S
+
+	print	DVC_S
+	ld	a,(Det02)
+	call	HEXOUT
+	ld	e," "
+	ld	c,_CONOUT
+	call	DOS	
+	ld	a,(Det1C)
+	call	HEXOUT
+	ld	e," "
+	ld	c,_CONOUT
+	call	DOS
+	ld	a,(Det1E)
+	call	HEXOUT
+	print	ONE_NL_S
+
+	print	EMB_S
+	ld	a,(Det06)
+	call	HEXOUT
+	print	ONE_NL_S
+
+Trp02a:	ld	a,(Det00)
+	cp	#20
+	jr	nz,Trp03	
+	ld	a,(Det02)
+	cp	#7E
+	jr	nz,Trp03
+	print	M29W640			; print base model number M29W640G
+	ld	e,"x"
+	ld	a,(Det1C)
+	cp	#0C
+	jr	z,Trp05
+	cp	#10
+	jr	z,Trp08
+	jr	Trp04			; M29W640Gx
+Trp05:	ld	a,(Det1E)
+	cp	#01
+	jr	z,Trp06
+	cp	#00
+	jr	z,Trp07
+	jr	Trp04
+Trp08:	ld	a,(Det1E)
+	cp	#01
+	jr	z,Trp09
+	cp	#00
+	jr	z,Trp10
+	jr	Trp04
+Trp06:	ld	e,"H"			; M29W640GH
+	jr	Trp04
+Trp07:	ld	e,"L"			; M29W640GL
+	jr	Trp04
+Trp09:	ld	e,"T"			; M29W640GT
+	jr	Trp04
+Trp10:	ld	e,"B"			; M29W640GB
+Trp04:	ld	c,_CONOUT
+	call	DOS
+	print	ONE_NL_S
+
+	ld	a,(Det06)
+	cp	80
+	jp	c,Trp11		
+
+	ld	a,(F_V)			; verbose mode?
+	or	a
+	ret	z
+
+	print	EMBF_S
+	xor	a
+	ret
+Trp11:
+	ld	a,(F_V)			; verbose mode?
+	or	a
+	ret	z
+
+	print	EMBC_S	
+	xor	a
+	ret	
+Trp03:
+	print	NOTD_S
+	scf
+	ret
+
+
+; Process command line options
+CmdLine:
+	ld	a,1
+	call	F_Key			; C- no parameter; NZ- not flag; S(M)-ilegal flag
+	jr	c,Stfp01
+	jr	nz,Stfp07
+	jp	p,Stfp02
+Stfp03:
+	print	I_FLAG_S
+	jr	Stfp09
+Stfp07:
+	ld	a,1
+	ld	(p1e),a			; File parameter exists!
+
+Stfp02:
+	ld	a,2
+	call	F_Key
+	jr	c,Stfp01
+	jp	m,Stfp03
+	jr	z,Stfp04
+Stfp05:
+	print	I_PAR_S
+Stfp09:	
+	print	H_PAR_S
+	jp	termdos
+Stfp04:
+	ld	a,3
+	call	F_Key
+	jr	c,Stfp01
+	jp	m,Stfp03
+	jr	nz,Stfp05
+	ld	a,4
+	call	F_Key
+	jr	c,Stfp01
+	jp	m,Stfp03
+	jr	nz,Stfp05
+	ld	a,5
+	call	F_Key
+	jr	c,Stfp01
+	jp	m,Stfp03
+	jr	nz,Stfp05
+	print	I_MPAR_S
+	jr	Stfp09
+Stfp01:
+	ld	a,(p1e)
+	jr	nz,Stfp06		; if not file parameter
+	xor	a
+	ld	(F_A),a			; Automatic flag not active
+Stfp06:
+	ld	a,(F_SU)
+	or	a
+	jr	z,Stfp08
+	xor	a
+	ld	(protect),a
+Stfp08:
+	ld	a,(F_H)
+	or	a
+	jr	nz,Stfp09
+	ret
 
 F_Key:
 ; Input A - Num parameter
@@ -7470,7 +7624,7 @@ DetVDPE:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge Manager v1.36",13,10
+	db	"Carnivore2 MultiFunctional Cartridge Manager v1.40",13,10
 	db	"(C) 2015-2018 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -7484,7 +7638,7 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC Cartridge Manager v1.36",13,10
+	db	"Carnivore MultiFlash SCC Cartridge Manager v1.40",13,10
 	db	"(C) 2015-2018 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found. Please specify its slot number - $"
@@ -7537,6 +7691,10 @@ H_PAR_S:
 	db	" /a  - autodetect and write ROM image (no user interaction)",13,10
 	db	" /su - enable Super User mode",13,10
 	db	"       (editing all registers + IDE BIOS writing without shadow copy)",10,13,"$"
+
+NO_B_UPD:
+	db	10,13,"BIOS shadowing failed, so no BIOS update is possible!"
+	db	10,13,"To override, use the '/su' option at your own risk...",10,13,"$"
 
 BAT:	; BAT table ( 8MB/64kB = 128 )
 	ds	128	

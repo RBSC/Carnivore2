@@ -1,8 +1,8 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's Boot Block
-; Copyright (c) 2015-2017 RBSC
+; Copyright (c) 2015-2018 RBSC
 ; Portions (c) Grauw
-; Version 1.87
+; Version 2.00
 ;
 
 ; !COMPILATION OPTIONS!
@@ -29,6 +29,10 @@ WRITVDP	equ	#0047
 ENADISP	equ	#0044
 DISDISP	equ	#0041
 CHSNS	equ	#009C
+GETCPU  equ     #0183
+CHGCPU  equ     #0180
+RDBTST  equ     #017A
+
 
 ; Variables
 KEYCLK	equ	#F3DB
@@ -48,6 +52,9 @@ PALNTSC	equ	#F56C
 XYPOS	equ	#F56E
 AUTOST	equ	#F570
 PSGCFG	equ	#F572
+ORGVR10	equ	#F574
+MSXTYPE	equ     #F576
+TURBOM	equ	#F578
 VDPR10	equ	#FFE8
 
 ; Card configuration registers
@@ -76,7 +83,7 @@ L_STR	equ	16
 	db	"CSCCFRC"
   endif
 	db	0
-Vers	db	"v1.87"  ; Version | also update it in the header!
+Vers	db	"v2.00"  ; Version | also update it in the header!
 	db	0
 
 
@@ -215,11 +222,12 @@ Boot:
 ; Read 50/60Hz status from EEPROM
 TA_0A:
 	ld	a,(VDPR10)	; read vdp register 10
+	ld	(ORGVR10),a	; save original value
 	ld	(PALNTSC),a	; save current mode
 	xor	a
-	ld	(VDPVER),a	; VDP is 9918 by default	
+	ld	(VDPVER),a	; VDP is v9918 by default	
 	call	DetVDP		; Detect actual VDP
-	ld	(VDPVER),a	; save vdp verison (0=9918, 1=9938, 2=9958)
+	ld	(VDPVER),a	; save vdp verison (0=v9918, 1=v9938, 2=v9958)
 	or	a
 	jr	z,TA_0B		; don't use frequency change on MSX1
 
@@ -230,7 +238,7 @@ TA_0A:
 	jr	z,TA_0B
 	cp	1		; illegal value?
 	jr	z,TA_0B
-	ld	(PALNTSC),a
+	ld	(PALNTSC),a     ; save the value
 	ld	b,a
 	ld	a,9
 	ld	c,a
@@ -240,6 +248,10 @@ TA_0B:
 	call	EERD		; read volume setting from EEPROM
 	ld	(CardMDR+#24),a	; set the previously stored PSG volume
 	ld 	(PSGCFG),a
+
+	ld	a,(VDPVER)
+	inc	a
+	ld	(MSXTYPE),a	; save MSX type
   endif
 
 
@@ -445,6 +457,7 @@ Pagep0:
 	call	PrintInf	; print page number and frequency
 	call	PrintFrq	; print frequency of the display (50/60)
 	call	PrintVol	; print volumes
+        call    PrintTur        ; print turbo/r800/z80 mode
 
 ; Print autostarted entry
 	ld	hl,#2305
@@ -675,6 +688,10 @@ Wait0:
 	jp	z,PSGVolume	; set PSG volume
 	cp	"p"
 	jp	z,PSGVolume	; set PSG volume
+        cp      "T"
+        jp      z,TurboMode     ; toggle Turbo modes
+        cp      "t"
+        jp      z,TurboMode     ; toggle Turbo modes
    endif
 	jp	CH01
 
@@ -829,7 +846,7 @@ PB02:	ld	d,0
 ; Run selected record
 RUN_CT:
 ; Start and autostart
-; ix - point entry pointer
+; ix - directory entry pointer
 
 	ld	a,(ix+#3E)
 	bit	0,a
@@ -869,7 +886,7 @@ RUN_CT1:
 RUN_CT2:
 	ld	a,%00101100
 	ld	(CardMDR),a
-	ld	a,(ix+2)
+	ld	a,(ix+#02)
 	ld	(CardMDR+#05),a	; set start block
 	push	ix
 	pop	hl
@@ -887,7 +904,7 @@ RUN_CT2:
 	ld	a,#C9
 	ld	(R_Base+3),a
 	jp	R_Base
-
+              
 
 ; Run selected record via reset
 RUN_CR:
@@ -895,6 +912,7 @@ RUN_CR:
 	cp	#FF
 	jr	z,RUN_CR2	; skip effects
 
+; Effects
 RUN_CR1:
 	ld	hl,C2FPALM
   if CV=2
@@ -922,46 +940,142 @@ RUN_CR1:
 	call	RestEnv		; restore environment (font, colors, screen)
 
 ; Configure cart register and restart
-; ix - point dir entry
+; ix - directory entry pointer
 RUN_CR2:
+  if CV=2
+	ld	a,(VDPVER)
+	or	a
+	jp	z,RUN_CR22	; no frequency switch for v9918 and v9928, just reset
+
+	ld	a,(ix+#04)	; entry type
+	or	%00100000
+	cp	'c'       
+	jp	z,RUN_CR22	; skip pre-started code
+
+	ld	a,(ORGVR10)	; original value of VDP frequency
+	ld	b,a
+	ld	a,(PALNTSC)	; read current VDP frequency
+	cp	b
+	jp	nz,MakePCode
+	ld	a,(TURBOM)	; Turbo/R800 mode enabled?
+	or	a
+	jp	z,RUN_CR22	; skip pre-started code
+
+MakePCode:
+	ld	a,#20
+	ld	(CardMDR),a	; set immediate configuration change flag, registers at #4F80
+
+	ld	a,(ix+#02)	; start block for rom
+	ld	(CardMDR+#03),a	; set AddrM2 address
+
+	ld	a,(ix+#3D)	; size and position in block
+	ld	b,a
+	and	%00001000
+	or	a		; 48kb ROM?
+	jr	z,ChkRomS
+	ld	a,#40
+	ld	(CardMDR+#02),a	; offset in block AddrM1 for 48kb ROM
+	jr	SetOffs1
+
+ChkRomS:
+	ld	a,b
+	and	%01110000
+	or	a		; no offset in block?
+	jr	z,SetOffs
+	ld	a,b
+	and	%00000111
+	or	a		; not mini-ROM?
+	jr	z,SetOffs
+
+	ld	a,b
+	and	%01110000
+	rrca
+	rrca
+	rrca
+	rrca
+	ld	c,a		; c = offset counter
+	ld	a,b
+	and	%00000111
+	ld	d,#10
+	cp	%00000011	; 4kb?
+	jr	z,FindOffs
+	ld	d,#20
+	cp	%00000100	; 8kb?
+	jr	z,FindOffs
+	ld	d,#40
+	cp	%00000101	; 16kb?
+	jr	z,FindOffs
+	ld	d,#80
+
+FindOffs:
+	ld	b,c
+	ld	a,d
+	xor	a
+FindOffC:
+	add	d
+	djnz	FindOffC
+
+	ld	(CardMDR+#02),a	; offset in block AddrM1
+	jr	SetOffs1
+
+SetOffs:
+	xor	a
+	ld	(CardMDR+#02),a	; offset in block AddrM1
+SetOffs1:
+	xor	a		; start from offset 0000 in block
+	ld	hl,#C100	; address in RAM
+	ld	b,10
+	ld	c,a
+RCopy:
+	ld	a,c
+	ld	(CardMDR+#01),a	
+	ld	a,(CardMDR+#04)
+	ld	(hl),a		; copy 10 bytes from ROM's start ("AB",Init,Statement,Device,Text vectors)
+	inc 	hl
+	inc	c
+	djnz	RCopy
+
+	ld	a,(ix+#3C)
+	ld	(#C200),a	; save CardMDR register for ROM
+	ld	a,(ix+#3D)
+	ld	(#C201),a	; same rom's position and size in block
+	ld	a,(ix+#02)
+	cp	4		; non-user block?
+	jr	nc,RCopy1
+	xor	a
+RCopy1:
+	ld	(#C202),a	; save start block of ROM in the flash chip
+	ld	a,(ix+#3E)
+	ld	(#C203),a	; same rom's start method
+	ld	a,(ix+#04)
+	ld	(#C204),a 	; save entry/mapper type
+
+	ld	de,#C300
+	jr	RUN_CR23
+  endif
+
+RUN_CR22:
 	ld	a,%00101000
-	ld	(CardMDR),a
-	ld	a,(ix+2)
+	ld	(CardMDR),a	; set delayed configuration triggered by JP #0000
+	ld	de,CardMDR+#06
+
+	ld	a,(ix+#02)	; start block
 	ld	(CardMDR+#05),a	; set start block
+
+RUN_CR23:
 	push	ix
 	pop	hl
 	ld	bc,#23
 	add	hl,bc		; config data for registers
-	ld	de,CardMDR+#06
-	ld	bc,24
+	ld	bc,25
 	ldir
-
-	ld	a,(ix+3)
-	cp	1		; only one block long?
-	jr	nz,RUN_CR3
-	ld	a, (hl)
-	and	%00000001
-	or	1
-	ld	(de),a		; disable extended slot for small games
-	inc	hl
-	inc	de
 	ld	a,(hl)
 	and	%11111011
-	ld	(de),a		; set reconfig after jp 0
-	jr	RUN_CR4
+	ld	(de),a		; set reconfig after JP #0000
 
-; !!! Check the reset flag for F4 port from the directory entry!
-; Support for this flag is pending, may be not implemented after all
-RUN_CR3:
-	ld	a,(hl)
-	ld	(de),a
-	inc	hl
-	inc	de
-	ld	a,(hl)
-	ld	(de),a
-
+; Disable "warm" start
 RUN_CR4:
-	in	a,(#F4)
+	in	a,(#F4)		; read from F4 port on MSX2+
 	or	#80
 	out	(#F4),a		; avoid "warm" reset on MSX2+
 
@@ -969,18 +1083,126 @@ Reset:
 	call	CLS
 	ld	hl,ResetCMSG	; print rebooting message
 
-	ld	a,(ix+#04)	; mapper type
-	cp	'C'
-	jp	z,Reset1	; ignore direct start for configuration entries
+	ld	a,(ix+#04)	; entry type
+	or	%00100000
 	cp	'c'       
-	jp	z,Reset1	; ignore direct start for configuration entries
+	jp	z,Reset1	; configuration entry?
 
 	ld	hl,ResetMSG	; print rebooting message with configuration
-Reset1:
-	call	print	
 
-	jp	0000		; reset system
-;	db	#F7,#80,#00,#00	; RST #30 = reset if previous fails
+Reset1:
+	call	print
+
+  if CV=2
+	ld	a,(VDPVER)
+	or	a
+	jp	z,#0000		; just reset if no need to set frequency after reboot
+
+	ld	a,(ix+#04)	; entry type
+	or	%00100000
+	cp	'c'       
+	jp	z,#0000		; just reset if no need to set frequency after reboot
+
+	ld	a,(ORGVR10)	; original value of VDP frequency
+	ld	b,a
+	ld	a,(PALNTSC)	; read current VDP frequency
+	cp	b
+	jp	nz,Reset2
+	ld	a,(TURBOM)	; Turbo/R800 mode enabled?
+	or	a
+	jp	z,#0000		; just reset if no need to set Turbo/R800 after reboot
+
+Reset2:
+	ld	a,#08
+	ld	(CardMDR+#0F),a	; disable second bank
+	ld	(CardMDR+#15),a	; disable third bank
+
+	xor	a
+	ld	(CardMDR+#05),a	; set start block for RAM
+
+	ld	de,CardMDR+#18
+	ld	hl,RAM_TS4B
+	ld	bc,6
+	ldir			; set forth bank to map RAM at #0000:#8000
+
+	ld	a,%00101000
+	ld	(CardMDR),a	; set delayed configuration triggered by JP #0000
+
+	ld	hl,#C100
+	ld	de,#8000
+	ld	bc,10
+	ldir			; copy ROM reader to pre-loader space
+	xor	a
+	ld	b,6
+hdfill:
+	ld	(de),a		; fill with zeroes
+	inc	de
+	djnz	hdfill
+
+	ld	hl,#8000
+	ld	a,"A"
+	ld	(hl),a
+	inc	a
+	inc	hl
+	ld	(hl),a		; form 'AB' header
+	inc	hl
+	ld	a,#10
+	ld	(hl),a
+	ld	a,#40		; set start base for pre-start code
+	inc	hl
+	ld	(hl),a		; set pre-start code's start address (#4010)
+
+	ld	hl,PRE_ROM	; transder pre-start code
+	ld	de,#8010
+	ld	bc,PRE_ROME-PRE_ROM
+	ldir			; copy the pre-start code
+
+	ld	a,(PALNTSC)
+	ld	(#8F00),a	; save frequency setting
+	ld	a,(#C200)
+	ld	(#8F01),a	; save CardMDR register for ROM
+	ld	a,(#C201)
+	ld	(#8F1C),a	; save rom's position and size in block
+	ld	a,(#C202)
+	ld	(#8F1D),a	; save start block of ROM in the flash chip
+	ld	a,(#C203)
+	ld	(#8F1E),a	; same rom's start method
+	ld	a,(#C204)
+	ld	(#8F1F),a 	; save entry/mapper type
+
+	ld	hl,#C300
+	ld	de,#8F02
+	ld	bc,26
+	ldir			; copy all registers to pre-loader
+
+	ld	hl,#C102
+	ld	de,#8F20
+	ld	bc,2
+	ldir			; copy rom's start address to preloader
+
+	ld	a,(TURBOM)
+	ld	(#8F22),a	; save turbo mode status
+	ld	a,(MSXTYPE)
+	ld	(#8F23),a	; save MSX type
+	in	a,(#A8)
+	and	%00001100
+	rrca
+	rrca
+	ld	(#8F24),a	; save cartridge's slot number
+
+	ld	de,CardMDR+#18
+	ld	hl,RAM_TS4BR
+	ld	bc,6
+	ldir			; set forth bank to map empty RAM at #0000:#4000
+
+	ld	a,(#8F1A)
+	ld	(CardMDR+#1E),a	; rom's configuration register for reboot
+
+	ld	a,#08
+	ld	(CardMDR+#09),a	; disable first bank
+  endif
+
+	jp	#0000		; reset to apply changed configuration!
 
 
 ; Run selected record directly (using the ROM's start adddress
@@ -1020,12 +1242,13 @@ RUN_CJ1:
 
 	call	RestEnv		; restore environment (font, colors, screen)
 
+
 ; Configure cart register and start ROM
-; ix - point dir entry
+; ix - directory entry pointer
 RUN_CJ2:
 	ld	a,%00101100
 	ld	(CardMDR),a
-	ld	a,(ix+2)
+	ld	a,(ix+#02)
 	ld	(CardMDR+#05),a	; set start block
 	push	ix
 	pop	hl
@@ -1040,18 +1263,41 @@ RUN_CJ2:
 	ld	bc,RJPE-RJP
 	ldir
 
-	ld	a,(ix+#3E)
-	bit	2,a
+	ld	a,(ix+#3E)	; jump and reset options
+	bit	0,a
+	jr	z,RUN_CJ3
+	xor	a		; start address from #0002
+	ld	(R_Base+8),a
+	jp	R_Base
+
+RUN_CJ3:
+	bit	2,a		; start address from #4000?
 	jp	z,R_Base
-	ld	a,#80
-	ld	(R_Base+5),a
+	ld	a,#80		; start address from #8002
+	ld	(R_Base+8),a
 	jp	R_Base
 
 RJP:
 	ld	a,(#4000)
+	nop
+	nop	; wait for cartridge to enable the config
+	nop
 	ld	hl,(#4002)
 	jp	(hl)
 RJPE:	nop
+
+;	ld	a,(ix+#3E)
+;	bit	2,a
+;	jp	z,R_Base
+;	ld	a,#80
+;	ld	(R_Base+5),a
+;	jp	R_Base
+;
+;RJP:
+;	ld	a,(#4000)
+;	ld	hl,(#4002)
+;	jp	(hl)
+;RJPE:	nop
 
 
 ; Disable autostart
@@ -1998,6 +2244,50 @@ CLS:	push	af
 	ret
 
 
+; Print Turbo/R800 indicator
+PrintTur:
+	push	hl
+	push	de
+	push	bc
+
+	ld	hl,#0818
+	call    POSIT
+	ld	a,(TURBOM)
+	or	a
+	jr	nz,PrintT1
+
+PrintT0:
+	ld	hl,DefMode
+	jr	PrintTE
+
+PrintT1:
+	ld	a,(CHGCPU)
+	cp	#C3		; Turbo-R machine?
+	jr	z,PrintT2
+	ld	a,(RDBTST)
+	cp	#C3		; MSX2+ machine?
+	jr	nz,PrintT0
+	ld	a,8
+	out	(#40),a		; prepare to get vendor ID
+	nop
+	in	a,(#40)		; get vendor ID
+	cpl
+	cp	8		; Panasonic machine?
+	jr	nz,PrintT0
+	ld	hl,T2PMode
+	jr	PrintTE
+
+PrintT2:
+	ld	hl,RTRMode
+
+PrintTE:
+	call	print
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+
+
 ; Print page number and max pages
 PrintInf:
 ;	push	hl
@@ -2063,12 +2353,12 @@ PrintVol:
 	push	de
 	push	bc
 
-	ld	hl,#0A18
+	ld	hl,#0D18
 	call    POSIT
 	ld	hl,VolumeL	; print volume
 	call	print
 
-	ld	hl,#0F18
+	ld	hl,#1218
 	call    POSIT
 	ld	a,(CardMDR+#22)
 	rra
@@ -2076,16 +2366,18 @@ PrintVol:
 	rra
 	and	7
 	inc	a
-	call	hexout		; print fmpac volume
+	add	#30
+	call	CHPUT		; print fmpac volume
 
-	ld	hl,#1618
+	ld	hl,#1818
 	call    POSIT
 	ld	a,(CardMDR+#22)
 	and	7
 	inc	a
-	call	hexout		; print scc volume
+	add	#30
+	call	CHPUT		; print scc volume
 
-	ld	hl,#1D18
+	ld	hl,#1E18
 	call    POSIT
 	ld	a,(CardMDR+#24)
 	rra
@@ -2093,7 +2385,8 @@ PrintVol:
 	rra
 	and	7
 	inc	a
-	call	hexout		; print PSG volume
+	add	#30
+	call	CHPUT		; print PSG volume
 
 	pop	bc
 	pop	de
@@ -2307,6 +2600,81 @@ VDP_VSDO:
 ;	
 
 	org	#5000
+
+
+; Toggle Turbo mode for Panasonic MSX2+ or R800 mode for Turbo-R
+;
+  if CV=2
+TurboMode:
+	ld	a,(VDPVER)
+	or	a		; MSX1?
+	jp	z,CH00
+
+	ld	a,(CHGCPU)
+	cp	#C3		; Turbo-R machine?
+	jr	z,R800Mode
+
+	ld	a,(RDBTST)
+	cp	#C3		; MSX2+ machine?
+	jp	nz,CH00
+
+	ld	a,8
+	out	(#40),a		; prepare to get vendor ID
+	nop
+	in	a,(#40)		; get vendor ID
+	cpl
+	cp	8		; Panasonic machine?
+	jp	nz,CH00
+
+	ld	a,4
+	ld	(MSXTYPE),a	; save MSX type
+
+	ld	a,(TURBOM)
+	or	a
+	jr	z,TurboM1
+	ld	a,1
+	out	(#41),a		; disable Turbo mode on MSX2+
+	dec	a
+	ld	(TURBOM),a
+	call	PrintTur
+	jp	CH00
+	
+TurboM1:
+	xor	a
+	out	(#41),a		; enable Turbo mode on MSX2+
+	inc	a
+	ld	(TURBOM),a
+	call	PrintTur
+	jp	CH00
+
+R800Mode:
+	ld	a,5
+	ld	(MSXTYPE),a	; save MSX type
+
+	ld	a,(GETCPU)
+	cp	#C3		; verify that this is Turbo-R BIOS
+	jp	nz,CH00
+	call	GETCPU		; get processor mode
+	cp	2
+	jp	z,CH00		; return if R800 DRAM mode is on
+	or	a
+	jr	nz,Z80Mode
+	ld	a,%10000001	; R800 mode and LED on
+	call	CHGCPU		; set processor mode
+	ld	a,1
+	ld	(TURBOM),a
+	call	PrintTur
+	jp	CH00
+
+Z80Mode:
+	ld	a,%10000000	; z80 mode and LED off
+	call	CHGCPU		; set processor mode
+	xor	a
+	ld	(TURBOM),a
+	call	PrintTur
+	jp	CH00
+  endif
+
 
 ; Set FMPAC/SCC/SCC+ volume screen
 ;
@@ -2877,6 +3245,175 @@ PSGEnd:
   endif
 
 
+; Special RAM code for pre-startup arrangements (starts at #4000, code starts at #4010)
+; #CF00 = frequency to set
+; #CF01 = CardMDR register
+; #CF02 = bank0 configuration
+; #CF08 = bank1 configuration
+; #CF0E = bank2 configuration
+; #CF14 = bank3 configuration
+; #CF1A = cartridge's slot configuration
+; #CF1B = CardMDR register copy
+; #CF1C = size and position of rom in block
+; #CF1D = start block in flash for ROM
+; #CF1E = start method for ROM
+; #CF1F = mapper symbol
+; #CF20 = rom's start address
+; #CF22 = Turbo mode on/off (1=on)
+; #CF23 = MSX type (4 = Panasonic MSX2+, 5=Turbo-R)
+; #CF24 = cartridge's slot
+
+  if CV=2
+PRE_ROM:
+	di
+	ld	hl,#4020
+	ld	de,#C020
+	ld	bc,#0FE0
+	ldir			; move pre-start block to RAM at #C000
+	ei
+	jp	#C020
+
+; This code starts at #C020 after passing the control
+; Set 60/50 Hz flag into R10
+	nop
+	nop
+	ld	a,(WRITVDP)
+	cp	#C3		; BIOS in page 0?
+	jr	nz,SetTurbo
+
+	ld	a,(#CF00)	; Reset options Bit 3 60/50 Hz
+	ld      b,a
+        ld      a,9
+	ld      c,a
+        call    WRITVDP		; write to VDP R10 register #9  (Bit 1 - PAL/NTSC)
+
+SetTurbo:
+	ld	a,(#CF22)
+	or	a		; turbo/r800 mode on?
+	jr	z,PRE_ROS
+
+	ld	a,(#CF23)
+	cp	4		; not Panasonic MSX2+ or Turbo-R?
+	jr	c,PRE_ROS
+	cp	5
+	jr	z,SetR800
+	xor	a
+	out	(#41),a		; enable Turbo mode on MSX2+
+	jr	PRE_ROS
+
+SetR800:
+	ld	a,(CHGCPU)
+	cp	#C3		; Turbo-R machine with BIOS in page 0?
+	jr	nz,PRE_ROS
+
+	ld	a,%10000001	; R800 mode and LED on
+	call	CHGCPU		; set processor mode
+
+; Set Cartrige registers
+PRE_ROS:
+	ld	a,%00100000
+	ld	(CardMDR),a	; set configuration with immediate trigger and registers at #4F80
+
+	ld	a,(#CF1D)
+	ld	(CardMDR+#05),a	; set start block for ROM
+
+	ld	a,(#CF1E)	; read start address designation
+	push	af
+	ld	a,(#CF1F)	; read entry type before configuration change
+	push	af
+	ld	hl,(#CF20)
+	push	hl		; ROM's start address
+
+	ld	hl,#CF02
+	ld	de,CardMDR+#06
+	ld	bc,26
+	ldir			; set correct configuration for ROM starting by copying registers for 4 pages
+
+	ld	a,(#CF21)
+	cp	#80		; ROM's start base address >#80?
+	jr	c,PRE_ROS3
+
+	ld	a,(#CF24)	; cartridge's slot number
+	rlca
+	rlca
+	rlca
+	rlca
+	ld	b,a
+	in	a,(#A8)
+	and	%11000000	; enable BIOS and Basic for first 2 pages
+	or	b		; select cartridge's slot for #8000 page
+	out	(#A8),a
+	ld	a,(#FFFF)
+	cpl
+	and	%11001111	; page at #8000 must be enabled for games that start above #8000
+	ld	(#FFFF),a
+
+	ld	a,(#CF24)	; cartridge's slot number
+	ld	hl,#FCC1
+	ld	c,a
+	xor	a
+	ld	b,a
+	add	hl,bc
+	ld	a,(hl)
+	cp	#80		; cartridge's slot expanded?
+	jr	nz,PRE_ROS2
+
+PRE_ROS1:
+	inc	hl
+	inc	hl
+	inc	hl
+	inc	hl
+	ld	a,(#FFFF)
+	cpl
+	ld	(hl),a		; set correct subslot configuration for current expanded slot
+
+PRE_ROS2:
+	pop	hl
+	pop	af
+	pop	af
+	jp	(hl)		; direct jump to ROM's startup code in page 3
+
+PRE_ROS3:
+	cp	#40		; ROM's start base address >#40?
+	jr	nc,PRE_ROS2
+
+	ld	a,(#CF24)	; cartridge's slot number
+	ld	b,a
+	in	a,(#A8)
+	and	%11110000	; enable BIOS and Carnivore2 first 2 pages
+	or	b		; select cartridge's slot for #8000 page
+	out	(#A8),a
+
+	ld	a,(#FFFF)
+	cpl
+	and	%11111100	; page at #0000 must be enabled for games that start below #4000
+	ld	(#FFFF),a
+
+	ld	a,(#CF24)	; cartridge's slot number
+	ld	hl,#FCC1
+	ld	c,a
+	xor	a
+	ld	b,a
+	add	hl,bc
+	ld	a,(hl)
+	cp	#80		; cartridge's slot expanded?
+	jr	nz,PRE_ROS2
+
+	inc	hl
+	inc	hl
+	inc	hl
+	inc	hl
+	ld	a,(#FFFF)
+	cpl
+	ld	(hl),a		; set correct subslot configuration for current expanded slot
+	jr	PRE_ROS2
+
+PRE_ROME:
+	nop
+  endif
+
+
+
 StMSG_S:
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
   if CV=2
@@ -2884,7 +3421,7 @@ StMSG_S:
 	db	#8C,"  ",#90,#91," RBSC ",#96," Help",#A5,#92,#91," Volume",#A5,#93,#91," PSG",#A5,#99,#91,"  ",#8D
   else
 	db	#8C,"  Carnivore MultiFlash SCC Cartridge  ",#8D
-	db	#8C,"    ",#90,#91,"2017 RBSC. Press ",#93,#91," for Help    ",#8D
+	db	#8C,"    ",#90,#91,"2018 RBSC. Press ",#93,#91," for Help    ",#8D
   endif
 	db	#8C," ",#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A," ",#8D
 	db	#8C,"  Entry selected for autostart: [  ]  ",#8D
@@ -2991,15 +3528,15 @@ helpmsg:
 	db	#8C,#20,#01,#57,"[R] - reset MSX and start an entry  ",#8D
 	db	#8C,#20,#01,#57,"[A] - select an entry for autostart ",#8D
 	db	#8C,#20,#01,#57,"[D] - disable autostart option      ",#8D
-	db	#8C,#20,#01,#56,"[F] - select 50Hz or 60Hz frequency ",#8D
+	db	#8C,#20,#01,#57,"[F] - select 50Hz or 60Hz frequency ",#8D
+	db	#8C,#20,#01,#56,"[T] - toggle Turbo or R800 mode     ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," Boot Option Keys:                    ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C,#20,#01,#50,"[F4] - disable autostart option     ",#8D
 	db	#8C,#20,#01,#56,"[F5] - disable startup menu         ",#8D
-	db	#8C,"                                      ",#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
-	db	" v1.00       Press any key to return..."
+	db	" v2.00       Press any key to return..."
 	db	0
 
 
@@ -3029,9 +3566,9 @@ OnSym	equ	#A4
 Spaces:
 	db	"  ",0
 PALmsg:
-	db	"[50",#96,"Hz]",0
+	db	"[50Hz",#96,"Z80]",0
 NTSCmsg:
-	db	"[60",#96,"Hz]",0
+	db	"[60Hz",#96,"Z80]",0
 AutoMSG:
 	db	"Autostart is active.",10,13,"ESC, TAB or F4 to abort",0
 AutoDot:
@@ -3042,8 +3579,14 @@ ResetMSG:
 	db	"Necessary changes applied.",10,13,"Rebooting MSX...",0
 PageNum:
 	db	"[  ",#96,"  ]",0
+DefMode:
+	db	"Z80",0
+T2PMode:
+	db	"T2+",0
+RTRMode:
+	db	"R8x",0
 VolumeL:
-	db	"[FMP",#A5,"  ",#96,"SCC",#A5,"  ",#96,"PSG",#A5,"  ]",0
+	db	"[FMP",#A5,"1",#96,"SCC",#A5,"1",#96,"PSG",#A5,"1]",0
 VolumeInd:
 	db	#98,#98,#98,#98,0,0
 IndEmpty1:
@@ -3056,9 +3599,14 @@ DefPSG:
 	db	#1B		; 00011011
 B2ON:
 	db	#F0,#70,#01,#15,#7F,#80
+RAM_TS4B:
+	db	#F8,#80,#00,#35,#7F,#80
+RAM_TS4BR:
+	db	#F8,#80,#00,#25,#7F,#40
 
 ; Font data
 fontdat:
 	dw	0
 
 	include	"font.inc"
+

@@ -1,10 +1,18 @@
 Carnivore2 MultiFunctional Cartridge Readme File
-Copyright (c) 2017 RBSC
-Last updated: 26.12.2017
+Copyright (c) 2017-2018 RBSC
+Last updated: 29.04.2018
 ------------------------------------------------
 
 WARNING! To avoid damage to the Carnivore2 cartridge and your MSX computer hardware never insert or remove the cartridge
 when a computer is powered on! Always power off your computer before inserting or removing of any cartridge!
+
+IMPORTANT! The correct functionality of the Carnivore2 cartridge is not guaranteed in the R800 mode on Panasonic Turbo-R
+computers. There may be various anomalies in this mode, for example the games that require a system restart as well as
+the configuration entries won't work correctly. So for such games and configuration changes it's not recommended to enable
+the R800 mode in the boot block.
+
+NOTE! On certain MSX computers the boot block may not appear after the power is switched on. Pressing the reset button
+usually helps to start the cartridge normally. This will be investigated and fixed in the future.
 
 
 The Setup
@@ -57,6 +65,10 @@ following needs to be done:
  9. With the "6" key select "Write FMPAC ROM BIOS (fmpcmfc.bin)" to write the English FMPAC BIOS
 10. If there were no errors during the steps 5-9, then power down and start your MSX
 
+There's also another way to write the boot block and bioses into the FlashROM chip. This can be done on a diskless computer by
+loading necessary files via the cassette interface and copying them from specially formatter CF card onto a FlashROM. Please
+see the readme.txt file in the "Utils\diskless" folder of RBSC's repository.
+
 
 How to work with Boot Block
 ---------------------------
@@ -66,7 +78,6 @@ After MSX shows its boot logo, the cartridge's boot block should start and you s
 easy. Here are the key assignments:
 
 	[ESC] - boot MSX using the default configuration: all enabled
-	[F] - select 50Hz or 60Hz frequency for VDP
 	[LEFT],[RIGHT] - previous/next directory page
 	[UP],[DOWN] - select ROM/CFG entry
 	[SPACE],[ENTER] - start an entry
@@ -75,6 +86,19 @@ easy. Here are the key assignments:
 	[A] - select an entry for autostart
 	[D] - disable autostart option
 	[F] - select 50Hz or 60Hz frequency
+	[T] - toggle Turbo or R800 mode
+
+The selected VDP frequency is preserved for ROMs that require a reset to start. The frequency setting is saved into the configuration
+EEPROM and is restored even after the computer was powered off and on again.
+
+The Turbo mode can be enabled only on Panasonic MSX2+ computers and R800 mode can be enabled only on Panasonic Turbo-R computers.
+On other computers this functionality does not work. The status of the Turbo or R800 mode is not saved into the configuration
+EEPROM and it is not restored at the start of the boot block after the power was switched off and back on. However the Turbo/R800
+mode is still set for ROMs that require a reset to start. The current mode is displayed in the status screen:
+
+	Z80 - Z80 mode (default)
+	T2+ - Turbo mode for Panasonic MSX2+
+	R8x - R800 mode for Panasonic Turbo-R
 
 Please keep in mind that some ROMs may require alternative starting method, so if pressing SPACE doesn't start the ROM, try
 using the direct start or start after system's reset.
@@ -240,14 +264,21 @@ Loading and saving RCP files
 
 When a ROM file doesn't start properly after being detected by the "c2man" utility, there may be a need to adjust its configuration.
 This can be done either manually - by editing the configuration registers or by loading an RCP (Register Configuration Preset) file.
-We are providing a few RCP files for the ROM files that are not working correctly with default configuration. To load the RCP file
-you need to run the "c2man" utility, enter the directory editor and start editing the selected ROM entry. When editing, select the
-"Save/load register preset" option and then use "Load register preset file". When asked, enter the preset's file name and it will
-be loaded for the entry you are editing. Just save the entry with the new settings and your ROM will start working correctly.
+We are providing a few RCP files for the ROM files that are not working correctly with default configuration.
+
+To load the RCP file manually you need to run the "c2man" utility, enter the directory editor and start editing the selected ROM
+entry. When editing, select the "Save/load register preset" option and then use "Load register preset file". When asked, enter the
+preset's file name and it will be loaded for the entry you are editing. Just save the entry with the new settings and your ROM will
+start working correctly.
 
 When you are making your own configuration settings for a selected ROM file, you can always save them into RCP file. You need to
 select the "Save/load register preset" option and then use "Save register preset file". When asked, entry the name of the RCP file
 and it will be saved for future use.
+
+The latest versions of "c2man", "c2man_40" and "c2ramldr" utilities try to automatically find the matching RCP file when a ROM is
+being loaded. For example if a user writes the "TEST.ROM" file into the cartridge, the utilities will try to locate the "TEST.RCP"
+file and ask a user whether he/she wants to load and use the data from that RCP file. When a ROM file is loaded with the "/a"
+command line option, the data from the matching RCP file is automatically applied.
 
 
 Using the cartridge as MegaRAM
@@ -261,6 +292,9 @@ This utility is similar to "c2man.com" utility - it has a menu that allows user 
 protection. If the ROM is copied without protection, it will be able to write into its own address space. Some games that have
 copy-protection will corrupt their data and won't work. So it's always recommended to apply protection for the copied ROM image in RAM.
 The utility can be also used from the command line to automatically load the ROM image into RAM without any user interaction.
+
+The utility has a feature to restart a computer after loading a ROM image into the cartridge's RAM. This can be either done from the
+utility's main menu or by specifying the /r command line option together with the /a option.
 
 Please note that the ROM's image exists in the cartridge's RAM only until the next power-off unless there's a battery installed into the
 cartridge to always preserve RAM's data. Don't power-off your MSX if you want to keep the ROM in the cartridge's RAM.

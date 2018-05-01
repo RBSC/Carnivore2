@@ -291,7 +291,13 @@ architecture RTL of mcscc is
   signal Sltsl_C_n	: std_logic;
   signal Sltsl_D_n	: std_logic;
   signal Sltsl_M_n  : std_logic;
-  signal Sltsl_F_n  : std_logic;  
+  signal Sltsl_F_n  : std_logic;
+    
+-- Timing
+  signal LRD		: std_logic;
+  signal LRD1		: std_logic;
+  signal Rd_n		: std_logic;
+  signal Wr_n		: std_logic;
 
 -- IDE CF adapter
   signal cReg	       : std_logic_vector(7 downto 0);  
@@ -311,6 +317,8 @@ architecture RTL of mcscc is
   signal rdtn	       : std_logic;   
   signal IDEROMCs_n    : std_logic;
   signal IDEROMADDR    : std_logic_vector(16 downto 0);
+  signal Rdh_n		: std_logic;
+  signal Wrh_n		: std_logic;
   
 -- MAPPER RAM
 
@@ -510,7 +518,9 @@ begin
                     else "000"&R7FF6b4&"000"&R7FF6b0 when Sltsl_F_n = '0' and pSltAdr(15 downto 0) = "0111111111110110"
                     else "000000"&R7FF7 when Sltsl_F_n = '0' and pSltAdr(15 downto 0) = "0111111111110111"
                     else R5FFE when Sltsl_F_n = '0' and pSltAdr(15 downto 0) = "0101111111111110" and CsRAM8k = '1'
-                    else R5FFF when Sltsl_F_n = '0' and pSltAdr(15 downto 0) = "0101111111111110" and CsRAM8k = '1'
+  -- error find Wouter Vermaelen
+  ---               else R5FFF when Sltsl_F_n = '0' and pSltAdr(15 downto 0) = "0101111111111110" and CsRAM8k = '1'
+                    else R5FFF when Sltsl_F_n = '0' and pSltAdr(15 downto 0) = "0101111111111111" and CsRAM8k = '1'
                     
   -- FM Pack ROM read (the same pFlDat)		
   
@@ -546,28 +556,28 @@ begin
 			else aR1Reg  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001000"
 			else aR1Mult when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001001"
 			else aB1MaskR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001010"
-			else aR1Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001011" 
+			else aB1AdrD when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001011" 
 			
 			else aR2Mask when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001100"
 			else aR2Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001101"
 			else aR2Reg  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001110"
 			else aR2Mult when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "001111"
 			else aB2MaskR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010000"
-			else aR2Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010001"
+			else aB2AdrD when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010001"
 			
 			else aR3Mask when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010010"
 			else aR3Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010011"
 			else aR3Reg  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010100"
 			else aR3Mult when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010101"
 			else aB3MaskR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010110"
-			else aR3Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010111"
+			else aB3AdrD when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "010111"
 			
 			else aR4Mask when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011000"
 			else aR4Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011001"
 			else aR4Reg  when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011010"
 			else aR4Mult when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011011"
 			else aB4MaskR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011100"
-			else aR4Addr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011101"
+			else aB4AdrD when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011101"
 			
 			else aMconf when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011110"
 			else CardMDR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "011111"
@@ -654,8 +664,10 @@ begin
                       CardMDR(7) = '0' and pSltAdr (15 downto 14) = CardMDR (6 downto 5)
 				 else '0';
   RloadEn <= '1' when CardMDR(3) = '0' 
-                      or (CardMDR(2) = '0' and pSltAdr(15 downto 0) = "0000000000000000" and pSltM1_n = '0' and pSltRd_n = '0')
-                      or (CardMDR(2) = '1' and pSltAdr(15 downto 4) = "010000000000" and pSltRd_n = '0')
+                      or (CardMDR(2) = '0' and pSltAdr(15 downto 0) = "0000000000000000" and pSltM1_n = '0'
+                          and pSltRd_n = '0' and pSltClk_n = '0')
+                      or (CardMDR(2) = '1' and pSltAdr(15 downto 4) = "010000000000" and pSltRd_n = '0'
+                          and pSltClk_n = '0' and Sltsl_C_n = '0')
                  else '0';
   -- iFsts	 <= CardMDR(0) when CardMDR(1)  = '1' and Sltsl_C_n = '1' else ('Z');
 
@@ -1341,6 +1353,24 @@ begin
 --  begin
 --  
 --  end process ;  
+
+  process (pSltRd_n)
+  begin
+    if    (pSltRd_n = '0' and LRD = '1') then Rd_n <= '0';
+    elsif (pSltRd_n = '1' and LRD = '0') then Rd_n <= '1';
+    end if;
+  end process;
+  process (pSltWr_n)
+  begin
+    if    (pSltWr_n = '0' and LRD = '1') then Wr_n <= '0';
+    elsif (pSltWr_n = '1' and LRD = '0') then Wr_n <= '1';
+    end if;
+  end process;
+  process (pSltClk2)
+  begin
+  if (pSltClk2'event and pSltClk2 = '1') then LRD <= LRD1 ; LRD1 <= Rd_n and Wr_n;
+  end if;
+  end process;
   
 ----------------------------------------------------------------
 -- Set IDE Register
@@ -1351,10 +1381,12 @@ begin
   begin
     if (pSltRst_n = '0') then
       cReg			<= "00000000";
-    elsif (pSltClk_n'event and pSltClk_n = '1') then
+---    elsif (pSltClk_n'event and pSltClk_n = '1') then
  --   elsif (pSltWr_n'event and pSltWr_n = '0') then
       -- Config IDE Sunrise Register
-      if (DecIDEconf = '1' and pSltWr_n = '0') then
+---      if (DecIDEconf = '1' and pSltWr_n = '0') then
+	elsif (Wr_n'event and Wr_n = '0') then
+      if (DecIDEconf = '1') then
         cReg <= pSltDat;
       end if;
     end if;
@@ -1371,43 +1403,59 @@ begin
   IDEReg 		<= '0' when	pSltAdr(9 downto 8) = "11" 
 					   else '1' when Sltsl_D_n = '0' and cReg(0) = '1' and pSltAdr(15 downto 10) = "011111" -- 7C00h-7FEFh
 					   else '0';
-  process(IDEReg, RD_hT1)
+---  process(IDEReg, RD_hT1)
+---  begin
+---    if (CLC_n'event and CLC_n = '0') then
+---      if (IDEReg = '1' and pSltAdr(9) = '0' and  pSltAdr(0) = '0' and pSltRd_n = '0' and RD_hT2 = '1') then 
+---        IDEsIN <=  pIDEDat(15 downto 8);	
+---      end if;
+---    end if;    
+---  end process;
+  process(Rd_n,IDEReg)
   begin
-    if (CLC_n'event and CLC_n = '0') then
-      if (IDEReg = '1' and pSltAdr(9) = '0' and  pSltAdr(0) = '0' and pSltRd_n = '0' and RD_hT2 = '1') then 
-        IDEsIN <=  pIDEDat(15 downto 8);	
-      end if;
-    end if;    
+    if (IDEReg = '1' and pSltAdr(9) = '0' and  pSltAdr(0) = '0' and Rd_n = '0') then
+      IDEsIN <=  pIDEDat(15 downto 8);	
+    end if;
   end process;
   process(IDEReg)
   begin
     if (IDEReg = '1' and pSltAdr(9) = '0' and pSltWr_n = '0' and pSltAdr(0) = '0') then 
       IDEsOUT <=  pSltDat;	
-  end if;   
+    end if;   
   end process; 
-  pIDEDat(15 downto 8) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and RD_hT1 = '0' 
-                                         and pSltRd_n = '1'
-                            else pSltDat when IDEReg = '1' and RD_hT1 = '0' 
-                                              and pSltRd_n = '1' 
-							else (others => 'Z');
-  pIDEDat(7 downto 0) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and RD_hT1 = '0' 
-                                         and pSltRd_n = '1' 
-							else IDEsOUT when IDEReg = '1' and pSltAdr(9) = '0' and pSltAdr(0) = '1' 
-							                  and RD_hT1 = '0' 
-							else (others => 'Z');  
- 
+--- pIDEDat(15 downto 8) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and RD_hT1 = '0' 
+---                                        and pSltRd_n = '1'
+---                           else pSltDat when IDEReg = '1' and RD_hT1 = '0' 
+---                                             and pSltRd_n = '1' 
+---							else (others => 'Z');
+---  pIDEDat(7 downto 0) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and RD_hT1 = '0' 
+---                                         and pSltRd_n = '1' 
+---							else IDEsOUT when IDEReg = '1' and pSltAdr(9) = '0' and pSltAdr(0) = '1' 
+---							                  and RD_hT1 = '0' 
+---							else (others => 'Z');  
+  pIDEDat(15 downto 8) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and Rd_n = '1'
+                       else pSltDat when IDEReg = '1' and Rd_n = '1' 
+					   else (others => 'Z');
+  pIDEDat(7 downto 0) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and Rd_n = '1' 
+					   else IDEsOUT when IDEReg = '1' and pSltAdr(9) = '0' and pSltAdr(0) = '1' 
+							             and Rd_n = '1'
+					   else (others => 'Z');
+
+
   pIDEAdr		<= pSltAdr(2 downto 0) when pSltAdr(9) = '1'
                    else "000";
   pIDECS1_n		<= pSltAdr(3) when pSltAdr(9) = '1'
 				   else '0';
   pIDECS3_n		<= not pSltAdr(3) when pSltAdr(9) = '1'
 				   else '1';
-  pIDERD_n		<= not RD_hT1;
-  pIDEWR_n		<= not WR_hT1;
-
+---  pIDERD_n		<= not RD_hT1;
+---  pIDEWR_n		<= not WR_hT1;
+  pIDERD_n		<= Rdh_n;
+  pIDEWR_n		<= Wrh_n;
   pPIN180		<= '1';
   pIDE_Rst_n	<= pSltRst_n;
-
+  Rdh_n			<= '0' when Rd_n = '0' and IDEReg = '1' and (pSltAdr(9) = '1' or pSltAdr(0) = '0') else '1';
+  Wrh_n			<= '0' when Wr_n = '0' and IDEReg = '1' and (pSltAdr(9) = '1' or pSltAdr(0) = '1') else '1';
 --- **************************************************************************************************
 --- RAM Mapper slot
 ---
@@ -1435,16 +1483,25 @@ begin
   process(pSltRst_n, pSltClk_n)
   begin
     if(pSltRst_n = '0') then
-      MAP_FC <= "0000000" ;
-      MAP_FD <= "0000001" ;
-      MAP_FE <= "0000010" ;
-      MAP_FF <= "0000011" ;
+      
+--     MAP_FC <= "0000000" ;
+--     MAP_FD <= "0000001" ;
+--     MAP_FE <= "0000010" ;
+--     MAP_FF <= "0000011" ;
+--   Wouter Vermaelen  "But the MSX BIOS initializes them like this:"     
+      MAP_FC <= "0000011" ;
+      MAP_FD <= "0000010" ;
+      MAP_FE <= "0000001" ;
+      MAP_FF <= "0000000" ;
+      
       Port3C <= "00000000" ;
     elsif (pSltClk_n'event and pSltClk_n = '1') then
  --   elsif (pSltWr_n' event and pSltWr_n = '0') then
     -- IOR Registers access
      if pSltWr_n = '0' then
-      if(pSltAdr(7 downto 0) = "0011100" and pSltIorq_n = '0' and Port3C(5) = '0' and Mconf(4) = '1') then -- OUT (#3C),a
+--   Wouter Vermaelen find error:    
+--     if(pSltAdr(7 downto 0) = "0011100" and pSltIorq_n = '0' and Port3C(5) = '0' and Mconf(4) = '1') then -- OUT (#3C),a
+      if(pSltAdr(7 downto 0) = "00111100" and pSltIorq_n = '0' and Port3C(5) = '0' and Mconf(4) = '1') then -- OUT (#3C),a
         Port3C(7) <= pSltDat(7);
       end if;
       if(pSltAdr(7 downto 0) = "11111100" and Port3C(5) = '0' and pSltIorq_n = '0') then
@@ -1461,7 +1518,9 @@ begin
       end if;
     -- memory page register access
       if(DEC_P3C = '1') then
-        Port3C(7) <= pSltDat(7) or pSltDat(1);
+--   Wouter Vermaelen find error:    2     
+---     Port3C(7) <= pSltDat(7) or pSltDat(1);
+        Port3C(7) <= pSltDat(7) or pSltDat(5);
         Port3C(6 downto 0) <=  pSltDat(6 downto 0);
       end if;
       if(DEC_PFC = '1') then
@@ -1756,9 +1815,6 @@ begin
     end if;
 
   end process;
-
-
-
   -- I/O port access on A1h ... Resister write
   PsgRegWe <= '1' when DevHit = '1' and pSltIorq_n = '0' and pSltWr_n = '0' and pSltAdr(7 downto 0) = "10100001" else '0';
   -- Connect component
@@ -1768,6 +1824,8 @@ begin
       PsgRegWe
     );
 
+----------------------------------------------------------------
+-- INIT ROM Code Injector
+----------------------------------------------------------------
 
 end RTL;
-

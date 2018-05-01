@@ -1,3 +1,6 @@
+Carnivore2 MultiFunctional Cartridge version 2.2
+Copyright (c) 2017-2018 RBSC
+
 The IDE and FMPAC ROMs bear the copyrights of their respective creators/owners.
 The RBCS was not involved in creation of these ROM files.
 

@@ -1,3 +1,10 @@
+Carnivore2 MultiFunctional Cartridge version 2.2
+Copyright (c) 2017-2018 RBSC
+
+The utilities and the readme.txt file were made by Vladimir and shared with the
+RBSC team for deploying into the repository.
+
+
 Installing ROMs on diskless machine
 -----------------------------------
 
@@ -7,6 +14,7 @@ that does not have disk drive. The installation uses CF card with BIOS images
 plugged into the cartridge itself. Thus before using this method the FPGA
 firmware shall be already loaded to cartridge as describe in readme.txt file in
 root directory.
+
 
 Installation process
 --------------------
@@ -45,36 +53,42 @@ below can be used for that.
       that cursor is at the start of disk. Select "Save" from file menu
  
  2. Insert CF card into the cartridge. Insert the cartridge into MSX machine.
-   Turn on the machine and issue the following Basic command:
+    Turn on the machine and issue the following Basic command:
+
      bload"cas:",r
-   Play the CF2BIOS.WAV file into cassette input of MSX machine. Note: Windows
-   Media Player can not play the file, use audocity
-   (http://www.audacityteam.org/)  
+
+    Play the CF2BIOS.WAV file into cassette input of MSX machine. Note: Windows
+    Media Player can not play the file, use audocity
+    (http://www.audacityteam.org/)  
  
  3. Once the program loaded it will start automatically and will prompt to enter
-   slot number where the cartridge is installed. After slot number is entered
-   and confirmed the program will work autmatically, printing currently executed
-   operation on screen.
+    slot number where the cartridge is installed. After slot number is entered
+    and confirmed the program will work autmatically, printing currently executed
+    operation on screen.
    
  4. After final success message is printed, restart you machine, you should be
-   greeted by the Boot Menu.
+    greeted by the Boot Menu.
+
  
 Further steps
-------------
+-------------
  
 From boot menu press Space in order to boot with default and the only
 configuration. Once booted to Nextore Basic, enter command "call fdisk", format
 your CF card, transfer MSX DOS and  other Carnivore utilities to the card from
 your PC. Boot with the card in the cartridge straight to MSX DOS. Enjoy your
 machine being not diskless any more
+
     
 Using CFTEST utility to verify IDE function on cartridge
 --------------------------------------------------------
 
 Run the utility by playing CFTEST.WAV file into cassette input after entering
-Basic command
+Basic command:
+
   bload"cas:",r
-Note: Windows Media Player can not play the file, use audocity(http://www.audacityteam.org/)
+
+NOTE: Windows Media Player can not play the file, use audocity(http://www.audacityteam.org/)
 
 Enter slot number of the cartridge, press 1 for subslot number,  press "i" key
 to dump ide block, enter block number 0. If the IDE interface functions correctly
@@ -82,4 +96,3 @@ the program will dump the start of first block on CF card immediately. If you
 entered incorrect slot number or IDE is not functional, the will be a long pause
 without output, followed by error message. Press "Esc" key to return to slot
 selection.
-
