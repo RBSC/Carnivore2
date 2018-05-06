@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's SRAM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.01
+; Version 1.02
 ;
 
 
@@ -159,20 +159,22 @@ Stfp07:
 Stfp02:
 	ld	a,2
 	call	F_Key
-	jr	c,Stfp010
+	jr	c,Stfp01
 	jp	m,Stfp03
 	jr	z,Stfp04
 Stfp05:
 	print	I_PAR_S
 Stfp09:	
 	print	H_PAR_S
-	ret
+	jp	Exit
 Stfp04:
 	ld	a,3
 	call	F_Key
 	jr	c,Stfp01
+	jp	m,Stfp03
 	print	I_MPAR_S
 	jr	Stfp09
+
 Stfp01:
 	ld	a,(F_H)
 	or	a
@@ -1992,26 +1994,35 @@ ROTA:	sla	l
 	ret
 
 
-; Clear screen and set mode 80
+; Clear screen and set screen 0
 CLRSCR:
-;	ld	a,40			; 40 symbols for screen0
-;	ld	(SCR0WID),a		; set default width of screen0
 	xor	a
-	ld	ix, #005F
-	ld	iy,0
-	call	CALLSLT			; set screen 0
+	rst	#30
+	db	0
+	dw	#005F
+;	ld	ix, #005F
+;	ld	iy,0
+;	call	CALLSLT			; set screen 0
 	ret
 
 ; Hide functional keys
-KEYOFF:	ld	ix, #00CC
-	ld	iy,0
-	call	CALLSLT			; set screen 0
+KEYOFF:	
+	rst	#30
+	db	0
+	dw	#00CC
+;	ld	ix, #00CC
+;	ld	iy,0
+;	call	CALLSLT			; set screen 0
 	ret
 
 ; Unhide functional keys
-KEYON:	ld	ix, #00CF
-	ld	iy,0
-	call	CALLSLT			; set screen 0
+KEYON:
+	rst	#30
+	db	0
+	dw	#00CF
+;	ld	ix, #00CF
+;	ld	iy,0
+;	call	CALLSLT			; set screen 0
 	ret
 
 
@@ -2049,26 +2060,26 @@ fkey02:	ld	hl,BUFFER+1
 fkey03:	ld	hl,BUFFER+1
 	ld	a,(hl)
 	and	%11011111
-	cp	"V"
+	cp	"H"
 	jr	nz,fkey04
 	inc	hl
 	ld	a,(hl)
 	or	a
 	jr	nz,fkey04
 	ld	a,3
-	ld	(F_V),a			; verbose mode flag
+	ld	(F_H),a			; show help
 	ret
 fkey04:	ld	hl,BUFFER+1
 	ld	a,(hl)
 	and	%11011111
-	cp	"H"
+	cp	"V"
 	jr	nz,fkey05
 	inc	hl
 	ld	a,(hl)
 	or	a
 	jr	nz,fkey05
 	ld	a,4
-	ld	(F_H),a			; show help
+	ld	(F_V),a			; verbose mode flag
 	ret
 fkey05:
 	xor	a
@@ -2132,11 +2143,11 @@ DIRPAG:	db	0,0
 CURPAG:	db	0,0
 
 ; /-flags parameter
-F_H	db	0
+F_A	db	0
 F_D	db	0
 F_U	db	0
 F_V	db	0
-F_A	db	0
+F_H	db	0
 p1e	db	0
 
 ZeroB:	db	0
@@ -2176,7 +2187,7 @@ ABCD:	db	"0123456789ABCDEF"
 MAIN_S:	db	13,10
 	db	"Main Menu",13,10
 	db	"---------",13,10
-	db	" 1 - Download SRAM contents to a file",13,10
+	db	" 1 - Download SRAM's contents to a file",13,10
 	db	" 2 - Upload file's contents into SRAM",13,10
 	db	" 0 - Exit to MSX-DOS",13,10,"$"
 
@@ -2190,7 +2201,7 @@ ANIK_S:
 WR_SRAM_S:
 	db	13,10,"Input file name to upload into SRAM or just press Enter to select files: $"
 SRM_FNM:
-	db	13,10,"Input file name to download SRAM contents to: $"
+	db	13,10,"Input file name to download SRAM's contents to: $"
 SelMode:
 	db	10,13,"Selection mode: TAB - next file, ENTER - select, ESC - exit",10,13,"Found file(s):",9,"$"
 NoMatch:
@@ -2240,7 +2251,7 @@ MD_Fail:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge SRAM Manager v1.01",13,10
+	db	"Carnivore2 MultiFunctional Cartridge SRAM Manager v1.02",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"

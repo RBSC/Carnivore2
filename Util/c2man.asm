@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2018 RBSC
-; Version 1.40
+; Version 1.42
 ;
 ; WARNING!!
 ; The program's code and data before padding must not go over #4F80 to avoid messing the control registers!
@@ -209,6 +209,8 @@ Ma01:	ld	c,_INNOE
 	jp	z,UTIL
 	cp	"1"
 	jp	z,ADDimage
+	cp	"4"
+	jr	z,DoReset
 
   if CV=2
 	cp	"2"
@@ -219,6 +221,21 @@ Ma01:	ld	c,_INNOE
 	jr	Ma01
 
   if CV=2
+
+
+DoReset:
+; Restore slot configuration!
+        ld      a,(ERMSlt)
+        ld      h,#40
+        call    ENASLT
+        ld      a,(ERMSlt)
+        ld      h,#80
+        call    ENASLT
+
+	rst	#30			; call to BIOS
+	db	0			; slot
+	dw	0			; address
+
 ;
 ; Add new configuration entry
 ;
@@ -2282,7 +2299,7 @@ Ld_Fail:
 
 FBProg:
 ; Block (0..2000h) programm to flash
-; hl - buffer sourse
+; hl - buffer source
 ; de = flash destination
 ; bc - size
 ; (Eblock),(Eblock0) - start address in flash
@@ -2327,7 +2344,7 @@ Loop1:
 
 FBProg2:
 ; Block (0..2000h) programm to flash
-; hl - buffer sourse
+; hl - buffer source
 ; de = #8000
 ; bc - Length
 ; (Eblock)x64kB, (PreBnk)x8kB(16kB) - start address in flash
@@ -6038,6 +6055,7 @@ PRB3:	call	HEXOUT
 	print	ONE_NL_S
 	ret
 
+
 ; Clear screen and set mode 40/80 depending on VDP version
 CLRSCR:
 	ld	a,(VDPVER)
@@ -6055,21 +6073,32 @@ Set40:
 	ld	(SCR0WID),a		; set default width of screen0
 SetScr:
 	xor	a
-	ld	ix, #005F
-	ld	iy,0
-	call	CALLSLT			; set screen 0
+	rst	#30
+	db	0
+	dw	#005F
+;	ld	ix, #005F
+;	ld	iy,0
+;	call	CALLSLT			; set screen 0
 	ret
 
 ; Hide functional keys
-KEYOFF:	ld	ix, #00CC
-	ld	iy,0
-	call	CALLSLT			; set screen 0
+KEYOFF:	
+	rst	#30
+	db	0
+	dw	#00CC
+;	ld	ix, #00CC
+;	ld	iy,0
+;	call	CALLSLT			; set screen 0
 	ret
 
 ; Unhide functional keys
-KEYON:	ld	ix, #00CF
-	ld	iy,0
-	call	CALLSLT			; set screen 0
+KEYON:
+	rst	#30
+	db	0
+	dw	#00CF
+;	ld	ix, #00CF
+;	ld	iy,0
+;	call	CALLSLT			; set screen 0
 	ret
 
 
@@ -6835,6 +6864,7 @@ MAIN_S:	db	13,10
 	db	" 2 - Create new configuration entry",13,10
   endif
 	db	" 3 - Browse/edit cartridge's directory",13,10
+	db	" 4 - Restart the computer",13,10
 	db	" 9 - Open cartridge's Service Menu",13,10
 	db	" 0 - Exit to MSX-DOS",13,10,"$"
 
@@ -7431,7 +7461,7 @@ Stfp05:
 	print	I_PAR_S
 Stfp09:	
 	print	H_PAR_S
-	jp	termdos
+	jp	Exit
 Stfp04:
 	ld	a,3
 	call	F_Key
@@ -7624,7 +7654,7 @@ DetVDPE:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge Manager v1.40",13,10
+	db	"Carnivore2 MultiFunctional Cartridge Manager v1.42",13,10
 	db	"(C) 2015-2018 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -7638,7 +7668,7 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC Cartridge Manager v1.40",13,10
+	db	"Carnivore MultiFlash SCC Cartridge Manager v1.42",13,10
 	db	"(C) 2015-2018 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found. Please specify its slot number - $"

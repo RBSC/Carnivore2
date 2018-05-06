@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's ROM->RAM Loader
 ; Copyright (c) 2015-2018 RBSC
-; Version 1.20
+; Version 1.21
 ;
 
 
@@ -158,7 +158,7 @@ Stfp05:
 	print	I_PAR_S
 Stfp09:	
 	print	H_PAR_S
-	ret
+	jp	Exit
 Stfp04:
 	ld	a,3
 	call	F_Key
@@ -3320,26 +3320,35 @@ ROTA:	sla	l
 	ret
 
 
-; Clear screen and set mode 80
+; Clear screen and set screen 0
 CLRSCR:
-;	ld	a,40			; 40 symbols for screen0
-;	ld	(SCR0WID),a		; set default width of screen0
 	xor	a
-	ld	ix, #005F
-	ld	iy,0
-	call	CALLSLT			; set screen 0
+	rst	#30
+	db	0
+	dw	#005F
+;	ld	ix, #005F
+;	ld	iy,0
+;	call	CALLSLT			; set screen 0
 	ret
 
 ; Hide functional keys
-KEYOFF:	ld	ix, #00CC
-	ld	iy,0
-	call	CALLSLT			; set screen 0
+KEYOFF:	
+	rst	#30
+	db	0
+	dw	#00CC
+;	ld	ix, #00CC
+;	ld	iy,0
+;	call	CALLSLT			; set screen 0
 	ret
 
 ; Unhide functional keys
-KEYON:	ld	ix, #00CF
-	ld	iy,0
-	call	CALLSLT			; set screen 0
+KEYON:
+	rst	#30
+	db	0
+	dw	#00CF
+;	ld	ix, #00CF
+;	ld	iy,0
+;	call	CALLSLT			; set screen 0
 	ret
 
 
@@ -3693,7 +3702,7 @@ TestRDT:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.20",13,10
+	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.21",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
