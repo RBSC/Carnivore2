@@ -233,7 +233,7 @@ Stfp40:
 	ldir				; copy prepared fcb to fcb2
 
 
-	jr	rdt921
+	jp	rdt921
 
 
 ; Main menu
@@ -249,7 +249,33 @@ Ma01:	ld	c,_INNOE
 	jp	z,DownSRAM
 	cp	"2"
 	jp	z,UploadSRAM
+	cp	"3"
+	jr	z,DoReset
 	jr	Ma01
+
+
+DoReset:
+; Restore slot configuration!
+        ld      a,(ERMSlt)
+        ld      h,#40
+        call    ENASLT
+
+	xor	a
+	ld	(AddrFR),a
+	ld	a,#38
+	ld	(CardMDR),a
+	ld	hl,RSTCFG
+	ld	de,R1Mask
+	ld	bc,26
+	ldir
+
+	in	a,(#F4)			; read from F4 port on MSX2+
+	or	#80
+	out	(#F4),a			; avoid "warm" reset on MSX2+
+
+	rst	#30			; call to BIOS
+	db	0			; slot
+	dw	0			; address
 
 ;
 ; Download SRAM's contents into a file
@@ -2175,6 +2201,13 @@ B2ON:	db	#F0,#70,#01,#15,#7F,#80
 B23ON:	db	#F0,#80,#00,#04,#7F,#80	; for shadow source bank
 	db	#F0,#A0,#00,#34,#7F,#A0	; for shadow destination bank
 
+RSTCFG:
+	db	#F8,#50,#00,#85,#03,#40
+	db	0,0,0,0,0,0
+	db	0,0,0,0,0,0
+	db	0,0,0,0,0,0
+	db	#FF,#30
+
 ;------------------------------------------------------------------------------
 
 ;
@@ -2189,6 +2222,7 @@ MAIN_S:	db	13,10
 	db	"---------",13,10
 	db	" 1 - Download SRAM's contents to a file",13,10
 	db	" 2 - Upload file's contents into SRAM",13,10
+	db	" 3 - Restart the computer",13,10
 	db	" 0 - Exit to MSX-DOS",13,10,"$"
 
 EXIT_S:	db	10,13,"Thanks for using the RBSC's products!",13,10,"$"

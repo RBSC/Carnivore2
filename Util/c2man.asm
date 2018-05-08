@@ -228,13 +228,24 @@ DoReset:
         ld      a,(ERMSlt)
         ld      h,#40
         call    ENASLT
-        ld      a,(ERMSlt)
-        ld      h,#80
-        call    ENASLT
+
+	xor	a
+	ld	(AddrFR),a
+	ld	a,#38
+	ld	(CardMDR),a
+	ld	hl,RSTCFG
+	ld	de,R1Mask
+	ld	bc,26
+	ldir
+
+	in	a,(#F4)			; read from F4 port on MSX2+
+	or	#80
+	out	(#F4),a			; avoid "warm" reset on MSX2+
 
 	rst	#30			; call to BIOS
 	db	0			; slot
 	dw	0			; address
+
 
 ;
 ; Add new configuration entry
@@ -6125,6 +6136,12 @@ DEF_CFG:
 	db	#FF,#BC,#00,#00,#FF
   endif
 
+RSTCFG:
+	db	#F8,#50,#00,#85,#03,#40
+	db	0,0,0,0,0,0
+	db	0,0,0,0,0,0
+	db	0,0,0,0,0,0
+	db	#FF,#30
 
 CFG_TEMPL:
 	db	#00,#FF,00,00,"C"

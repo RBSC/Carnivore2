@@ -231,7 +231,7 @@ Ma01:	ld	c,_INNOE
 	cp	27
 	jp	z,Exit
 	cp	"3"
-	jr	z,Reset
+	jr	z,DoReset
 	cp	"0"
 	jp	z,Exit
 	cp	"1"
@@ -241,14 +241,24 @@ Ma01:	ld	c,_INNOE
 	xor 	a
 	jr	ADDimgR
 
-Reset:
+DoReset:
 ; Restore slot configuration!
         ld      a,(ERMSlt)
         ld      h,#40
         call    ENASLT
-        ld      a,(ERMSlt)
-        ld      h,#80
-        call    ENASLT
+
+	xor	a
+	ld	(AddrFR),a
+	ld	a,#38
+	ld	(CardMDR),a
+	ld	hl,RSTCFG
+	ld	de,R1Mask
+	ld	bc,26
+	ldir
+
+	in	a,(#F4)			; read from F4 port on MSX2+
+	or	#80
+	out	(#F4),a			; avoid "warm" reset on MSX2+
 
 	rst	#30			; call to BIOS
 	db	0			; slot
@@ -1784,13 +1794,24 @@ Reset1:
         ld      a,(ERMSlt)
         ld      h,#40
         call    ENASLT
-        ld      a,(ERMSlt)
-        ld      h,#80
-        call    ENASLT
+
+	xor	a
+	ld	(AddrFR),a
+	ld	a,#38
+	ld	(CardMDR),a
+	ld	hl,RSTCFG
+	ld	de,R1Mask
+	ld	bc,26
+	ldir
+
+	in	a,(#F4)			; read from F4 port on MSX2+
+	or	#80
+	out	(#F4),a			; avoid "warm" reset on MSX2+
 
 	rst	#30			; call to BIOS
 	db	0			; slot
 	dw	0			; address
+
 
 ;-----------------------------------------------------------------------------
 LoadImage:
@@ -3452,6 +3473,12 @@ RAM_TEMPL:
 	db	#F8,#B0,#03,#AC,#3F,#A0	
 	db	#FF,#BC,#00,#02,#FF
 
+RSTCFG:
+	db	#F8,#50,#00,#85,#03,#40
+	db	0,0,0,0,0,0
+	db	0,0,0,0,0,0
+	db	0,0,0,0,0,0
+	db	#FF,#30
 
 CARTTAB: ; (N x 64 byte) 
 	db	"U"					;1
