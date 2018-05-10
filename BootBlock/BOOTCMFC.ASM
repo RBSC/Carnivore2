@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2018 RBSC
 ; Portions (c) Grauw
-; Version 2.00
+; Version 2.02
 ;
 
 ; !COMPILATION OPTIONS!
@@ -10,29 +10,8 @@ CV	equ	2		; 1 = Canivore
 				; 2 = Canivore2
 EFF	equ	1		; 1 = effects (fade, palette) enabled
 				; 0 = effects disabled
-
-
-; Bios Calls
-ENASLT	equ	#0024
-CHPUT	equ	#00A2
-CLEARS	equ	#00C3
-POSIT	equ	#00C6
-CHGET	equ	#009F
-SSCREEN	equ	#005F
-MODE40	equ	#0078
-MODE40A	equ	#006C
-CHCOLOR	equ	#0062
-ENAKEYS	equ	#00CF
-DISKEYS	equ	#00CC
-KILBUF	equ	#0156
-WRITVDP	equ	#0047
-ENADISP	equ	#0044
-DISDISP	equ	#0041
-CHSNS	equ	#009C
-GETCPU  equ     #0183
-CHGCPU  equ     #0180
-RDBTST  equ     #017A
-
+SPC	equ	0		; 1 = only basic characters are used for UI (for Arabic and Korean computers)
+				; 0 = all characters are used for UI
 
 ; Variables
 KEYCLK	equ	#F3DB
@@ -70,6 +49,8 @@ R_Base	equ	#C010
 L_STR	equ	16
 
 
+;------------------------------------------
+
 	org	#4000
 	db	"AB"	; ROM Identeficator
 	dw	Boot	; Start INIT
@@ -83,7 +64,7 @@ L_STR	equ	16
 	db	"CSCCFRC"
   endif
 	db	0
-Vers	db	"v2.00"  ; Version | also update it in the header!
+Vers	db	"v2.02"  ; Version | also update it in the header!
 	db	0
 
 
@@ -188,8 +169,13 @@ DefBlP	equ	#1701		; 4
 
 ;	Cursor (2 bytes)
 ;
+  if SPC=0
 CURS1	equ	#94
 CURS2	equ	#95
+  else
+CURS1	equ	'>'
+CURS2	equ	'>'
+  endif
 
 
 Boot:
@@ -451,8 +437,18 @@ Pagep0:
 	call	CLS
 	ld	hl,#0101
 	call    POSIT
-	ld	hl,StMSG_S	; print main screen messages
+
+  if SPC=1
+	ld	a,#20
+	ld	(#F3B1),a
+	ld	hl,MainScr	; print main screen messages
 	call	print	
+	ld	a,#18
+	ld	(#F3B1),a
+  else
+	ld	hl,MainScr	; print main screen messages
+	call	print	
+  endif
 
 	call	PrintInf	; print page number and frequency
 	call	PrintFrq	; print frequency of the display (50/60)
@@ -499,10 +495,10 @@ prStr:
 ; record number
 	ld	a,d
 	call	hexout		; print entry number in hex
-
-; space
-;	ld	a,' '
-;	call	CHPUT
+  if SPC=1
+	ld	a,' '
+	call	CHPUT		; print space
+  endif
 
 ; set hl-point
 	push 	ix
@@ -513,8 +509,8 @@ prStr:
 	inc	hl
 
 ; mapper symbols
+  if SPC=0
 	ld	a,(hl)
-;	call	CHPUT
 	cp	'K'
 	jr	nz,sMap1
 	ld	a,#B8
@@ -567,6 +563,24 @@ sMap7:
 	ld	a,#B1
 	call	CHPUT		; output unknown entry symbol
 	ld	a,#B2
+  else
+	ld	a,(hl)
+	cp	'K'
+	jr	z,sCur
+	cp	'k'
+	jr	z,sCur
+	cp	'A'
+	jr	z,sCur
+	cp	'a'
+	jr	z,sCur
+	cp	'C'
+	jr	z,sCur
+	cp	'U'
+	jr	z,sCur
+	cp	'M'
+	jr	z,sCur
+	ld	a,'-'
+  endif
 
 sCur:
 	call	CHPUT
@@ -624,7 +638,6 @@ CH00:
 	call	CHPUT
 	ld	a,CURS2		; print cursor symbol 2
 	call	CHPUT
-
 	ld	hl,#2705
 	call	POSIT		; move cursor to edge of screen
 
@@ -1361,7 +1374,8 @@ ATR_01:	ld	a,(hl)
 	inc	hl
 ATR_00:	call	ATR_B_Prog
 ATR_05:	ld	a,d
-ATR_04:	exx
+ATR_04:
+	exx
 	ld	c,a
 	exx
 	ld	a,1
@@ -1545,8 +1559,24 @@ Help1:
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
-	ld	hl,helpmsg
+  if SPC=1
+	ld	a,#20
+	ld	(#F3B1),a
+	ld	hl,HelpScr	; print help screen
+	call	print	
+	ld	a,#18
+	ld	(#F3B1),a
+  else
+	ld	hl,HelpScr	; print help screen
 	call	print
+  endif
+
+  if SPC=1
+	ld	hl,#0118
+	call    POSIT
+	ld	hl,helpll
+	call	print		; print additional line
+  endif
 
 	ld	hl,#0218
 	call    POSIT
@@ -2724,8 +2754,24 @@ SetVol1:
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
+  if SPC=1
+	ld	a,#20
+	ld	(#F3B1),a
+	ld	hl,VolumeScr	; print volume control screen
+	call	print	
+	ld	a,#18
+	ld	(#F3B1),a
+  else
 	ld	hl,VolumeScr	; print volume control screen
 	call	print
+  endif
+
+  if SPC=1
+	ld	hl,#0118
+	call    POSIT
+	ld	hl,Volll
+	call	print		; print additional line
+  endif
 
 	ld	de,C2FPALV
 	ld	hl,C2BPALV
@@ -2983,8 +3029,24 @@ SetPSG1:
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
+  if SPC=1
+	ld	a,#20
+	ld	(#F3B1),a
+	ld	hl,PSGScr	; print PSG control screen
+	call	print	
+	ld	a,#18
+	ld	(#F3B1),a
+  else
 	ld	hl,PSGScr	; print PSG control screen
 	call	print
+  endif
+
+  if SPC=1
+	ld	hl,#0118
+	call    POSIT
+	ld	hl,PSGll
+	call	print		; print additional line
+  endif
 
 	ld	de,C2FPALP
 	ld	hl,C2BPALP
@@ -3413,8 +3475,8 @@ PRE_ROME:
   endif
 
 
-
-StMSG_S:
+MainScr:
+  if SPC=0
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
   if CV=2
 	db	#8C," Carnivore2 MultiFunctional Cartridge ",#8D
@@ -3444,9 +3506,39 @@ StMSG_S:
 	db	#8C,#01,#56,"                                    ",#01,#54,#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 	db	0
+  else
+	db	#01,#58,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59
+	db	#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#5A
+	db	#01,#5B," Carnivore2 MultiFunctional Cartridge ",#01,#5F
+	db	#01,#5B," (C) RBSC Help:'H' Volume:'V' PSG:'P' ",#01,#5F
+	db	#01,#5B,"  ----------------------------------  ",#01,#5F
+	db	#01,#5B,"  Entry selected for autostart: [  ]  ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,#01,#50,"                                    ",#01,#52,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#56,"                                    ",#01,#54,#01,#5F
+	db	#01,#5E,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D
+	db	#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5C
+	db	0
+  endif
+
 
   if CV=2
 VolumeScr:
+  if SPC=0
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
 	db	#8C,"  Carnivore2 Cartridge's Sound Setup  ",#8D
 	db	#8C,"  ",#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,"  ",#8D
@@ -3472,10 +3564,40 @@ VolumeScr:
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 	db	"              Set the desired volume..."
 	db	0
+  else
+	db	#01,#58,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59
+	db	#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#5A
+	db	#01,#5B,"  Carnivore2 Cartridge's Sound Setup  ",#01,#5F
+	db	#01,#5B,"   --------------------------------   ",#01,#5F
+	db	#01,#5B," Control Keys:                        ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[UP]    - increase FMPAC volume     ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[DOWN]  - decrease FMPAC volume     ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[RIGHT] - increase SCC/SCC+ volume  ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[LEFT]  - decrease SCC/SCC+ volume  ",#01,#5F
+	db	#01,#5B,#20,#01,#56,"[HOME]  - reset to default values   ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B," FMPAC Volume:                        ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,#20,#20,#01,#50,"--------------------------------",#01,#52,#20,#20,#01,#5F
+	db	#01,#5B,#20,#20,#01,#56,"--------------------------------",#01,#54,#20,#20,#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B," SCC/SCC+ Volume:                     ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,#20,#20,#01,#50,"--------------------------------",#01,#52,#20,#20,#01,#5F
+	db	#01,#5B,#20,#20,#01,#56,"--------------------------------",#01,#54,#20,#20,#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5E,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D
+	db	#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5C
+	db	0
+Volll	db	"              Set the desired volume...",0
+  endif
   endif
 
   if CV=2
 PSGScr:
+  if SPC=0
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
 	db	#8C,"   Carnivore2 Cartridge's PSG Setup   ",#8D
 	db	#8C,"   ",#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,"   ",#8D
@@ -3501,9 +3623,39 @@ PSGScr:
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 	db	"       Set up PSG and desired volume..."   
 	db	0
+  else
+	db	#01,#58,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59
+	db	#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#5A
+	db	#01,#5B,"   Carnivore2 Cartridge's PSG Setup   ",#01,#5F
+	db	#01,#5B,"    ------------------------------    ",#01,#5F
+	db	#01,#5B," PSG Enabled [ ]  Clicker Enabled [ ] ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B," Control Keys:                        ",#01,#5F
+	db	#01,#5B,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[ENTER] - enable/disable PSG        ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[SPACE] - enable/disable Clicker    ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[UP]    - increase PSG volume       ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[DOWN]  - decrease PSG volume       ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[RIGHT] - increase Clicker volume   ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[LEFT]  - decrease Clicker volume   ",#01,#5F
+	db	#01,#5B,#20,#01,#56,"[HOME]  - reset to default values   ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B," PSG Volume:                          ",#01,#5F
+	db	#01,#5B,#20,#20,#01,#50,"--------------------------------",#01,#52,#20,#20,#01,#5F
+	db	#01,#5B,#20,#20,#01,#56,"--------------------------------",#01,#54,#20,#20,#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B," PPI Clicker Volume:                  ",#01,#5F
+	db	#01,#5B,#20,#20,#01,#50,"--------------------------------",#01,#52,#20,#20,#01,#5F
+	db	#01,#5B,#20,#20,#01,#56,"--------------------------------",#01,#54,#20,#20,#01,#5F
+	db	#01,#5E,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D
+	db	#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5C
+	db	0
+PSGll	db	"       Set up PSG and desired volume...",0
+  endif
   endif
 
-helpmsg:
+HelpScr:
+  if SPC=0
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
   if CV=2
 	db	#8C,"  Carnivore2 Cartridge's Help Screen  ",#8D
@@ -3538,6 +3690,36 @@ helpmsg:
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 	db	" v2.00       Press any key to return..."
 	db	0
+  else
+	db	#01,#58,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59
+	db	#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#5A
+	db	#01,#5B,"  Carnivore2 Cartridge's Help Screen  ",#01,#5F
+	db	#01,#5B,"   --------------------------------   ",#01,#5F
+	db	#01,#5B," Menu Navigation and Action Keys:     ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,#20,#01,#50,"[ESC] - boot MSX using the default  ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"        configuration: all enabled  ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"                                    ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[LEFT],[RIGHT] - previous/next page ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[UP],[DOWN] - select ROM/CFG entry  ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[SPACE],[ENTER] - start an entry    ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[G] - start an entry directly       ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[R] - reset MSX and start an entry  ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[A] - select an entry for autostart ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[D] - disable autostart option      ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[F] - select 50Hz or 60Hz frequency ",#01,#5F
+	db	#01,#5B,#20,#01,#56,"[T] - toggle Turbo or R800 mode     ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B," Boot Option Keys:                    ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,#20,#01,#50,"[F4] - disable autostart option     ",#01,#5F
+	db	#01,#5B,#20,#01,#56,"[F5] - disable startup menu         ",#01,#5F
+	db	#01,#5E,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D
+	db	#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5C
+	db	0
+helpll	db	" v2.00       Press any key to return...",0
+
+  endif
 
 
 ; Default palette
@@ -3561,14 +3743,29 @@ DefPal:
 
 ; Various variables, text and data
 
+  if SPC=0
 OnSym	equ	#A4
+  else
+OnSym	equ	'*'
+  endif
 
 Spaces:
 	db	"  ",0
+
 PALmsg:
+  if SPC=0
 	db	"[50Hz",#96,"Z80]",0
+  else
+	db	"[50Hz/Z80]",0
+  endif
+
 NTSCmsg:
+  if SPC=0
 	db	"[60Hz",#96,"Z80]",0
+  else
+	db	"[60Hz/Z80]",0
+  endif
+
 AutoMSG:
 	db	"Autostart is active.",10,13,"ESC, TAB or F4 to abort",0
 AutoDot:
@@ -3577,22 +3774,44 @@ ResetCMSG:
 	db	"New configuration applied.",10,13,"Rebooting MSX...",0
 ResetMSG:
 	db	"Necessary changes applied.",10,13,"Rebooting MSX...",0
+
 PageNum:
+  if SPC=0
 	db	"[  ",#96,"  ]",0
+  else
+	db	"[  /  ]",0
+  endif
+
 DefMode:
 	db	"Z80",0
 T2PMode:
 	db	"T2+",0
 RTRMode:
 	db	"R8x",0
+
 VolumeL:
+  if SPC=0
 	db	"[FMP",#A5,"1",#96,"SCC",#A5,"1",#96,"PSG",#A5,"1]",0
+  else
+	db	"[FMP:1/SCC:1/PSG:1]",0
+  endif
+  if SPC=0
+
 VolumeInd:
 	db	#98,#98,#98,#98,0,0
 IndEmpty1:
 	db	#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,#A6,0
 IndEmpty2:
 	db	#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,#5E,0
+  else
+VolumeInd:
+	db	">>>>",0,0
+IndEmpty1:
+	db	"--------------------------------",0
+IndEmpty2:
+	db	"--------------------------------",0
+  endif
+
 DefVol:
 	db	#1B		; 00011011
 DefPSG:
@@ -3603,6 +3822,397 @@ RAM_TS4B:
 	db	#F8,#80,#00,#35,#7F,#80
 RAM_TS4BR:
 	db	#F8,#80,#00,#25,#7F,#40
+
+
+  if SPC=1
+; BIOS envelope routines for Korean and Arabic MSXs
+RDBTST_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#017A
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+CHGCPU_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#0180
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+GETCPU_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#0183
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+CHSNS_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#009C
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+DISDISP_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#0041
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+ENADISP_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#0044
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+WRITVDP_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#0047
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+KILBUF_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#0156
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+DISKEYS_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#00CC
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+ENAKEYS_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#00CF
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+CHCOLOR_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#0062
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+MODE40A_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#006C
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+MODE40_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#0078
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+SSCREEN_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#005F
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+CHGET_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#009F
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+CLEARS_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#00C3
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+CHPUT_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#00A2
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+ENASLT_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#0024
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+POSIT_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#00C6
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+  endif
+
+; BIOS call envelope for Korean and Arabic machines (shadow registers get corrupted on BIOS calls!
+; Bios Calls
+  if SPC=0
+ENASLT	equ	#0024
+CHPUT	equ	#00A2
+CLEARS	equ	#00C3
+POSIT	equ	#00C6
+CHGET	equ	#009F
+SSCREEN	equ	#005F
+MODE40	equ	#0078
+MODE40A	equ	#006C
+CHCOLOR	equ	#0062
+ENAKEYS	equ	#00CF
+DISKEYS	equ	#00CC
+KILBUF	equ	#0156
+WRITVDP	equ	#0047
+ENADISP	equ	#0044
+DISDISP	equ	#0041
+CHSNS	equ	#009C
+GETCPU  equ     #0183
+CHGCPU  equ     #0180
+RDBTST  equ     #017A
+  else
+ENASLT	equ	ENASLT_E
+CHPUT	equ	CHPUT_E
+CLEARS	equ	CLEARS_E
+POSIT	equ	POSIT_E
+CHGET	equ	CHGET_E
+SSCREEN	equ	SSCREEN_E
+MODE40	equ	MODE40_E
+MODE40A	equ	MODE40A_E
+CHCOLOR	equ	CHCOLOR_E
+ENAKEYS	equ	ENAKEYS_E
+DISKEYS	equ	DISKEYS_E
+KILBUF	equ	KILBUF_E
+WRITVDP	equ	WRITVDP_E
+ENADISP	equ	ENADISP_E
+DISDISP	equ	DISDISP_E
+CHSNS	equ	CHSNS_E
+GETCPU  equ     GETCPU_E
+CHGCPU  equ     CHGCPU_E
+RDBTST  equ     RDBTST_E
+  endif
+
 
 ; Font data
 fontdat:

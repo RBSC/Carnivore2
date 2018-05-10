@@ -28,6 +28,7 @@ LIFEMARS.RCP	- RCP file for "Life on Mars" game
 GMASTER.RCP	- RCP file for "Konami Game Master 1" ROM (must be located in the first page of the 64kb block)
 GMASTER2.RCP	- RCP file for "Konami Game Master 2" ROM
 NEM3E102.RCP	- RCP file for "Nemesis 3 Enhanced v1.02" game (shared by Carmeloco)
+PRACE2.RCP	- RCP file for "Pennant Race 2" game
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
 more information about this file.
