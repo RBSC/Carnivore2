@@ -1,6 +1,6 @@
 Carnivore2 MultiFunctional Cartridge Readme File
 Copyright (c) 2017-2018 RBSC
-Last updated: 29.04.2018
+Last updated: 21.05.2018
 ------------------------------------------------
 
 WARNING! To avoid damage to the Carnivore2 cartridge and your MSX computer hardware never insert or remove the cartridge
@@ -47,15 +47,15 @@ Before uploading the firmware please make sure that the CF card is not inserted!
 If the programming completed successfully, disconnect the Byte Blaster's or USB Blaster's cable and 5v power from the board.
 
 
-How to enable the cartridge and install ROMs
---------------------------------------------
+How to enable the cartridge and install BIOS ROMs
+-------------------------------------------------
 
 Insert the cartridge into the MSX slot, preferably into the first main slot. Power up MSX and check if it functions
 normally. If the machine shows an anomaly, remove and inspect the cartridge. To fully set up the cartridge the
 following needs to be done:
 
  1. Make sure that all 3 BIN files (BIDECMFC.BIN, BOOTCMFC.BIN, FMPCCMFC.BIN) are in the same folder with the utilities
- 2. Run the "c2man.com" or "c2man_40.com" (for MSX1 only) utility
+ 2. Run the "c2man.com" or "c2man40.com" (for MSX1 only) utility
  3. When asked, enter the slot number where the cartridge is inserted (for example "10" for first slot, "20" for second slot, etc.)
  4. From the main menu select "Open cartridge's Service Menu" using the "9" key
  5. With the "7" key select "Fully erase FlashROM chip" and confirm twice
@@ -161,26 +161,29 @@ the main menu. If the small EEPROM is not present, then the volume setting is on
 volume once allows to play games and listening to the music until the computer is completely switched off.
 
 
-C2MAN and C2MAN_40 utilities
-----------------------------
+C2MAN and C2MAN40 utilities
+---------------------------
 
 The C2MAN utility allows to initialize the cartridge, add ROMs into the FlashROM, create custom configuration entries, edit
-the cartridge's directory. The C2MAN_40 utility is for MSX1 computers using the 40 character wide display, the C2MAN utility
-is for MSX2 and later computers.
+the cartridge's directory. The Service Menu allows to see the FlashROM block usage, erase and optimize the directory, upload
+the boot block as well as IDE and FMPAC BIOSes into the FlashROM; it also allows to completely erase the FlashROM chip.
 
-The C2MAN_40 utility sets the 40 character mode by default, however the C2MAN utility tries to detect the VDP's version and
-the current screen mode. On MSX1 computers, even on those that have v9938 VDP, the C2MAN utility will show a note that it's not
-optimized for the 40 character mode and ask whether it should continue. On MSX2 computers this note will be shown only if
-the screen mode is less or equal 40 symbols. On both MSX1 and MSX2 systems the note will not be shown if a command line is not
-empty, this is done to avoid user interaction during automated adding of ROMs into the cartridge.
+The C2MAN utility works only on MSX2 and later computers, it sets the 80 character mode by default. On MSX1 computers this
+utility shows an incompatibility note and exits. For MSX1 computers the C2MAN40 utility must be used. This utility, however,
+will also work on MSX2 and later computers in 80 character mode, but all messages will be truncated for the 40 character
+mode.
+
+Both utilities will automatically reboot a computer after uploading a ROM into the FlashROM chip if the /a and /r command line
+options are used.
 
 The utility supports the following command line options:
 
- c2man [filename.rom] [/h] [/v] [/a] [/su]
+ c2man [filename.rom] [/h] [/v] [/a] [/r] [/su]
 
  /h  - help screen
  /v  - verbose mode (show detailed information)
  /a  - automatically detect and write ROM image (no user interaction needed)
+ /r  - automatically restart MSX after flashing ROM image
  /su - enable Super User mode (allows editing all registers and overriding IDE BIOS write lock when BIOS shadowing is off)
 
 The utility is normally able to find the inserted cartridge by itself. If the utility can't find the cartridge, you will need
@@ -191,6 +194,7 @@ The main menu allows to:
  - Write new ROM image into FlashROM
  - Create new configuration entry
  - Browse/edit cartridge's directory
+ - Restart a computer
 
 The menu options should be selected with the corresponding numeric buttons.
 
@@ -275,7 +279,7 @@ When you are making your own configuration settings for a selected ROM file, you
 select the "Save/load register preset" option and then use "Save register preset file". When asked, entry the name of the RCP file
 and it will be saved for future use.
 
-The latest versions of "c2man", "c2man_40" and "c2ramldr" utilities try to automatically find the matching RCP file when a ROM is
+The latest versions of "c2man", "c2man40" and "c2ramldr" utilities try to automatically find the matching RCP file when a ROM is
 being loaded. For example if a user writes the "TEST.ROM" file into the cartridge, the utilities will try to locate the "TEST.RCP"
 file and ask a user whether he/she wants to load and use the data from that RCP file. When a ROM file is loaded with the "/a"
 command line option, the data from the matching RCP file is automatically applied.
@@ -320,13 +324,26 @@ the previously saved file into SRAM area. Then a computer should be reset and a 
 an emulated DSK image.
 
 
+Backing up and restoring FlashROM's contents
+--------------------------------------------
+
+The "c2backup.com" utility allows to dump the contents of the entire FlashROM chip into a file. The size of the file is 8 megabytes.
+The utility also allows to copy the contents of the FlashROM's dump back into the chip. Because of the BIOS shadowing this operation
+can be performed live, however the system must be restarted as soon as possible after uploading the new contents into the FlashROM
+chip.
+
+WARNING! Interrupting the FlashROM's contents uploading may result in a non-working Carnivore2 cartridge! In this case the cartridge
+must be re-initialized. The description of the procedure can be found in the "How to enable the cartridge and install BIOS ROMs"
+section of this readme file.
+
+
 Notes for SCC+ mode
 -------------------
 
 The Carnivore2 cartridge supports both SCC and SCC+ modes. Certain games started from the cartridge's IDE device may not like the SCC+
 being in the expanded slot, so there will be no sound. In this case such games can be started from a different IDE device and the
 Carnivore2 cartridge can be configured as the SCC+ sound cartridge. To do this a new configuration entry must be created. It's necessary
-to start the C2MAN or C2MAN_40 utility, enter the directory editing mode and do the following:
+to start the C2MAN or C2MAN40 utility, enter the directory editing mode and do the following:
 
  1. Edit the first configuration entry "DefConfig: RAM+IDE+FMPAC+SCC"
  2. Rename it to "Config: SCC+ Cartridge"

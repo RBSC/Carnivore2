@@ -63,7 +63,8 @@ architecture rtl of psg_wave is
   signal PsgEdgeChB  : std_logic;
   signal PsgEdgeChC  : std_logic;
   signal PsgNoise    : std_logic;
-  signal PsgVolEnv   : std_logic_vector(3 downto 0);
+--  signal PsgVolEnv   : std_logic_vector(3 downto 0);
+  signal PsgVolEnv   : std_logic_vector(4 downto 0);
   signal PsgEnvReq   : std_logic;
   signal PsgEnvAck   : std_logic;
 
@@ -184,7 +185,8 @@ begin
         elsif (PsgFreqChA /= X"000") then
           PsgCntChA := PsgFreqChA - 1;
         end if;
-        if (PsgCntChA = X"000") and (PsgFreqChA /= X"000") then -- fix caro
+--        if (PsgCntChA = X"000") and (PsgFreqChA /= X"000") then -- fix caro
+        if (PsgCntChA = X"000") then 
           PsgEdgeChA <= not PsgEdgeChA;
         end if;
         if (PsgCntChB /= X"000") then
@@ -192,7 +194,8 @@ begin
         elsif (PsgFreqChB /= X"000") then
           PsgCntChB := PsgFreqChB - 1;
         end if;
-        if (PsgCntChB = X"000") and (PsgFreqChB /= X"000") then -- fix caro
+--        if (PsgCntChB = X"000") and (PsgFreqChB /= X"000") then -- fix caro
+        if (PsgCntChB = X"000") then 
           PsgEdgeChB <= not PsgEdgeChB;
         end if;
         if (PsgCntChC /= X"000") then
@@ -200,47 +203,71 @@ begin
         elsif (PsgFreqChC /= X"000") then
           PsgCntChC := PsgFreqChC - 1;
         end if;
-        if (PsgCntChC = X"000") and (PsgFreqChC /= X"000") then -- fix caro
+--        if (PsgCntChC = X"000") and (PsgFreqChC /= X"000") then -- fix caro
+        if (PsgCntChC = X"000") then
           PsgEdgeChC <= not PsgEdgeChC;
         end if;
       end if;
     end if;
   end process;
   ----------------------------------------------------------------
-  -- Noise generator 
+  -- Noise generator
   ----------------------------------------------------------------
   process(pSltClk_n, pSltRst_n)
+
     variable PsgCntNoise : std_logic_vector(4 downto 0);
     variable PsgGenNoise : std_logic_vector(17 downto 0);
+
   begin
+
     if (pSltRst_n = '0') then
+
       PsgCntNoise := (others => '0');
-      PsgGenNoise := "011111111111111110";
+      PsgGenNoise := (others => '1');
+      PsgNoise    <= '1';
+
     elsif (pSltClk_n'event and pSltClk_n = '1') then
-      -- Base frequency : 112kHz = 3.58MHz / 32
-      if (PsgClkEna(4 downto 0) = "00000") then -- and clkena = '1') then
+
+      -- Base frequency : 112kHz = 3.58MHz / 16 / 2
+      if (PsgClkEna(4 downto 0) = "00000") then
+
         -- Noise frequency counter
         if (PsgCntNoise /= "00000") then
           PsgCntNoise := PsgCntNoise - 1;
         elsif (PsgFreqNoise /= "00000") then
           PsgCntNoise := PsgFreqNoise - 1;
-          -- (Maximum-length linear shift register sequence)
-          -- f(x) = x^17 + x^14 + 1
-            for I in 17 downto 1 loop
-              PsgGenNoise(I) := PsgGenNoise(I - 1);
-            end loop;
-              PsgGenNoise(0) := not(PsgGenNoise(17) xor PsgGenNoise(14)); -- fix caro
         end if;
+
+        -- (Maximum-length linear shift resister sequence)
+        -- f(x) = x^17 + x^14 + 1
+        if (PsgCntNoise = "00000") then
+
+          for I in 17 downto 1 loop
+            PsgGenNoise(I) := PsgGenNoise(I - 1);
+          end loop;
+
+          if (PsgGenNoise = "00000000000000000") then
+            PsgGenNoise(0) := PsgGenNoise(17) xor PsgGenNoise(15) xor 	'1';  -- Error trap
+          else
+            PsgGenNoise(0) := PsgGenNoise(17) xor PsgGenNoise(15);          -- Normal work
+          end if;
+
+          PsgNoise <= PsgGenNoise(17);
+
+        end if;
+
       end if;
+
     end if;
-    PsgNoise <= PsgGenNoise(17);
+
   end process;
   ----------------------------------------------------------------
   -- Envelope generator
   ----------------------------------------------------------------
   process(pSltClk_n, pSltRst_n)
     variable PsgCntEnv : std_logic_vector(15 downto 0);
-    variable PsgPtrEnv : std_logic_vector(4 downto 0);
+ --   variable PsgPtrEnv : std_logic_vector(4 downto 0);
+    variable PsgPtrEnv : std_logic_vector(5 downto 0);
   begin
     if (pSltRst_n = '0') then
       PsgCntEnv := (others => '0');
@@ -249,7 +276,8 @@ begin
       PsgEnvAck <= '0';
     elsif (pSltClk_n'event and pSltClk_n = '1') then
       -- Envelope base frequency : 56kHz = 3.58MHz / 32 / 2
-      if (PsgClkEna(4 downto 0) = "00000") then -- and clkena = '1') then
+--      if (PsgClkEna(4 downto 0) = "00000") then -- and clkena = '1') then
+      if (PsgClkEna(3 downto 0) = "0000") then
         -- Envelope period counter
         if (PsgCntEnv /= X"0000" and PsgEnvReq = PsgEnvAck) then
           PsgCntEnv := PsgCntEnv - 1;
@@ -259,14 +287,18 @@ begin
         -- Envelope phase counter
         if (PsgEnvReq /= PsgEnvAck) then
           PsgPtrEnv := (others => '1');
-        elsif (PsgCntEnv = X"0000" and (PsgPtrEnv(4) = '1' or (hold = '0' and cont = '1'))) then
+--        elsif (PsgCntEnv = X"0000" and (PsgPtrEnv(4) = '1' or (hold = '0' and cont = '1'))) then
+        elsif (PsgCntEnv = X"0000" and (PsgPtrEnv(5) = '1' or (hold = '0' and cont = '1'))) then
           PsgPtrEnv := PsgPtrEnv - 1;
         end if;
         -- Envelope amplitude control
-        for I in 3 downto 0 loop
-          if (PsgPtrEnv(4) = '0' and cont = '0') then
+--        for I in 3 downto 0 loop
+        for I in 4 downto 0 loop
+--          if (PsgPtrEnv(4) = '0' and cont = '0') then
+          if (PsgPtrEnv(5) = '0' and cont = '0') then
             PsgVolEnv(I) <= '0';
-          elsif (PsgPtrEnv(4) = '1' or (alter xor hold) = '0') then
+--        elsif (PsgPtrEnv(4) = '1' or (alter xor hold) = '0') then
+		  elsif (PsgPtrEnv(5) = '1' or (alter xor hold) = '0') then
             PsgVolEnv(I) <= PsgPtrEnv(I) xor attack;
           else
             PsgVolEnv(I) <= PsgPtrEnv(I) xor attack xor '1';
@@ -284,7 +316,8 @@ begin
     variable PsgEnaTone  : std_logic;
     variable PsgEdge     : std_logic;
     variable PsgVol      : std_logic_vector(4 downto 0);
-    variable PsgIndex    : std_logic_vector(3 downto 0);
+--    variable PsgIndex    : std_logic_vector(3 downto 0);
+    variable PsgIndex    : std_logic_vector(4 downto 0);
     variable PsgTable    : std_logic_vector(7 downto 0);
     variable PsgMix      : std_logic_vector(9 downto 0);
   begin
@@ -306,30 +339,65 @@ begin
           PsgEnaTone  := '1';           PsgEdge  := '1';
           PsgEnaNoise := '1';           PsgVol   := "00000";
       end case;
-      if (((PsgEnaTone or PsgEdge) and (PsgEnaNoise or PsgNoise)) = '0') then
+        if (((PsgEnaTone or PsgEdge) and (PsgEnaNoise or PsgNoise)) = '0') then
+ --     if (((PsgEnaTone or PsgEdge) xor (PsgEnaNoise or PsgNoise)) = '0') then
         PsgIndex := (others => '0');
       elsif (PsgVol(4) = '0') then
-        PsgIndex := PsgVol(3 downto 0);
+--        PsgIndex := PsgVol(3 downto 0) ;
+        PsgIndex := PsgVol(3 downto 0) & (PsgVol(3) or PsgVol(2) or PsgVol(1) or PsgVol(0));
       else
         PsgIndex := PsgVolEnv;
       end if;
       case PsgIndex is
-        when "1111" => PsgTable := "11111111";
-        when "1110" => PsgTable := "10110100";
-        when "1101" => PsgTable := "01111111";
-        when "1100" => PsgTable := "01011010";
-        when "1011" => PsgTable := "00111111";
-        when "1010" => PsgTable := "00101101";
-        when "1001" => PsgTable := "00011111";
-        when "1000" => PsgTable := "00010110";
-        when "0111" => PsgTable := "00001111";
-        when "0110" => PsgTable := "00001011";
-        when "0101" => PsgTable := "00000111";
-        when "0100" => PsgTable := "00000101";
-        when "0011" => PsgTable := "00000011";
-        when "0010" => PsgTable := "00000010";
-        when "0001" => PsgTable := "00000001";
-        when others => PsgTable := "00000000";
+ --       when "1111" => PsgTable := "11111111"; -- FF 255
+ --       when "1110" => PsgTable := "10110100"; -- B4 180
+ --       when "1101" => PsgTable := "01111111"; -- 7F 127
+ --       when "1100" => PsgTable := "01011010"; -- 5A  90
+ --       when "1011" => PsgTable := "00111111"; -- 3F  63
+ --       when "1010" => PsgTable := "00101101"; -- 2D  45
+ --       when "1001" => PsgTable := "00011111"; -- 1F  31
+ --       when "1000" => PsgTable := "00010110"; -- 16  22
+ --       when "0111" => PsgTable := "00001111"; -- 0F  15
+ --       when "0110" => PsgTable := "00001011"; -- 0B  12
+ --       when "0101" => PsgTable := "00000111"; -- 07   7
+ --       when "0100" => PsgTable := "00000101"; -- 05   5
+ --       when "0011" => PsgTable := "00000011"; -- 03   3
+ --       when "0010" => PsgTable := "00000010"; -- 02   2
+ --       when "0001" => PsgTable := "00000001"; -- 01   1
+ --       when others => PsgTable := "00000000"; -- 00   0
+        when "11111" => PsgTable := x"FF";
+        when "11110" => PsgTable := x"D9";
+        when "11101" => PsgTable := x"BA";
+        when "11100" => PsgTable := x"9F";
+        when "11011" => PsgTable := x"88";
+        when "11010" => PsgTable := x"74";
+        when "11001" => PsgTable := x"63";
+        when "11000" => PsgTable := x"54";
+        when "10111" => PsgTable := x"48";
+        when "10110" => PsgTable := x"3D";
+        when "10101" => PsgTable := x"34";
+        when "10100" => PsgTable := x"2C";
+        when "10011" => PsgTable := x"25";
+        when "10010" => PsgTable := x"1F";
+        when "10001" => PsgTable := x"1A";
+        when "10000" => PsgTable := x"16";
+        when "01111" => PsgTable := x"13";
+        when "01110" => PsgTable := x"10";
+        when "01101" => PsgTable := x"0D";
+        when "01100" => PsgTable := x"0B";
+        when "01011" => PsgTable := x"09";
+        when "01010" => PsgTable := x"08";
+        when "01001" => PsgTable := x"07";
+        when "01000" => PsgTable := x"06";
+        when "00111" => PsgTable := x"05";
+        when "00110" => PsgTable := x"04";
+        when "00101" => PsgTable := x"03";
+        when "00100" => PsgTable := x"03";
+        when "00011" => PsgTable := x"02";
+        when "00010" => PsgTable := x"02";
+        when "00001" => PsgTable := x"01";
+        when "00000" => PsgTable := x"00";
+        when others => null;
       end case;
 --      if (clkena = '1') then
         case PsgClkEna(1 downto 0) is

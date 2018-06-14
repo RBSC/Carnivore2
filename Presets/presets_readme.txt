@@ -29,6 +29,9 @@ GMASTER.RCP	- RCP file for "Konami Game Master 1" ROM (must be located in the fi
 GMASTER2.RCP	- RCP file for "Konami Game Master 2" ROM
 NEM3E102.RCP	- RCP file for "Nemesis 3 Enhanced v1.02" game (shared by Carmeloco)
 PRACE2.RCP	- RCP file for "Pennant Race 2" game
+P-WARS2.RCP	- RCP file for "Penguin Wars 2" game
+GYRUSS.RCP	- RCP file for "Gyruss" game
+BOMBJACK.RCP	- RCP file for "Bomb Jack" game
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
 more information about this file.

@@ -15,7 +15,7 @@ CV	equ	2		; 1 = Canivore
 MODE	equ	80		; 80 - default width
 				; 40 - MSX1 width, rename the tool to "C2MAN40.COM"
 
-SPC	equ	0		; 1 = for Arabic and Korean computers
+SPC	equ	1		; 1 = for Arabic and Korean computers
 				; 0 = for all other MSX computers
 ; !COMPILATION OPTIONS!
 

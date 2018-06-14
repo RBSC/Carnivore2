@@ -380,6 +380,7 @@ architecture RTL of mcscc is
   signal SDOp		:std_logic; 
   signal SDOc  		:std_logic_vector(15 downto 0);    
   signal FDIV	:std_logic_vector(7 downto 0);
+  signal SDAC		:std_logic;
   signal pSltClk_nt :std_logic; 
 -- Audiomix
   signal MFL		:std_logic_vector(15 downto 0); 
@@ -426,7 +427,16 @@ architecture RTL of mcscc is
   signal PsgRegWe    : std_logic;
   signal KC    : std_logic;
   signal PsgAmp      : std_logic_vector(9 downto 0);
-  
+-- Code injector
+  signal V_active : std_logic_vector(1 downto 0);
+  signal V_hunt   : std_logic;
+  signal aV_hunt  : std_logic;
+  signal V_fr     : std_logic;
+  signal V_stop   : std_logic;
+  signal V_RA	  : std_logic_vector(15 downto 0);
+  signal V_AR	  : std_logic_vector(13 downto 0);   
+-- Reset Conditions
+--  signal pSltRst_n :std_logic := '0' ;
 begin
   ----------------------------------------------------------------
   -- Slot Select Disable trigger key
@@ -587,8 +597,13 @@ begin
 			else "0000" & EECS1 & EECK1 & EEDI1 & EEDO 
 			          when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100011"
 			else LVL1 when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100100"
---	          				   					
-					else pFlDat ;
+			else V_AR(7 downto 0) when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100101"
+			else pSltAdr(15 downto 14) & V_AR(13 downto 8) when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100110"
+			else "000000" & V_fr & aV_hunt when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100111"
+--	        
+            else V_RA(7 downto 0) when V_active = "10"
+            else V_RA(15 downto 8) when V_active = "01"  				   					
+			else pFlDat ;
   
 
 
@@ -744,6 +759,9 @@ begin
 		 aNSReg <= "00000000" ;
 --		 LVL <= "00011011"; 
 		 EECS1 <= '0'; EECK1 <= '0'; EEDI1 <= '0';
+		 V_hunt <= '0';
+		 aV_hunt <= '0';
+		 V_fr <= '0';
        
     elsif (pSltClk_n'event and pSltClk_n = '1') then
 
@@ -791,8 +809,14 @@ begin
                                                  EECK1 <= pSltDat(2);
                                                  EEDI1 <= pSltDat(1);  end if;
         if (pSltAdr(5 downto 0) = "100100") then LVL1    <= pSltDat(7 downto 0); end if;                                                 
-               
+        if (pSltAdr(5 downto 0) = "100101") then V_AR(7 downto 0) <= pSltDat ; end if; 
+        if (pSltAdr(5 downto 0) = "100110") then V_AR(13 downto 8) <= pSltDat(5 downto 0); end if;    
+        if (pSltAdr(5 downto 0) = "100111") then aV_hunt <= pSltDat(0); V_fr <= pSltDat(1); end if;             
       end if;
+ -- V_hunt off
+      if V_active = "11" then
+        aV_hunt <= '0'; V_hunt <='0';
+     end if;
  -- delayed reconfiguration
      if RloadEn = '1' then
 
@@ -827,6 +851,7 @@ begin
       
       Mconf   <= aMconf; 
       NSReg   <= aNSReg;  
+      V_hunt <= aV_hunt;
       end if;
     
               -- Mapped I/O port access on R1 Bank resister write
@@ -909,7 +934,8 @@ begin
   ---------------------------------------------------------------- 
   -- Flash/RAM DataWrite
   pFlDat <= pSltDat when (Sltsl_C_n = '0' or SltSl_M_n = '0' or Sltsl_F_n = '0')
-                         and pSltRd_n = '1' and RDh1 = '0'
+  --                     and pSltRd_n = '1' and RDh1 = '0'
+                         and pSltRd_n = '1' and Rd_n = '1'
       else (others => 'Z');
 
   -- Flash -ChipSelect
@@ -918,7 +944,8 @@ begin
 					 		             or (MR1A(3) = '0' and R1Mult(5) = '0')
 					 		             or (MR2A(3) = '0' and R2Mult(5) = '0')
 					 		             or (MR3A(3) = '0' and R3Mult(5) = '0')
-					 		             or (MR4A(3) = '0' and R4Mult(5) = '0') )
+					 		             or (MR4A(3) = '0' and R4Mult(5) = '0') --uv )
+					 		             or (V_active /= "00" and V_fr = '0')  ) -- H vector in ROM
 		 else '0' when IDEROMCs_n = '0' and CardMDR(1) = '0' -- IDE ROM read
 		 else '0' when Sltsl_F_n = '0'  and CardMDR(1) = '0' and pSltAdr(15 downto 14) = "01" and CsRAM8k = '0'  -- FM Pack ROM read
 		 else '1';
@@ -931,16 +958,19 @@ begin
 	                   (  (MR1A(3) = '0' and R1Mult(5) = '1') 
 					   or (MR2A(3) = '0' and R2Mult(5) = '1')
 					   or (MR3A(3) = '0' and R3Mult(5) = '1')
-					   or (MR4A(3) = '0' and R4Mult(5) = '1'))
+					   or (MR4A(3) = '0' and R4Mult(5) = '1') --uv )
+					   or (V_active /= "00" and V_fr = '1')  ) -- H vector in RAM  
 		 else '0' when Sltsl_F_n = '0' and pSltAdr(15 downto 13) = "010" and CsRAM8k = '1'  -- FM Pack RAM
 		 else '0' when IDEROMCs_n = '0' and CardMDR(1) = '1' -- Shadow IDE ROM read
 		 else '0' when Sltsl_F_n = '0'  and CardMDR(1) = '1' and pSltAdr(15 downto 14) = "01" -- Shadow FM Pack ROM read
   		 else '1';
              
   -- Flash -OutputEnable (-Gate)
-  pFlOE_n <= not RDh1 when pSltRd_n = '0'  --pFlOE_nt;
-         else '1';
-  pFlOE_nt <= not RDh1 when (pRAMCS_nt = '0' or pFlCS_nt = '0') and pSltRd_n = '0'
+--pFlOE_n <= not RDh1 when pSltRd_n = '0'  --pFlOE_nt;
+  pFlOE_n <= Rd_n;-- when pSltRd_n = '0'  --pFlOE_nt;
+--         else '1';
+--pFlOE_nt <= not RDh1 when (pRAMCS_nt = '0' or pFlCS_nt = '0') and pSltRd_n = '0'
+  pFlOE_nt <= Rd_n when (pRAMCS_nt = '0' or pFlCS_nt = '0') -- and pSltRd_n = '0'
          else '1';
 --  pFlOE_nt <= '0' when Sltsl_C_n = '0' and pSltRd_n = '0' and ((DecMDR = '1' and pSltAdr(5 downto 0) = "000100")   	-- DatM0
 --					 		               or MR1A(3) = '0'  								-- Bank1
@@ -954,7 +984,8 @@ begin
 
 
   -- Flash/ROM Write
-  pFlW_n  <= not WRh1 when Sltsl_C_n = '0' and ((DecMDR = '1' and pSltAdr(5 downto 0) = "000100")  	-- DatM0
+--pFlW_n  <= not WRh1 when Sltsl_C_n = '0' and ((DecMDR = '1' and pSltAdr(5 downto 0) = "000100")  	-- DatM0
+  pFlW_n  <= Wr_n     when Sltsl_C_n = '0' and ((DecMDR = '1' and pSltAdr(5 downto 0) = "000100")  	-- DatM0					 		                   
 					 		               or (MR1A(3) = '0' and R1Mult(4) = '1' and DecMDR = '0'
 					 		                   and (NSC_SCCP = '0' or -- scc+
 											   SccModeB(4) = '1' or SccModeA(4) = '1' or SccModeB(0) = '1')) 			-- Bank1
@@ -969,11 +1000,14 @@ begin
 					 		                   and (NSC_SCCP = '0' or -- scc+
 					 		                   (SccModeB(4) = '1' and Dec1FFE /= '1'))) )		-- Bank4 
 					 		                   
-	 else	 not WRh1 when SltSl_M_n = '0' and ( (Port3C(0) = '0' and pSltAdr(15 downto 14) = "00") -- MAP RAM write
+--	 else	 not WRh1 when SltSl_M_n = '0' and ( (Port3C(0) = '0' and pSltAdr(15 downto 14) = "00") -- MAP RAM write
+	 else	 Wr_n     when SltSl_M_n = '0' and ( (Port3C(0) = '0' and pSltAdr(15 downto 14) = "00") -- MAP RAM write
 											    or (Port3C(1) = '0' and pSltAdr(15 downto 14) = "01")
 											    or (Port3C(2) = '0' and pSltAdr(15 downto 14) = "10")
 											    or (Port3C(3) = '0' and pSltAdr(15 downto 14) = "11") )
-	 else    not WRh1 when SltSl_F_n = '0' and CsRAM8k = '1' -- FM Pac RAM8k write
+--	 else    not WRh1 when SltSl_F_n = '0' and CsRAM8k = '1' -- FM Pac RAM8k write
+	 else    Wr_n     when SltSl_F_n = '0' and CsRAM8k = '1' -- FM Pac RAM8k write
+
 	 else    '1';
 	 
   
@@ -985,7 +1019,8 @@ begin
     
 			else   AddrM2(6 downto 0) & AddrM1(7 downto 0) & AddrM0(7 downto 0) 
                          when (DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "000100") -- Direct card vector port
-                                   
+            else   "000000000"&(V_AR + pSltAdr(13 downto 0) - V_RA(13 downto 0)) -- inject vector address
+                         when V_active /= "00"          
 			else  (AddrFR(6 downto 0) + Maddr(22 downto 16)) & Maddr(15 downto 0); -- Cartridge 
   
   AddrMAP	<=	MAP_FC when  pSltAdr(15 downto 14) = "00" else	-- Mapper Page
@@ -1296,37 +1331,38 @@ begin
 --     end if;
 --    end if;
 --  end process;
-  process(pSltRd_n,WRh2)
-  begin
-    if (pSltRd_n = '0') then
-      if (WRh2 = '0') then RDh1 <= '1'; end if;
-    elsif (pSltRd_n = '1') then
-      if (WRh2 = '1') then RDh1 <= '0'; end if;
-    end if;
-  end process;
-  process(pSltWr_n,WRh2)
-  begin
-    if (pSltWr_n = '0') then
-      if (WRh2 = '0') then WRh1 <= '1'; end if;
-    elsif (pSltWr_n = '1') then
-      if (WRh2 = '1') then WRh1 <= '0'; end if;
-    end if;
-  end process;
-  process(pSltClk,WRh1,RDh1)
-  begin
-    if (pSltClk'event and pSltClk = '1') then
-      if (WRh1 = '1' or RDh1 = '1') then
-        WRh2 <= '1'; 
-      else
-        WRh2 <= '0';
-      end if;
-    end if;
-  end process;
-  process(pSltSltsls_n,WRh2)
+---  process(pSltRd_n,WRh2)
+---  begin
+---    if (pSltRd_n = '0') then
+---      if (WRh2 = '0') then RDh1 <= '1'; end if;
+---    elsif (pSltRd_n = '1') then
+---      if (WRh2 = '1') then RDh1 <= '0'; end if;
+---    end if;
+---  end process;
+---  process(pSltWr_n,WRh2)
+---  begin
+---    if (pSltWr_n = '0') then
+---      if (WRh2 = '0') then WRh1 <= '1'; end if;
+---    elsif (pSltWr_n = '1') then
+---      if (WRh2 = '1') then WRh1 <= '0'; end if;
+---    end if;
+---  end process;
+---  process(pSltClk,WRh1,RDh1)
+---  begin
+---    if (pSltClk'event and pSltClk = '1') then
+---      if (WRh1 = '1' or RDh1 = '1') then
+---        WRh2 <= '1'; 
+---      else
+---        WRh2 <= '0';
+---      end if;
+---    end if;
+---  end process;
+  process(pSltSltsls_n, sltt)
   begin
     if (pSltSltsls_n = '0') then
       if (sltt = '0') then pSltSltslt_n <= '0'; end if;
-    elsif (pSltSltsls_n = '1') then
+--    elsif (pSltSltsls_n = '1') then
+	else
       if (sltt = '1') then pSltSltslt_n <= '1'; end if;
     end if;
   end process; 
@@ -1340,7 +1376,7 @@ begin
       end if;
     end if;
   end process;  
-  
+--s  pSltSltslt_n <= pSltSltsls_n;
 
 --  process (pSltClk2)
 --  begin
@@ -1433,21 +1469,26 @@ begin
 ---							else IDEsOUT when IDEReg = '1' and pSltAdr(9) = '0' and pSltAdr(0) = '1' 
 ---							                  and RD_hT1 = '0' 
 ---							else (others => 'Z');  
-  pIDEDat(15 downto 8) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and Rd_n = '1'
-                       else pSltDat when IDEReg = '1' and Rd_n = '1' 
+  pIDEDat(15 downto 8) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and Rd_n = '1' and pSltRd_n = '1'
+                       else pSltDat when IDEReg = '1' and Rd_n = '1' and pSltRd_n = '1'
 					   else (others => 'Z');
-  pIDEDat(7 downto 0) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and Rd_n = '1' 
+  pIDEDat(7 downto 0) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and Rd_n = '1' and pSltRd_n = '1'
 					   else IDEsOUT when IDEReg = '1' and pSltAdr(9) = '0' and pSltAdr(0) = '1' 
-							             and Rd_n = '1'
+							             and Rd_n = '1' and pSltRd_n = '1'
 					   else (others => 'Z');
 
 
   pIDEAdr		<= pSltAdr(2 downto 0) when pSltAdr(9) = '1'
                    else "000";
-  pIDECS1_n		<= pSltAdr(3) when pSltAdr(9) = '1'
-				   else '0';
-  pIDECS3_n		<= not pSltAdr(3) when pSltAdr(9) = '1'
-				   else '1';
+--  pIDECS1_n		<= pSltAdr(3) when pSltAdr(9) = '1' and IDEReg = '1'
+--				   else '0' when IDEReg = '1'
+--				   else '1';
+--  pIDECS3_n		<= not pSltAdr(3) when pSltAdr(9) = '1' and IDEReg = '1'
+--				   else '1';
+  pIDECS1_n             <= pSltAdr(3) when pSltAdr(9) = '1'
+                                   else '0';
+  pIDECS3_n             <= not pSltAdr(3) when pSltAdr(9) = '1'
+                                   else '1';
 ---  pIDERD_n		<= not RD_hT1;
 ---  pIDEWR_n		<= not WR_hT1;
   pIDERD_n		<= Rdh_n;
@@ -1589,7 +1630,8 @@ begin
 --  clk21m <= pSltClk;
   pYM2413_A <= pSltAdr(0);
   xena <=  '1';
-  pYM2413_We_n <= not WRh1;-- pSltWr_n;
+--pYM2413_We_n <= not WRh1;-- pSltWr_n;
+  pYM2413_We_n <= Wr_n;-- pSltWr_n;
   pYM2413_Cs_n <= '0' when pSltAdr(7 downto 1) = "0111110" and pSltIorq_n = '0' 
                            and ( R7FF6b0 = '1' or Mconf(5) = '1')  -- processor port address (7C,7D)
   			 else '0' when CsOPLL = '1' -- and R7FF6b0 = '1'
@@ -1645,16 +1687,24 @@ begin
                     not SCR(11) & SCL(10 downto 0) ) ;   -- (19-0)       
     end if;
   end process;
-  process (FDIV(7),FDIV(0))
+ -- process (FDIV(5),FDIV(0))
+  process (SDAC,pSltClk_n)
   begin
     if pSltClk_n ='0' then LRCKe <= '0';
-    elsif FDIV(7)'event and FDIV(7) = '0' then
-      MACL <=  ACL(18 downto 3);-- (not ACL(19)) & ACL(18 downto 4);
-      MACR <=  ACL(18 downto 3);-- (not ACL(19)) & ACL(18 downto 4);
+--    elsif FDIV(5)'event and FDIV(5) = '0' then
+    elsif SDAC'event and SDAC = '0' then
+      MACL <=  ACL(17 downto 2);
+      MACR <=  ACL(17 downto 2);
 --    MACR <=  ACR(18 downto 3);-- (not ACR(19)) & ACR(18 downto 4);
       LRCKe <= '1';
     end if;
   end process;
+  process (pSltClk_n)
+  begin
+    if pSltClk_n'event and pSltClk_n = '1' then
+    SDAC <= ADACDiv(7);
+    end if;
+  end process;  
 -- Mixer
  process(c0)
  begin
@@ -1694,10 +1744,10 @@ begin
        ACP <= ACP + ("000000000" & SCP);     
     end if;
   end process;
-  process (FDIV(6),pSltClk_n)
+  process (SDAC,pSltClk_n)
   begin
     if pSltClk_n ='0' then resP <= '0';
-    elsif FDIV(6)'event and FDIV(6) = '0' then
+    elsif SDAC'event and SDAC = '0' then
       MACP <=  ACP(18 downto 3);-- & '0';
       resP <= '1';
 	end if;
@@ -1828,4 +1878,40 @@ begin
 -- INIT ROM Code Injector
 ----------------------------------------------------------------
 
+process (Rd_n,pSltRst_n)
+begin
+  if pSltRst_n = '0' then
+    V_active <= "00";
+  elsif (Rd_n'event and Rd_n = '0') then
+    if pSltM1_n = '0' and  Sltsl_C_n = '0' and V_hunt = '1' then
+	  V_RA <= pSltAdr; -- get return address
+      V_active <= "11"; -- inject mode on
+    end if;
+    if Sltsl_C_n = '0' and V_stop = '1' and V_active /= "00" then 
+      V_active <= V_active - "01"; -- inject mode off
+    end if;
+  end if; 
+end process;    
+
+process (Rd_n,pSltRst_n)
+begin
+  if pSltRst_n = '0' then
+    V_stop <= '0';
+  elsif (Rd_n'event and Rd_n = '1') then
+    if pSltM1_n = '0' and V_active = "11" and Sltsl_C_n = '0' and pSltDat = "11000011" then -- C3h :JPXXXX:
+    V_stop <= '1';
+    end if;
+  end if;
+end process;  
+
+----------------------------------------------------------------
+-- Reset conditions
+----------------------------------------------------------------
+--process (pSltClk_n,pSltRst_n1)
+--begin
+--  if pSltRst_n1 = '0' then pSltRst_n <= '0';
+--  elsif pSltClk_n'event and pSltClk_n = '1' then pSltRst_n <= pSltRst_n1;
+--  end if;
+--end process;
+--
 end RTL;

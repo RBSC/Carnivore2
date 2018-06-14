@@ -71,13 +71,13 @@ Pin Name/Usage               : Location  : Dir.   : I/O Standard      : Voltage 
 ~ASDO~ / RESERVED_INPUT_WITH_WEAK_PULLUP : 1         : input  : 3.3-V LVTTL       :         : 1         : N              
 ~nCSO~ / RESERVED_INPUT_WITH_WEAK_PULLUP : 2         : input  : 3.3-V LVTTL       :         : 1         : N              
 MAPpEn                       : 3         : input  : 3.3-V LVTTL       :         : 1         : Y              
-RESERVED_INPUT_WITH_WEAK_PULLUP : 4         :        :                   :         : 1         :                
-pFlDatH[2]                   : 5         : input  : 3.3-V LVTTL       :         : 1         : N              
-pFlDatH[0]                   : 6         : input  : 3.3-V LVTTL       :         : 1         : N              
+pFlDatH[0]                   : 4         : input  : 3.3-V LVTTL       :         : 1         : N              
+RESERVED_INPUT_WITH_WEAK_PULLUP : 5         :        :                   :         : 1         :                
+mCLC                         : 6         : output : 3.3-V LVTTL       :         : 1         : N              
 VCCIO1                       : 7         : power  :                   : 3.3V    : 1         :                
-mCLC                         : 8         : output : 3.3-V LVTTL       :         : 1         : N              
+pFlDatH[1]                   : 8         : input  : 3.3-V LVTTL       :         : 1         : N              
 GND                          : 9         : gnd    :                   :         :           :                
-pFlDatH[3]                   : 10        : input  : 3.3-V LVTTL       :         : 1         : N              
+RESERVED_INPUT_WITH_WEAK_PULLUP : 10        :        :                   :         : 1         :                
 RESERVED_INPUT_WITH_WEAK_PULLUP : 11        :        :                   :         : 1         :                
 EECS                         : 12        : output : 3.3-V LVTTL       :         : 1         : Y              
 EECK                         : 13        : output : 3.3-V LVTTL       :         : 1         : Y              
@@ -103,19 +103,19 @@ BICK                         : 32        : output : 3.3-V LVTTL       :         
 CKS                          : 33        : output : 3.3-V LVTTL       :         : 1         : Y              
 MCLK                         : 34        : output : 3.3-V LVTTL       :         : 1         : Y              
 IC_n                         : 35        : output : 3.3-V LVTTL       :         : 1         : Y              
-RESERVED_INPUT_WITH_WEAK_PULLUP : 36        :        :                   :         : 1         :                
-pFlBYTE_n                    : 37        : output : 3.3-V LVTTL       :         : 1         : N              
+pFlDatH[7]                   : 36        : input  : 3.3-V LVTTL       :         : 1         : N              
+RESERVED_INPUT_WITH_WEAK_PULLUP : 37        :        :                   :         : 1         :                
 GND                          : 38        : gnd    :                   :         :           :                
 pFlAdr[20]                   : 39        : output : 3.3-V LVCMOS      :         : 1         : Y              
 RESERVED_INPUT_WITH_WEAK_PULLUP : 40        :        :                   :         : 1         :                
 RESERVED_INPUT_WITH_WEAK_PULLUP : 41        :        :                   :         : 1         :                
 VCCIO1                       : 42        : power  :                   : 3.3V    : 1         :                
 CLK50                        : 43        : input  : 3.3-V LVTTL       :         : 1         : Y              
-RESERVED_INPUT_WITH_WEAK_PULLUP : 44        :        :                   :         : 1         :                
+pFlDatH[2]                   : 44        : input  : 3.3-V LVTTL       :         : 1         : N              
 pFlVpp                       : 45        : output : 3.3-V LVTTL       :         : 1         : Y              
 RESERVED_INPUT_WITH_WEAK_PULLUP : 46        :        :                   :         : 1         :                
-pFlDatH[1]                   : 47        : input  : 3.3-V LVTTL       :         : 1         : N              
-RESERVED_INPUT_WITH_WEAK_PULLUP : 48        :        :                   :         : 1         :                
+RESERVED_INPUT_WITH_WEAK_PULLUP : 47        :        :                   :         : 1         :                
+pFlDatH[3]                   : 48        : input  : 3.3-V LVTTL       :         : 1         : N              
 GND                          : 49        : gnd    :                   :         :           :                
 GND_PLL1                     : 50        : gnd    :                   :         :           :                
 VCCD_PLL1                    : 51        : power  :                   : 1.2V    :           :                
@@ -174,7 +174,7 @@ pSltRsv5                     : 103       : input  : 3.3-V LVTTL       :         
 pSltRfsh_n                   : 104       : input  : 3.3-V LVTTL       :         : 4         : Y              
 pSltCs12                     : 105       : input  : 3.3-V LVTTL       :         : 3         : Y              
 pSltSltsls_n                 : 106       : input  : 3.3-V LVTTL       :         : 3         : Y              
-pFlDatH[7]                   : 107       : input  : 3.3-V LVTTL       :         : 3         : N              
+pFlBYTE_n                    : 107       : output : 3.3-V LVTTL       :         : 3         : N              
 pFlW_n                       : 108       : output : 3.3-V LVCMOS      :         : 3         : Y              
 VCCIO3                       : 109       : power  :                   : 3.3V    : 3         :                
 pSltCs1                      : 110       : input  : 3.3-V LVTTL       :         : 3         : Y              

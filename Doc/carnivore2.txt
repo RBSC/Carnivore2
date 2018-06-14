@@ -2,7 +2,7 @@
 Carnivore2 Technical Details
 Copyright (c) 2017-2018 by RBSC
 English version
-Last updated on 21.04.2018
+Last updated on 17.05.2018
 --------------------------------------------------------------------------------
 
 NOTE: The hexadecimal numbers are shown as #90, 90h or 0x90
@@ -383,6 +383,14 @@ Fourth bank configuration registers
 	2,1,0	- PPI Clicker audio level (0-7)
 
 	The default value of this register is 1Bh (00011011b)
+
++#25	V_AR_L - lower 8 bits of the interceptor code
++#26	V_AR_H - higher 8 bits of the interceptor code
+
++#27	aV_hunt - interceptor's flag for delayed configuration
+
+	0 bit = activation flag for interceptor code on system restart or read from #4000; 1 = enabled
+	1 bit = interceptor code's location; 0 = boot block in FlashRÎM, 1 = first shadow RAM block
 
 
 --------------------------------------------------------------------------------

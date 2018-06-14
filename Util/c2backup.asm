@@ -1,16 +1,18 @@
 ;
 ; Carnivore2 Cartridge's FlashROM Backup
 ; Copyright (c) 2015-2018 RBSC
-; Version 1.00
+; Version 1.05
 ;
 
 
 ;--- Macro for printing a $-terminated string
 
 print	macro	
+	push	ix
 	ld	de,\1
 	ld	c,_STROUT
 	call	DOS
+	pop	ix
 	endm
 
 
@@ -21,6 +23,7 @@ ENASLT	equ	#0024		; BIOS Enable Slot
 WRTSLT	equ	#0014		; BIOS Write to Slot
 CALLSLT	equ	#001C		; Inter-slot call
 SCR0WID	equ	#F3AE		; Screen0 width
+CURSF	equ	#FCA9
 
 TPASLOT1	equ	#F342
 TPASLOT2	equ	#F343
@@ -69,7 +72,7 @@ B4AdrD:	equ	#4F80+29
 
 CardMod:equ	#4F80+30
 
-CardMDR2:equ   #4F80+31
+CardMDR2:	equ	#4F80+31
 ConfFl:	equ	#4F80+32
 ADESCR:	equ	#4010
 
@@ -168,8 +171,11 @@ Stfp04:
 	ld	a,3
 	call	F_Key
 	jr	c,Stfp01
+	jp	m,Stfp03
+	jr	z,Stfp01
 	print	I_MPAR_S
 	jr	Stfp09
+
 Stfp01:
 	ld	a,(F_H)
 	or	a
@@ -226,6 +232,13 @@ Stfp30b:
 	ld	ix,BUFFER
 	call	FnameP
 
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT			; enable RAM for #4000
+        ld      a,(TPASLOT2)
+        ld      h,#80
+        call    ENASLT			; enable RAM for #4000
+
 	ld	a,(F_U)
 	or	a
 	jp	nz,ADD_OF
@@ -244,9 +257,32 @@ Stfp40:
 
 ; Main menu
 MainM:
+	ld	a,"1"
+	ld	(DoneInd+3),a		; reset counter
+
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT			; enable RAM for #4000
+        ld      a,(TPASLOT2)
+        ld      h,#80
+        call    ENASLT			; enable RAM for #4000
+
+	xor	a
+	ld	(CURSF),a
+
 	print	MAIN_S
-Ma01:	ld	c,_INNOE
+Ma01:
+	ld	a,1
+	ld	(CURSF),a
+
+	ld	c,_INNOE
 	call	DOS	
+
+	push	af
+	xor	a
+	ld	(CURSF),a
+	pop	af
+
 	cp	27
 	jp	z,Exit
 	cp	"0"
@@ -290,8 +326,12 @@ DoReset:
 DownFR:
         print   FRB_FNM
 	call	GetFname
-	jp	z,MainM
+	jr	nz,DownF
 
+	print	ONE_NL_S
+	jp	MainM
+
+DownF:
 ; test if file exists
 	ld	de,FCB2
 	ld	c,_FSEARCHF		; Search First File
@@ -415,16 +455,22 @@ rdt923:
 	call    DOS			; set DMA
 
 rdt989:
+	push	ix
 	rst	#30
 	db	0
 	dw	#009C			; wait for key and avoid displaying cursor
+	pop	ix
 	jr	z,rdt989a
+
+	push	ix
 	rst	#30
 	db	0
 	dw	#009F			; read one character
 	cp	27			; ESC?
+	pop	ix
 	jr	nz,rdt989a
-	
+
+	print	ONE_NL_S	
 	print	OpInterr1		; interruption message
 	scf
 	jp	rdt999
@@ -462,7 +508,7 @@ rdt990:
 	cp	8
 	jr	z,rdt991
 	ld	(CardMDR+#0E),a
-	jr	rdt989
+	jp	rdt989
 	
 rdt991:	xor	a
 	ld	(CardMDR+#0E),a
@@ -475,6 +521,10 @@ rdt991:	xor	a
 	ld	e,"<"			; showing indicator for every block
 	ld	c,_CONOUT
 	call	DOS
+
+        ld      a,(ERMSlt)
+        ld      h,#40
+        call    ENASLT
 
 	ld	a,(AddrFR)
 	and	%00001111
@@ -508,10 +558,15 @@ rdt999:
 	ld	c,_FCLOSE
 	call	DOS
 
+	ld	a,(F_R)
+	or	a			; restart?
+	jp	nz,Reset1
+
 	ld	a,(F_A)
-	or	a
-	jp	nz,Exit			; automatic exit
-	jp	MainM
+	or	a			; auto mode?
+	jp	nz,Exit
+
+	jp	MainM	
 
 
 ; Enter file name
@@ -692,7 +747,11 @@ Sf3:	ld	c,_INNOE
 	cp	13			; Enter? -> select file
 	jr	z,Sf5
 	cp	27			; ESC? -> exit
-	jp	z,MainM
+	jp	nz,Sf3z
+
+	print	ONE_NL_S
+	jp	MainM
+Sf3z:
 	cp	9			; Tab? -> next file
 	jr	nz,Sf3	
 
@@ -717,8 +776,8 @@ Sf4:
 	ld	c,_FSEARCHN		; Search Next File
 	call	DOS
 	or	a
-	jr	nz,SelFile0		; File not found? Start from beginning
-	jr	SelFile1		; Print next found file
+	jp	nz,SelFile0		; File not found? Start from beginning
+	jp	SelFile1		; Print next found file
 
 Sf5:
 	ld	de,Bi_FNAM+2
@@ -737,35 +796,6 @@ Sf5:
 	call	FnameP
 
 ADD_OF:
-	ld	a,(F_A)
-	or	a
-	jp	nz,COwr2		; automatic overwrite
-
-	print	OverwrWRN1
-	ld	c,_INNOE
-	call	DOS			; warning 1
-	or	%00100000
-	call	SymbOut
-	cp	"y"
-	jr	z,COwr1
-	print	ONE_NL_S
-	jp	MainM
-COwr1:
-	print	ONE_NL_S
-	print	OverwrWRN2
-	ld	c,_INNOE
-	call	DOS			; warning 1
-	or	%00100000
-	call	SymbOut
-	cp	"y"
-	jr	z,COwr2
-	ld	e,a
-	ld	c,_CONOUT
-	call	DOS
-	print	ONE_NL_S
-	jp	MainM
-
-COwr2:
 ;Open file
 	ld	de,OpFile_S
 	ld	c,_STROUT
@@ -883,8 +913,39 @@ vbr01:
 
 	jp	MainM
 	
-FMRM01:					; fix size
+FMRM01:
+	ld	a,(F_A)
+	or	a
+	jr	nz,COwr3		; automatic overwrite
 
+	print	OverwrWRN1
+	ld	c,_INNOE
+	call	DOS			; warning 1
+	or	%00100000
+	call	SymbOut
+	cp	"y"
+	jr	z,COwr1
+	print	ONE_NL_S
+	jp	MainM
+COwr1:
+	print	ONE_NL_S
+	print	OverwrWRN2
+	ld	c,_INNOE
+	call	DOS			; warning 1
+	or	%00100000
+	call	SymbOut
+	cp	"y"
+	jr	z,COwr2
+	ld	e,a
+	ld	c,_CONOUT
+	call	DOS
+	print	ONE_NL_S
+	jp	MainM
+
+COwr2:
+	print	TWO_NL_S
+
+COwr3:
 ; !!!! file attribute fix by Alexey !!!!
 	ld	a,(FCB+#11)
 	cp	#20
@@ -928,16 +989,22 @@ DEF10:
 
 ; Load file in 8kb chunks and write to FlashROM
 Fpr02:
+	push	ix
 	rst	#30
 	db	0
 	dw	#009C			; wait for key and avoid displaying cursor
+	pop	ix
 	jr	z,Fpr02a
+
+	push	ix
 	rst	#30
 	db	0
 	dw	#009F			; read one character
+	pop	ix
 	cp	27			; ESC?
 	jr	nz,Fpr02a
 	
+	print	ONE_NL_S
 	print	OpInterr2		; interruption message
 	scf
 	jp	Fpr08
@@ -1007,10 +1074,15 @@ Fpr05:
 	ld	c,_CONOUT
 	call	DOS
 
+        ld      a,(ERMSlt)
+        ld      h,#40
+        call    ENASLT
+
 	ld	a,(EBlock)
 	and	%00001111
 	cp	#0F			; every 16 blocks skip a line
 	jp	nz,Fpr02
+
 	print	DoneInd
 	ld	hl,DoneInd+3
 	inc	(hl)			; increase counter
@@ -1045,11 +1117,38 @@ Fpr08:
 	print	RestMsg
 
 DEF11:
-	ld	a,(F_A)
-	or	a
-	jp	nz,Exit			; automatic exit
+	ld	a,(F_R)
+	or	a			; restart?
+	jr	nz,Reset1
 
-	jp	MainM
+	ld	a,(F_A)
+	or	a			; auto mode?
+	jp	nz,Exit
+
+	jp	MainM	
+
+Reset1:
+; Restore slot configuration!
+        ld      a,(ERMSlt)
+        ld      h,#40
+        call    ENASLT
+
+	xor	a
+	ld	(AddrFR),a
+	ld	a,#38
+	ld	(CardMDR),a
+	ld	hl,RSTCFG
+	ld	de,R1Mask
+	ld	bc,26
+	ldir
+
+	in	a,(#F4)			; read from F4 port on MSX2+
+	or	#80
+	out	(#F4),a			; avoid "warm" reset on MSX2+
+
+	rst	#30			; call to BIOS
+	db	0			; slot
+	dw	0			; address
 
 
 ;-----------------------------------------------------------------------------
@@ -1337,6 +1436,9 @@ FrErr:
 	jp	MainM		
 
 Exit:
+	xor	a
+	ld	(CURSF),a
+
 	ld	de,EXIT_S
 	jp	termdos
 
@@ -1604,10 +1706,10 @@ Trp02:	call	HEXOUT
 
 Trp02a:	ld	a,(Det00)
 	cp	#20
-	jr	nz,Trp03	
+	jp	nz,Trp03	
 	ld	a,(Det02)
 	cp	#7E
-	jr	nz,Trp03
+	jp	nz,Trp03
 	print	M29W640
 	ld	e,"x"
 	ld	a,(Det1C)
@@ -2357,13 +2459,16 @@ ROTA:	sla	l
 
 ; Clear screen, set screen 0
 CLRSCR:
+	push	ix
 	xor	a
 	rst	#30
 	db	0
 	dw	#005F
-;	ld	ix, #005F
-;	ld	iy,0
-;	call	CALLSLT			; set screen 0
+	pop	ix
+
+	xor	a
+	ld	(CURSF),a
+
 	ret
 
 ; Hide functional keys
@@ -2371,9 +2476,6 @@ KEYOFF:
 	rst	#30
 	db	0
 	dw	#00CC
-;	ld	ix, #00CC
-;	ld	iy,0
-;	call	CALLSLT			; set screen 0
 	ret
 
 ; Unhide functional keys
@@ -2381,9 +2483,6 @@ KEYON:
 	rst	#30
 	db	0
 	dw	#00CF
-;	ld	ix, #00CF
-;	ld	iy,0
-;	call	CALLSLT			; set screen 0
 	ret
 
 
@@ -2443,6 +2542,19 @@ fkey04:	ld	hl,BUFFER+1
 	ld	(F_H),a			; show help
 	ret
 fkey05:
+	ld	hl,BUFFER+1
+	ld	a,(hl)
+	and	%11011111
+	cp	"R"
+	jr	nz,fkey06
+	inc	hl
+	ld	a,(hl)
+	or	a
+	jr	nz,fkey06
+	ld	a,5
+	ld	(F_R),a			; reset after loading ROM
+	ret
+fkey06:
 	xor	a
 	dec	a			; S - Illegal flag
 	ret
@@ -2506,6 +2618,7 @@ DIRPAG:	db	0,0
 CURPAG:	db	0,0
 
 ; /-flags parameter
+F_R	db	0
 F_H	db	0
 F_D	db	0
 F_U	db	0
@@ -2637,7 +2750,7 @@ OpInterr2:
 	db	10,13,"ABORTED! This will result in an partially written FlashROM...",10,13,"$"
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge FlashROM Backup v1.00",13,10
+	db	"Carnivore2 MultiFunctional Cartridge FlashROM Backup v1.05",13,10
 	db	"(C) 2015-2018 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -2685,6 +2798,7 @@ H_PAR_S:
 	db	" /v  - verbose mode (show detailed information)",13,10
 	db	" /d  - download FlashROM's contents into a file",10,13
 	db	" /u  - upload file's contents into FlashROM",13,10
+	db	" /r  - restart computer after up/downloading",10,13
 	db	10,13
 	db	"WARNING!"
 	db	10,13

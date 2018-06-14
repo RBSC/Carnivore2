@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's ROM->RAM Loader
 ; Copyright (c) 2015-2018 RBSC
-; Version 1.21
+; Version 1.25
 ;
 
 
@@ -21,6 +21,7 @@ ENASLT:	equ	#0024		; BIOS Enable Slot
 WRTSLT:	equ	#0014		; BIOS Write to Slot
 CALLSLT:equ	#001C		; Inter-slot call
 SCR0WID	equ	#F3AE		; Screen0 width
+CURSF	equ	#FCA9
 
 TPASLOT1:	equ	#F342
 TPASLOT2:	equ	#F343
@@ -225,9 +226,22 @@ Stfp30:
 
 ; Main menu
 MainM:
+	xor	a
+	ld	(CURSF),a
+
 	print	MAIN_S
-Ma01:	ld	c,_INNOE
+Ma01:
+	ld	a,1
+	ld	(CURSF),a
+
+	ld	c,_INNOE
 	call	DOS	
+
+	push	af
+	xor	a
+	ld	(CURSF),a
+	pop	af
+
 	cp	27
 	jp	z,Exit
 	cp	"3"
@@ -341,7 +355,10 @@ Sf3:	ld	c,_INNOE
 	cp	13			; Enter? -> select file
 	jr	z,Sf5
 	cp	27			; ESC? -> exit
-	jp	z,MainM
+	jp	nz,Sf3z
+	print	ONE_NL_S
+	jp	MainM
+Sf3z:
 	cp	9			; Tab? -> next file
 	jr	nz,Sf3	
 
@@ -366,8 +383,8 @@ Sf4:
 	ld	c,_FSEARCHN		; Search Next File
 	call	DOS
 	or	a
-	jr	nz,SelFile0		; File not found? Start from beginning
-	jr	SelFile1		; Print next found file
+	jp	nz,SelFile0		; File not found? Start from beginning
+	jp	SelFile1		; Print next found file
 
 Sf5:
 	ld	de,Bi_FNAM+2
@@ -426,9 +443,7 @@ opf3:	push	bc
 	inc	hl
 	pop	bc
 	djnz	opf3
-	ld	de,ONE_NL_S
-	ld	c,_STROUT
-	call	DOS
+	print	ONE_NL_S
 
 ; load RCP file if exists
 	xor	a
@@ -554,9 +569,8 @@ Fpo:
 	ld	a,(Size)
 	call	HEXOUT
 
-	ld	de,ONE_NL_S
-	ld	c,_STROUT
-	call	DOS	
+	print	ONE_NL_S
+
 vrb00:
 
 ; File size <= 32 κα ?
@@ -1778,8 +1792,13 @@ DEF11:
 	jr	nz,DEF11A		; skip directory entry creation?
 
 	call	SaveDIR			; save directory
+	jr	c,DEF11B
 
 DEF11A:
+	print	ONE_NL_S
+	print	Prg_Su_S
+
+DEF11B:
 	ld	a,(F_R)
 	or	a			; restart?
 	jr	nz,Reset1
@@ -2025,7 +2044,6 @@ SaveDIR2:
 	ld	bc,#40			; record size
 	call	FBProg			; save
 	jr	c,PR_Fail
-	print	Prg_Su_S
 
 LIF04:
 ; file close
@@ -2033,22 +2051,35 @@ LIF04:
 	ld	de,FCB
 	ld	c,_FCLOSE
 	call	DOS
+
+	ld	a,(TPASLOT1)		; reset 1 page
+	ld	h,#40
+	call	ENASLT
+	ld	a,(TPASLOT2)		; reset 1 page
+	ld	h,#80
+	call	ENASLT
+
 	pop	af
 	ret
 
 PR_Fail:
+	print	ONE_NL_S
 	print	FL_erd_S
+	print	ONE_NL_S
 	scf				; set carry flag because of an error
 	jr	LIF04
 
 PRR_Fail:
+	print	ONE_NL_S
 	print	FL_er_S
+	print	ONE_NL_S
 	scf				; set carry flag because of an error
 	jr	LIF04
 
 Ld_Fail:
 	print	ONE_NL_S
 	print	FR_ER_S
+	print	ONE_NL_S
 	scf				; set carry flag because of an error
 	jr	LIF04
 
@@ -2272,7 +2303,11 @@ FrErr:
 	jr	nz,Exit			; Automatic exit
 	jp	MainM		
 
-Exit:	ld	de,EXIT_S
+Exit:
+	xor	a
+	ld	(CURSF),a
+
+	ld	de,EXIT_S
 	jp	termdos
 
 
@@ -3347,9 +3382,10 @@ CLRSCR:
 	rst	#30
 	db	0
 	dw	#005F
-;	ld	ix, #005F
-;	ld	iy,0
-;	call	CALLSLT			; set screen 0
+
+	xor	a
+	ld	(CURSF),a
+
 	ret
 
 ; Hide functional keys
@@ -3357,9 +3393,6 @@ KEYOFF:
 	rst	#30
 	db	0
 	dw	#00CC
-;	ld	ix, #00CC
-;	ld	iy,0
-;	call	CALLSLT			; set screen 0
 	ret
 
 ; Unhide functional keys
@@ -3367,9 +3400,6 @@ KEYON:
 	rst	#30
 	db	0
 	dw	#00CF
-;	ld	ix, #00CF
-;	ld	iy,0
-;	call	CALLSLT			; set screen 0
 	ret
 
 
@@ -3646,8 +3676,6 @@ DirComr_S:
 	db	10,13,"Directory entries will be optimized. Proceed? (y/n) $"
 DirComr_E:
 	db	13,10,"Optimizing of directory entries is complete!",13,10,"$"
-Flash_C_S:
-	db	13,10,"The operation completed successfully!",13,10,"$"
 ANIK_S:
 	db	"Press any key to continue",13,10,"$"
 ADD_RI_S:
@@ -3729,7 +3757,7 @@ TestRDT:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.21",13,10
+	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.25",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -3765,14 +3793,14 @@ I_MPAR_S:
 	db	"Too many parameters!",13,10,13,10,"$"
 H_PAR_S:
 	db	"Usage:",13,10,13,10
-	db	" c2ramldr [filename.rom] [/h] [/v] [/a] [/p] [/d]",13,10,13,10
+	db	" c2ramldr [filename.rom] [/h] [/v] [/a] [/p] [/d] [/r]",13,10,13,10
 	db	"Command line options:",13,10
 	db	" /h  - this help screen",13,10
 	db	" /v  - verbose mode (show detailed information)",13,10
 	db	" /p  - switch RAM protection off after copying the ROM",10,13
 	db	" /d  - don't create a directory entry for the uploaded ROM",13,10
 	db	" /a  - autodetect and write ROM image (no user interaction)",13,10
-	db	" /r  - restart computer after loading the ROM automatically",10,13,"$"
+	db	" /r  - restart the computer after uploading the ROM",10,13,"$"
 
 RCPData:
 	ds	30

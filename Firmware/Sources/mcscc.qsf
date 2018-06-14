@@ -262,3 +262,12 @@ set_global_assignment -name CDF_FILE scc.cdf
 set_global_assignment -name QIP_FILE MPLL1.qip
 set_global_assignment -name QIP_FILE MPLL2.qip
 set_global_assignment -name VHDL_FILE mv16.vhd
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to pSltDat
+set_instance_assignment -name PASSIVE_RESISTOR "PULL-DOWN" -to "pIDEDat(7)"
+set_instance_assignment -name PASSIVE_RESISTOR "PULL-UP" -to "pIDEDat(0)"
+set_instance_assignment -name PASSIVE_RESISTOR "PULL-UP" -to "pIDEDat(1)"
+set_instance_assignment -name PASSIVE_RESISTOR "PULL-UP" -to "pIDEDat(2)"
+set_instance_assignment -name PASSIVE_RESISTOR "PULL-UP" -to "pIDEDat(3)"
+set_instance_assignment -name PASSIVE_RESISTOR "PULL-UP" -to "pIDEDat(4)"
+set_instance_assignment -name PASSIVE_RESISTOR "PULL-UP" -to "pIDEDat(5)"
+set_instance_assignment -name PASSIVE_RESISTOR "PULL-UP" -to "pIDEDat(6)"

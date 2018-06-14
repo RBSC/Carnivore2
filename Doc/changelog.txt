@@ -3,6 +3,30 @@ Copyright (c) 2017-2018 by RBSC
 English verison
 --------------------------------------------------
 
+14.06.2018 (firmware update is required)
+
+1. The PSG emulation was re-worked, not it sounds very close to the original chip's output
+
+2. All tools now work correctly under MSX-DOS version 1.xx; The C2MAN_40.COM utility has been
+   renamed to C2MAN40.COM for compatibility with older DOS versions
+
+3. The code of C2MAN and C2MAN40 utilities was merged and can be now compiled from one file,
+   the VDP and MSX generation detection allows to set correct mode depending on the platform;
+   the user interface has been improved, the code was optimized
+
+4. In the \Util\special subfolder there are special versions of the C2MAN and C2MAN40 utilities,
+   whose directory editor works correctly on Korean and Arabic MSX computers
+
+5. The C2BACKUP tool is now writing to FlashROM 35% faster, the counter bug is fixed
+
+6. The SCC and PSG filters were optimized in the firmware, the sound quality is much improved
+
+7. The Altera's firmware now has the hardware-based interceptor for starting ROM images, but
+   this feature is not yet used in the boot block
+
+8. The /r restart option is now supported by C2BACKUP and C2SRAM utilities
+
+
 10.05.2018
 
 1. The tools and the boot block now work on Daewoo and Arabic MSX computers

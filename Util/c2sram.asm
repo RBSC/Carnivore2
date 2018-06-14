@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's SRAM Manager
 ; Copyright (c) 2015-2017 RBSC
-; Version 1.02
+; Version 1.05
 ;
 
 
@@ -21,6 +21,7 @@ ENASLT	equ	#0024		; BIOS Enable Slot
 WRTSLT	equ	#0014		; BIOS Write to Slot
 CALLSLT	equ	#001C		; Inter-slot call
 SCR0WID	equ	#F3AE		; Screen0 width
+CURSF	equ	#FCA9
 
 TPASLOT1	equ	#F342
 TPASLOT2	equ	#F343
@@ -72,7 +73,7 @@ B4AdrD:	equ	#4F80+29
 
 CardMod:equ	#4F80+30
 
-CardMDR2:equ   #4F80+31
+CardMDR2:	equ	#4F80+31
 ConfFl:	equ	#4F80+32
 ADESCR:	equ	#4010
 
@@ -172,6 +173,7 @@ Stfp04:
 	call	F_Key
 	jr	c,Stfp01
 	jp	m,Stfp03
+	jr	z,Stfp01
 	print	I_MPAR_S
 	jr	Stfp09
 
@@ -238,9 +240,23 @@ Stfp40:
 
 ; Main menu
 MainM:
+	xor	a
+	ld	(CURSF),a
+
 	print	MAIN_S
-Ma01:	ld	c,_INNOE
-	call	DOS	
+
+Ma01:
+	ld	a,1
+	ld	(CURSF),a
+
+	ld	c,_INNOE
+	call	DOS
+
+	push	af
+	xor	a
+	ld	(CURSF),a
+	pop	af
+	
 	cp	27
 	jp	z,Exit
 	cp	"0"
@@ -283,8 +299,11 @@ DoReset:
 DownSRAM:
         print   SRM_FNM
 	call	GetFname
-	jp	z,MainM
+	jp	nz,DownSR
+	print	ONE_NL_S
+	jr	MainM
 
+DownSR:
 ; test if file exists
 	ld	de,FCB2
 	ld	c,_FSEARCHF		; Search First File
@@ -437,10 +456,15 @@ rdt999:
 	ld	c,_FCLOSE
 	call	DOS
 
+	ld	a,(F_R)
+	or	a			; restart?
+	jp	nz,Reset1
+
 	ld	a,(F_A)
-	or	a
-	jp	nz,Exit			; automatic exit
-	jp	MainM
+	or	a			; auto mode?
+	jp	nz,Exit
+
+	jp	MainM	
 
 GetFname:
 ;Bi_FNAM
@@ -619,7 +643,10 @@ Sf3:	ld	c,_INNOE
 	cp	13			; Enter? -> select file
 	jr	z,Sf5
 	cp	27			; ESC? -> exit
-	jp	z,MainM
+	jp	nz,sf3z
+       	print	ONE_NL_S
+	jp	MainM
+sf3z:
 	cp	9			; Tab? -> next file
 	jr	nz,Sf3	
 
@@ -644,8 +671,8 @@ Sf4:
 	ld	c,_FSEARCHN		; Search Next File
 	call	DOS
 	or	a
-	jr	nz,SelFile0		; File not found? Start from beginning
-	jr	SelFile1		; Print next found file
+	jp	nz,SelFile0		; File not found? Start from beginning
+	jp	SelFile1		; Print next found file
 
 Sf5:
 	ld	de,Bi_FNAM+2
@@ -799,13 +826,40 @@ DEF10:
 	call	LoadImage
 	jr	c,DEF11			; if failed, C flag is set
 	print	Success
+
 DEF11:
+	ld	a,(F_R)
+	or	a			; restart?
+	jr	nz,Reset1
 
 	ld	a,(F_A)
-	or	a
-	jp	nz,Exit			; automatic exit
+	or	a			; auto mode?
+	jp	nz,Exit
 
-	jp	MainM
+	jp	MainM	
+
+Reset1:
+; Restore slot configuration!
+        ld      a,(ERMSlt)
+        ld      h,#40
+        call    ENASLT
+
+	xor	a
+	ld	(AddrFR),a
+	ld	a,#38
+	ld	(CardMDR),a
+	ld	hl,RSTCFG
+	ld	de,R1Mask
+	ld	bc,26
+	ldir
+
+	in	a,(#F4)			; read from F4 port on MSX2+
+	or	#80
+	out	(#F4),a			; avoid "warm" reset on MSX2+
+
+	rst	#30			; call to BIOS
+	db	0			; slot
+	dw	0			; address
 
 
 ; Load image and save it to SRAM
@@ -1002,6 +1056,9 @@ FrErr:
 	jp	MainM		
 
 Exit:
+	xor	a
+	ld	(CURSF),a
+
 	ld	de,EXIT_S
 	jp	termdos
 
@@ -2026,9 +2083,9 @@ CLRSCR:
 	rst	#30
 	db	0
 	dw	#005F
-;	ld	ix, #005F
-;	ld	iy,0
-;	call	CALLSLT			; set screen 0
+
+	xor	a
+	ld	(CURSF),a
 	ret
 
 ; Hide functional keys
@@ -2036,9 +2093,7 @@ KEYOFF:
 	rst	#30
 	db	0
 	dw	#00CC
-;	ld	ix, #00CC
-;	ld	iy,0
-;	call	CALLSLT			; set screen 0
+
 	ret
 
 ; Unhide functional keys
@@ -2046,9 +2101,7 @@ KEYON:
 	rst	#30
 	db	0
 	dw	#00CF
-;	ld	ix, #00CF
-;	ld	iy,0
-;	call	CALLSLT			; set screen 0
+
 	ret
 
 
@@ -2108,6 +2161,19 @@ fkey04:	ld	hl,BUFFER+1
 	ld	(F_V),a			; verbose mode flag
 	ret
 fkey05:
+	ld	hl,BUFFER+1
+	ld	a,(hl)
+	and	%11011111
+	cp	"R"
+	jr	nz,fkey06
+	inc	hl
+	ld	a,(hl)
+	or	a
+	jr	nz,fkey06
+	ld	a,5
+	ld	(F_R),a			; reset after loading ROM
+	ret
+fkey06:
 	xor	a
 	dec	a			; S - Illegal flag
 	ret
@@ -2169,6 +2235,7 @@ DIRPAG:	db	0,0
 CURPAG:	db	0,0
 
 ; /-flags parameter
+F_R	db	0
 F_A	db	0
 F_D	db	0
 F_U	db	0
@@ -2285,7 +2352,7 @@ MD_Fail:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge SRAM Manager v1.02",13,10
+	db	"Carnivore2 MultiFunctional Cartridge SRAM Manager v1.05",13,10
 	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -2326,7 +2393,8 @@ H_PAR_S:
 	db	" /h  - this help screen",13,10
 	db	" /v  - verbose mode (show detailed information)",13,10
 	db	" /d  - download contents of SRAM into a file",10,13
-	db	" /u  - upload file's contents into SRAM",13,10,"$"
+	db	" /u  - upload file's contents into SRAM",13,10
+	db	" /r  - restart computer after up/downloading",10,13,"$"
 
 	db	0,0,0
 	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000:2017"
