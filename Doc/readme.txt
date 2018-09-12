@@ -1,6 +1,6 @@
 Carnivore2 MultiFunctional Cartridge Readme File
 Copyright (c) 2017-2018 RBSC
-Last updated: 21.05.2018
+Last updated: 12.09.2018
 ------------------------------------------------
 
 WARNING! To avoid damage to the Carnivore2 cartridge and your MSX computer hardware never insert or remove the cartridge
@@ -12,7 +12,8 @@ the configuration entries won't work correctly. So for such games and configurat
 the R800 mode in the boot block.
 
 NOTE! On certain MSX computers the boot block may not appear after the power is switched on. Pressing the reset button
-usually helps to start the cartridge normally. This will be investigated and fixed in the future.
+usually helps to start the cartridge normally. The fix for this problem is very simple. Please check the "PowerUp_Fix"
+folder for more information.
 
 
 The Setup
