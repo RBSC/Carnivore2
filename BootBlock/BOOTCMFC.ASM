@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2018 RBSC
 ; Portions (c) Grauw
-; Version 2.02
+; Version 2.05
 ;
 
 ; !COMPILATION OPTIONS!
@@ -45,6 +45,9 @@ FDelay	equ	#1000
 ; Delay for autostart
 ADelay	equ	3
 
+; Delay for joystick (divided by 5)
+JDelay	equ	1
+
 R_Base	equ	#C010
 L_STR	equ	16
 
@@ -64,7 +67,7 @@ L_STR	equ	16
 	db	"CSCCFRC"
   endif
 	db	0
-Vers	db	"v2.02"  ; Version | also update it in the header!
+Vers	db	"v2.05"  ; Version | also update it in the header!
 	db	0
 
 
@@ -240,7 +243,6 @@ TA_0B:
 	ld	(MSXTYPE),a	; save MSX type
   endif
 
-
 ; Check for autostart
 	xor	a
 	ld	(AUTOST),a	; no autostart
@@ -251,7 +253,7 @@ TA_0B:
 	ld	hl,#8000
 TA_00:	ld	a,(hl)
 	or	a
-	jr	z,TA_01
+	jp	z,TA_01
 	inc	hl
 	ld	a,(hl)
 	ld	d,a
@@ -262,11 +264,12 @@ TA_00:	ld	a,(hl)
 	ld	a,1
 	ld	(CardMDR+#0E),a ; set 2nd bank to directory map		
 	call 	c_dir
-	jr	z,Menu		; empty record, go to menu
+	jp	z,Menu		; empty record, go to menu
+
 	ld	a,(#FBEC)
 	and	%00001101	; ESC, F4 no autostart
 	cp	%00001101
-	jr	nz,Menu
+	jp	nz,Menu
 
 	ld	a,#FF
 	ld	(AUTOST),a	; autostart found
@@ -304,6 +307,24 @@ AutoWait1:
 	ld	a,l
 	cp	50
 	jr	nz,AutoWait2
+
+	ld	a,1
+	call	GTTRIGG		; joystick 1 button A
+	or	a
+	jp	nz,AutoWAb
+	ld	a,2
+	call	GTTRIGG		; joystick 2 button A
+	or	a
+	jp	nz,AutoWAb
+	ld	a,3
+	call	GTTRIGG		; joystick 1 button B
+	or	a
+	jp	nz,AutoWAb
+	ld	a,4
+	call	GTTRIGG		; joystick 2 button B
+	or	a
+	jp	nz,AutoWAb
+
 	push	hl
 	ld	hl,AutoDot
 	call	print		; print a dot every 50 frames
@@ -318,6 +339,10 @@ AutoWait2:
 	ld	a,c
 	or	a
 	jr	nz,AutoWait
+
+	ld	hl,CRLF
+	call	print
+
 	jp	RUN_CT		; not empty record, do autostart
 
 AutoWAb:
@@ -649,8 +674,72 @@ CH01:
 
 Wait0:
 	call	CHSNS		; wait for key and avoid displaying cursor
+	jr	nz,GetKey
+
+	xor	a
+	push	de
+	call	GTTRIG		; space
+	pop	de
+	or	a
+	jp	nz,RUN_CT
+	ld	a,1
+	push	de
+	call	GTTRIG		; joystick 1 button A
+	pop	de
+	or	a
+	jp	nz,RUN_CT
+	ld	a,2
+	push	de
+	call	GTTRIG		; joystick 2 button A
+	pop	de
+	or	a
+	jp	nz,RUN_CT
+	ld	a,3
+	push	de
+	call	GTTRIG		; joystick 1 button B
+	pop	de
+	or	a
+	jp	nz,RUN_CR
+	ld	a,4
+	push	de
+	call	GTTRIG		; joystick 2 button B
+	pop	de
+	or	a
+	jp	nz,RUN_CR
+
+	xor	a
+	push	de
+	call	GTSTCK		; joystick direction = cursors
+	pop	de
+	or	a
+	jr	nz,GetJD
+	ld	a,1
+	push	de
+	call	GTSTCK		; joystick direction = port 1
+	pop	de
+	or	a
+	jr	nz,GetJD
+	ld	a,2
+	push	de
+	call	GTSTCK		; joystick direction = port 2
+	pop	de
+	or	a
 	jr	z,Wait0
 
+GetJD:
+	call	JoyDelay	; delay for joystick
+
+	cp	1		; up
+	jp	z,C_UP
+	cp	5		; down
+	jp	z,C_DOWN
+	cp	3		; right
+	jp	z,P_F
+	cp	7		; left
+	jp	z,P_B
+	jp	Wait0
+
+GetKey:
 	call	CHGET
 	cp	27		; ESC
 	jp	z,Exit
@@ -1562,12 +1651,12 @@ Help1:
   if SPC=1
 	ld	a,#20
 	ld	(#F3B1),a
-	ld	hl,HelpScr	; print help screen
+	ld	hl,HelpScr1	; print help screen
 	call	print	
 	ld	a,#18
 	ld	(#F3B1),a
   else
-	ld	hl,HelpScr	; print help screen
+	ld	hl,HelpScr1	; print help screen
 	call	print
   endif
 
@@ -1596,6 +1685,60 @@ Help1:
 Wait1:
 	call	CHSNS		; wait for key and avoid displaying cursor
 	jr	z,Wait1
+
+	call	CHGET		; wait for a key
+
+	ld	de,C2BPALH
+	ld	hl,C2FPALH
+	ld	b,C2FCOLH
+	ld	c,#0D
+	call	FadeOut		; fade out text
+
+	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
+	or	a
+	jr	nz,Help2
+	call	DISDISP		; disable display
+
+Help2:
+	call	CLS
+
+  if SPC=1
+	ld	a,#20
+	ld	(#F3B1),a
+	ld	hl,HelpScr2	; print help screen
+	call	print	
+	ld	a,#18
+	ld	(#F3B1),a
+  else
+	ld	hl,HelpScr2	; print help screen
+	call	print
+  endif
+
+  if SPC=1
+	ld	hl,#0118
+	call    POSIT
+	ld	hl,helplll
+	call	print		; print additional line
+  endif
+
+	ld	hl,#0218
+	call    POSIT
+	ld	hl,Vers
+	call	print		; print boot block version
+
+	ld	de,C2FPALH
+	ld	hl,C2BPALH
+	ld	b,C2FCOLH
+	ld	c,#0D
+	call	FadeIn		; fade in text
+
+	call	ENADISP		; enable display
+
+	call	KILBUF
+
+Wait11:
+	call	CHSNS		; wait for key and avoid displaying cursor
+	jr	z,Wait11
 
 	call	CHGET		; wait for a key
 
@@ -3307,6 +3450,55 @@ PSGEnd:
   endif
 
 
+; Delay subroutine for joystick
+; in A = delay in seconds/2
+
+JoyDelay:
+	push	af
+	push	hl
+	push	de
+	push	bc
+
+	ei
+	ld	hl,#0000
+	ld	bc,JDelay*12	; set delay for joystick in NTSC
+	ld	a,(PALNTSC)
+	bit	1,a
+	jr	z,JoyWait
+	ld	bc,JDelay*10	; set delay for joystick for PAL
+JoyWait:
+	ld	a,2
+	call	VDP_VScan	; wait for VSYNC to start
+	and	#40
+	jr	nz,JoyWait
+JoyWait1:
+	ld	a,2
+	inc	h
+	call	VDP_VScan	; wait for VSYNC to end (1 frame to draw)
+	and	#40
+	jr	z,JoyWait1
+	dec	bc
+	inc	l
+	ld	a,l
+	cp	50
+	jr	nz,JoyWait2
+	xor	a
+	ld	l,a
+JoyWait2:
+	ld	a,b
+	or	a
+	jr	nz,JoyWait
+	ld	a,c
+	or	a
+	jr	nz,JoyWait
+
+	pop	bc
+	pop	de
+	pop	hl
+	pop	af
+	ret
+
+
 ; Special RAM code for pre-startup arrangements (starts at #4000, code starts at #4010)
 ; #CF00 = frequency to set
 ; #CF01 = CardMDR register
@@ -3654,7 +3846,7 @@ PSGll	db	"       Set up PSG and desired volume...",0
   endif
   endif
 
-HelpScr:
+HelpScr1:
   if SPC=0
 	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
   if CV=2
@@ -3688,7 +3880,7 @@ HelpScr:
 	db	#8C,#20,#01,#50,"[F4] - disable autostart option     ",#8D
 	db	#8C,#20,#01,#56,"[F5] - disable startup menu         ",#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
-	db	" v2.00       Press any key to return..."
+helpll	db	" v2.00     Press any key to continue...",0
 	db	0
   else
 	db	#01,#58,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59
@@ -3716,11 +3908,70 @@ HelpScr:
 	db	#01,#5B,#20,#01,#56,"[F5] - disable startup menu         ",#01,#5F
 	db	#01,#5E,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D
 	db	#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5C
+helpll	db	" v2.00     Press any key to continue..."
 	db	0
-helpll	db	" v2.00       Press any key to return...",0
-
   endif
 
+HelpScr2:
+  if SPC=0
+	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
+  if CV=2
+	db	#8C,"  Carnivore2 Cartridge's Help Screen  ",#8D
+  else
+	db	#8C,"  Carnivore Cartridge's Help Screen   ",#8D
+  endif
+	db	#8C,"  ",#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,"  ",#8D
+	db	#8C," Menu Navigation and Joystick Action: ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C,#20,#01,#50,"[LEFT],[RIGHT] - previous/next page ",#8D
+	db	#8C,#20,#01,#56,"[UP],[DOWN] - select ROM/CFG entry  ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C,"  NOTE:                               ",#8D
+	db	#8C,"  All other directions are ignored    ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C,#20,#01,#50,"[BUTTON A] - start selected entry   ",#8D
+	db	#8C,#20,#01,#57,"[BUTTON B] - reset MSX and start    ",#8D
+	db	#8C,#20,#01,#56,"             selected entry         ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C," Autostart Joystick Action:           ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C,#20,#01,#50,"[BUTTON A] - disable autostart      ",#8D
+	db	#8C,#20,#01,#56,"[BUTTON B] - disable autostart      ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C,"  NOTE:                               ",#8D
+	db	#8C,"  Please hold a button for 1 second   ",#8D
+	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
+helplll	db	" v2.00       Press any key to return..."
+	db	0
+  else
+	db	#01,#58,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59
+	db	#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#5A
+	db	#01,#5B,"  Carnivore2 Cartridge's Help Screen  ",#01,#5F
+	db	#01,#5B,"   --------------------------------   ",#01,#5F
+	db	#01,#5B," Menu Navigation and Joystick Action: ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,#20,#01,#50,"[LEFT],[RIGHT] - previous/next page ",#01,#5F
+	db	#01,#5B,#20,#01,#56,"[UP],[DOWN] - select ROM/CFG entry  ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,"  NOTE:                               ",#01,#5F
+	db	#01,#5B,"  All other directions are ignored    ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,#20,#01,#50,"[BUTTON A] - start selected entry   ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[BUTTON B] - reset MSX and start    ",#01,#5F
+	db	#01,#5B,#20,#01,#56,"             selected entry         ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B," Autostart Joystick Action:           ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,#20,#01,#50,"[BUTTON A] - disable autostart      ",#01,#5F
+	db	#01,#5B,#20,#01,#56,"[BUTTON B] - disable autostart      ",#01,#5F
+	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,"  NOTE:                               ",#01,#5F
+	db	#01,#5B,"  Please hold a button for 1 second   ",#01,#5F
+	db	#01,#5E,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D
+	db	#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5C
+helplll	db	" v2.00       Press any key to return..."
+	db	0
+  endif
 
 ; Default palette
 DefPal:
@@ -3767,7 +4018,13 @@ NTSCmsg:
   endif
 
 AutoMSG:
-	db	"Autostart is active.",10,13,"ESC, TAB or F4 to abort",0
+	db	"Autostart in 3 seconds...  ",10,13,10,13
+	db	"Press [ESC], [TAB], [F4] or",10,13
+	db	"hold any joystick button to",10,13
+	db	"abort autostart",0
+
+CRLF:	db	10,13,10,13,0
+
 AutoDot:
 	db	".",0
 ResetCMSG:
@@ -3826,6 +4083,42 @@ RAM_TS4BR:
 
   if SPC=1
 ; BIOS envelope routines for Korean and Arabic MSXs
+GTSTCK_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#00D5
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
+GTTRIG_E:
+	exx
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	exx
+	call	#00D8
+	exx
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	exx
+	ret
+
 RDBTST_E:
 	exx
 	push	hl
@@ -4169,6 +4462,17 @@ POSIT_E:
 	ret
   endif
 
+GTTRIGG:
+	push	hl
+	push	bc
+	push	de
+	call	GTTRIG		; joystick 1 button A
+	pop	de
+	pop	bc
+	pop	hl
+	ret
+
+
 ; BIOS call envelope for Korean and Arabic machines (shadow registers get corrupted on BIOS calls!
 ; Bios Calls
   if SPC=0
@@ -4191,6 +4495,8 @@ CHSNS	equ	#009C
 GETCPU  equ     #0183
 CHGCPU  equ     #0180
 RDBTST  equ     #017A
+GTSTCK	equ	#00D5
+GTTRIG	equ	#00D8
   else
 ENASLT	equ	ENASLT_E
 CHPUT	equ	CHPUT_E
@@ -4211,6 +4517,8 @@ CHSNS	equ	CHSNS_E
 GETCPU  equ     GETCPU_E
 CHGCPU  equ     CHGCPU_E
 RDBTST  equ     RDBTST_E
+GTSTCK	equ	GTSTCK_E
+GTTRIG	equ	GTTRIG_E
   endif
 
 

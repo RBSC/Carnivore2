@@ -12,5 +12,7 @@ There are several flavors of the boot block:
 \BLUE\BOOTCMFC.BIN	- standard boot block with blue color scheme
 \BLACK\BOOTCMFC.BIN	- standard boot block with black color scheme
 \SPECIAL\BOOTCMFC.BIN	- custom boot block for Korean and Arabic MSX computers
+\SPECIALNOEFFECTS\BOOTCMFC.BIN
+			- custom boot block for Korean and Arabic MSX computers without fade in/out effects
 
 See the readme.txt file for more info.

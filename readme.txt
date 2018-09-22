@@ -1,6 +1,6 @@
 Carnivore2 MultiFunctional Cartridge Readme File
 Copyright (c) 2017-2018 RBSC
-Last updated: 12.09.2018
+Last updated: 22.09.2018
 ------------------------------------------------
 
 WARNING! To avoid damage to the Carnivore2 cartridge and your MSX computer hardware never insert or remove the cartridge
@@ -89,6 +89,14 @@ easy. Here are the key assignments:
 	[F] - select 50Hz or 60Hz frequency
 	[T] - toggle Turbo or R800 mode
 
+The boot block also supports the built-in joypads and external joysticks connected to any of the 2 joystick ports. The joystick's
+stick movements are interpreted as follows:
+
+	[LEFT],[RIGHT] - previous/next directory page
+	[UP],[DOWN] - select ROM/CFG entry
+	[BUTTON_A] - start an entry
+	[BUTTON_B] - reset MSX and start an entry
+
 The selected VDP frequency is preserved for ROMs that require a reset to start. The frequency setting is saved into the configuration
 EEPROM and is restored even after the computer was powered off and on again.
 
@@ -110,9 +118,10 @@ other keys can skip the boot block's main menu:
 	[F4] - disable autostart option
 	[F5] - disable startup menu
 
-When autostart is set on any entry, after reboot there will be a note shown and there will be a 3 second delay before this entry
-is activated. During these 3 seconds a user can abort autostart with ESC, TAB or F4 key. If any of these keys are pressed during
-the 3 seconds, the autostart will be skipped and the main menu will be shown
+When autostart is set on any entry, after reboot there will be a note shown and there will be a 3 second delay before this
+entry is activated. During these 3 seconds a user can abort autostart with ESC, TAB, F4 key or a joystick button. If any of
+these keys or a joystick button are pressed during the 3 seconds, the autostart will be skipped and the main menu will be
+shown.
 
 The symbols that are displayed near the names of directory entries have certain meaning:
 

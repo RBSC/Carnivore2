@@ -19,7 +19,7 @@ a new firmware to be uploaded into the cartridge.
 The diode must be installed instead of the R26 resistor. The diode must be installed so that its anode
 is facing the slot contacts. After the diode is installed, the previously removed 330 Ohm resistor
 must be soldered to its cathode. Finally a thin wire must be soldered from the other end of the resistor
-to the ground (GND). See the powerup_fix.jpg image. The diode's cathode is marked with a red stripe.
+to the ground (GND). See the "powerup_fix.jpg" image. The diode's cathode is marked with a red stripe.
 
 When the hardware fix is done, the cartridge must be tested in the computer. If the fix is correct,
 then the computer will not boot. The last step is to upload the specially modified firmware into the

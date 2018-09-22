@@ -3,6 +3,16 @@ Copyright (c) 2017-2018 by RBSC
 English verison
 --------------------------------------------------
 
+22.09.2018
+
+1. The boot block now supports joypads and joysticks connected to any of the 2 joystick ports.
+   They allow to control the cursor in the main menu and also to stop the autostart of the
+   selected entry.
+
+2. Added the second help screen with the description of joystick's actions into the boot block.
+   The autostart message now mentions joystick's action as well
+
+
 14.06.2018 (firmware update is required)
 
 1. The PSG emulation was re-worked, not it sounds very close to the original chip's output
