@@ -2,7 +2,7 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Block
 ; Copyright (c) 2015-2018 RBSC
 ; Portions (c) Grauw
-; Version 2.05
+; Version 2.06
 ;
 
 ; !COMPILATION OPTIONS!
@@ -67,7 +67,7 @@ L_STR	equ	16
 	db	"CSCCFRC"
   endif
 	db	0
-Vers	db	"v2.05"  ; Version | also update it in the header!
+Vers	db	"v2.06"  ; Version | also update it in the header!
 	db	0
 
 
@@ -308,6 +308,10 @@ AutoWait1:
 	cp	50
 	jr	nz,AutoWait2
 
+	xor	a
+	call	GTTRIGG		; space/built-in buttons
+	or	a
+	jp	nz,AutoWAb
 	ld	a,1
 	call	GTTRIGG		; joystick 1 button A
 	or	a
@@ -677,33 +681,23 @@ Wait0:
 	jr	nz,GetKey
 
 	xor	a
-	push	de
-	call	GTTRIG		; space
-	pop	de
+	call	GTTRIGG	 	; space/built-in buttons
 	or	a
 	jp	nz,RUN_CT
 	ld	a,1
-	push	de
-	call	GTTRIG		; joystick 1 button A
-	pop	de
+	call	GTTRIGG		; joystick 1 button A
 	or	a
 	jp	nz,RUN_CT
 	ld	a,2
-	push	de
-	call	GTTRIG		; joystick 2 button A
-	pop	de
+	call	GTTRIGG		; joystick 2 button A
 	or	a
 	jp	nz,RUN_CT
 	ld	a,3
-	push	de
-	call	GTTRIG		; joystick 1 button B
-	pop	de
+	call	GTTRIGG		; joystick 1 button B
 	or	a
 	jp	nz,RUN_CR
 	ld	a,4
-	push	de
-	call	GTTRIG		; joystick 2 button B
-	pop	de
+	call	GTTRIGG		; joystick 2 button B
 	or	a
 	jp	nz,RUN_CR
 

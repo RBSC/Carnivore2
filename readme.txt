@@ -1,6 +1,6 @@
 Carnivore2 MultiFunctional Cartridge Readme File
 Copyright (c) 2017-2018 RBSC
-Last updated: 22.09.2018
+Last updated: 30.09.2018
 ------------------------------------------------
 
 WARNING! To avoid damage to the Carnivore2 cartridge and your MSX computer hardware never insert or remove the cartridge
@@ -378,8 +378,8 @@ When using Nextor's "_fdisk" command to partition the CF card please make sure y
 has the expanded slot disabled and the only enabled device there is IDE. Otherwise partitioning will not work.
 
 The audio socket of the Carnivore2 cartridge may not be suitable for connecting the headphones. It's recommended to connect it to the
-speakers or to the amplifier. This socket will only output SCC or FMPAC music and sounds. For the full experience please use the MSX's
-standard sound output - it will have the amplified SCC and FMPAC sound and music as well as the PSG sound and music.
+speakers or to the amplifier. This socket will output emulated SCC and/or FMPAC music and sounds as well as PSG sounds and PPI clicks
+if the internal PSG/PPI clicker emulation is enabled.
 
 When booting to DOS on a Panasonic A1 computer (also on A1 MK2), please hold the DEL key while computer reboots after selection on the
 default configuration entry and until you see the DOS prompt.
