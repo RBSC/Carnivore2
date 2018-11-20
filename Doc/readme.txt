@@ -1,6 +1,6 @@
 Carnivore2 MultiFunctional Cartridge Readme File
 Copyright (c) 2017-2018 RBSC
-Last updated: 30.09.2018
+Last updated: 20.11.2018
 ------------------------------------------------
 
 WARNING! To avoid damage to the Carnivore2 cartridge and your MSX computer hardware never insert or remove the cartridge
@@ -383,6 +383,13 @@ if the internal PSG/PPI clicker emulation is enabled.
 
 When booting to DOS on a Panasonic A1 computer (also on A1 MK2), please hold the DEL key while computer reboots after selection on the
 default configuration entry and until you see the DOS prompt.
+
+Certain games with the so-called "delayed start", for example Metal Gear 2 and King's Valley 2 will not work on the Russian models of
+Yamaha YIS503III computers because of the incompatibility with the built-in CP/M. It is recommended to remove CP/M from the subrom of
+these computers or to replace it with a custom-made subrom with better fonts, working RAM counter and built-in TESTRAM. This custom
+subrom can be found here: 
+
+https://www.msx.org/forum/msx-talk/hardware/yamaha-msx2-upgrade
 
 
 IMPORTANT!
