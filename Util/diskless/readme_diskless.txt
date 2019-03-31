@@ -1,5 +1,5 @@
 Carnivore2 MultiFunctional Cartridge version 2.2
-Copyright (c) 2017-2018 RBSC
+Copyright (c) 2017-2019 RBSC
 
 The utilities and the readme.txt file were made by Vladimir and shared with the
 RBSC team for deploying into the repository.

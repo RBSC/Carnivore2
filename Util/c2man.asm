@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
-; Copyright (c) 2015-2018 RBSC
-; Version 2.00
+; Copyright (c) 2015-2019 RBSC
+; Version 2.05
 ;
 ; WARNING!!
 ; The program's code and data before must not go over #4000 and below #C000 addresses!
@@ -510,6 +510,34 @@ ADDimage:
 	ld	hl,Bi_FNAM+2
 	add	hl,bc
 	ld	(hl),0
+
+	ld	hl,Bi_FNAM+2
+	ld	b,13
+ADDIM1:
+	ld	a,(hl)
+	cp	'.'
+	jr	z,ADDIM2
+	or	a
+	jr	z,ADDIMC
+	inc	hl
+	djnz	ADDIM1
+
+ADDIMC:
+	ex	de,hl
+	ld	hl,ROMEXT		; copy extension and zero in the end
+	ld	bc,5
+	ldir
+	jr	ADDIM3
+
+ADDIM2:
+	inc	hl
+	ld	a,(hl)
+	or	a
+	jr	z,ADDIM3
+	cp	32			; empty extension?
+	jr	c,ADDIMC
+
+ADDIM3:
 	ld	ix,Bi_FNAM+2
 	call	FnameP
 	jp	ADD_OF
@@ -2629,11 +2657,9 @@ CHK_R1:	pop bc
 	ret	
 
 
-FrDIR:
 ; Search free DIR record
-; output A - DIR number
-
-; Set flash configuration
+; output A - DIR number, otherwise NZ - free record found
+FrDIR:
 	ld	a,(ERMSlt)
 	ld	h,#40			; set 1 page
 	call	ENASLT
@@ -2652,16 +2678,24 @@ FrDIR:
 	ld	d,0
 FRD02:	call	c_dir
 	ld	a,(ix)
-	cp	#FF
-	jr	z,FRD01			; found empty
-	inc	d
+	cp	#ff			; empty or last record?
+	jr	nz,FRD00
+	ld	a,(ix+1)
+	cp	#ff			; active record?
+	jr	nz,FRD00
+	ld	a,d
+	cp	#ff			; last record?
+	jr	nz,FRD01
+FRD00:	inc	d
+	ld	a,d
+	or	a
 	jr	nz,FRD02		; next DIR
 	xor	a
+	or	a
 	jr	FRD03			; not found Zero
 FRD01:	ld	a,d
 	or	a			; not zero?
-FRD03:	
-	push	af
+FRD03:	push	af
 	ld	a,(TPASLOT1)		; reset 1 page
 	ld	h,#40
 	call	ENASLT
@@ -2900,6 +2934,7 @@ B23ON:	db	#F0,#80,#00,#04,#7F,#80	; for shadow source bank
 c_dir:
 ; input d - dir idex num
 ; outut	ix - dir point enter
+; output Z - last/empty/deleted entry
  	ld	b,0
 	or	a 
 	ld	a,d
@@ -2918,13 +2953,15 @@ c_dir:
 	ld	c,a
 	ld	ix,#8000
 	add	ix,bc			; 8000h + b*64
-; test empty/deleted
+
 	ld	a,(ix)
-	cp	#FF			; empty ?
+	cp	#FF			; last record?
 	ret	z
+
 	ld	a,(ix+1)
-	or	a			; deleted ?
+	or	a			; deleted record ?
 	ret
+
 
 ;-------------------------------
 TTAB:
@@ -2950,7 +2987,15 @@ FrErr:
 ; return main	
 	jp	MainM		
 
-Exit:	ld	de,EXIT_S
+Exit:
+	ld      a,(TPASLOT2)
+        ld      h,#80
+        call    ENASLT
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT
+
+	ld	de,EXIT_S
 	xor	a
 	ld	(CURSF),a
 	jp	termdos
@@ -3396,27 +3441,12 @@ DCMPR2:
 	call	SymbIn
 	jp	UTIL
 
+
 CmprDIR:
 ; Compress directory 
 ; Set flash configuration
-	ld	a,(ERMSlt)
-	ld	h,#40			; set 1 page
-	call	ENASLT
+	call	SET2PD
 
-	ld	hl,B2ON
-	ld	de,CardMDR+#0C		; set Bank2
-	ld	bc,6
-	ldir
- 
-	ld	a,(ERMSlt)		; set 2 page
-	ld	h,#80
-	call	ENASLT
-	ld	a,1
-	ld	(CardMDR+#0E),a 	; set 2nd bank to directory map
-
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
 ; copy valid record 1st 8kB
 	xor	a
 	ld	(Dpoint+2),a		; start number record
@@ -3482,24 +3512,9 @@ CVDR4:
 	ld	a,#FF
 	ld	(hl),a
 	ldir
+
 ; set flash configuration
-	ld	a,(ERMSlt)
-	ld	h,#40			; set 1 page
-	call	ENASLT
-
-	ld	hl,B2ON
-	ld	de,CardMDR+#0C		; set Bank2
-	ld	bc,6
-	ldir
- 
-	ld	a,(ERMSlt)		; set 2 page
-	ld	h,#80
-	call	ENASLT
-	ld	a,1
-	ld	(CardMDR+#0E),a		; set 2nd bank to directory map
-
-        ld      a,(TPASLOT1)
-        ld      h,#40
+	call	SET2PD
 
 ; 2-nd 8kB block directory
 	ld	a,(Dpoint+2)
@@ -3558,11 +3573,11 @@ CVDR20:
 	call	FBerase
 
 	ld      a,(TPASLOT2)
-        ld      h,#80
-        call    ENASLT
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT       		; Select Main-RAM at bank 4000h~7FFFh
+	ld      h,#80
+	call    ENASLT
+	ld      a,(TPASLOT1)
+	ld      h,#40
+	call    ENASLT       		; Select Main-RAM at bank 4000h~7FFFh
 	ret
 
 
@@ -7246,8 +7261,6 @@ DESCR:	db	"CMFCCFRC"
 DESCR:	db	"CSCCFRC"
   endif
 
-ABCD:	db	"0123456789ABCDEF"
-
 BTbp_S:	db	"   *--------",#0D,#0A
 	db	"   ",124,"*-------",#0D,#0A
 	db	"   ",124,124,"*------",#0D,#0A
@@ -7256,8 +7269,6 @@ BTbp_S:	db	"   *--------",#0D,#0A
 	db	"   ",124,124,124,124,124,"*---",#0D,#0A
 	db	"   ",124,124,124,124,124,124,"*--$"	
 ;	db	"FF-76543210-"
-
-EXIT_S:	db	10,13,"Thanks for using the RBSC's products!",13,10,"$"
 
 F_NOT_F_S:
 	db	"File not found!",13,10,"$"
@@ -7383,6 +7394,7 @@ EBlock0:
 EBlock:	db	0
 strp:	db	0
 strI:	dw	#8000
+ROMEXT:	db	".ROM",0
 
   if CV=2
 BootFNam:
@@ -7470,12 +7482,58 @@ RPC_B:					; 30 byte
 BAT:	; BAT table ( 8MB/64kB = 128 )
 	ds	128	
 
-BUFFER:	
+BUFFER:
 	ds	256
 	db	0,0,0
 
+H7hMult	db	"> Enable bank number control$"
+H6hMult	db	"> Mirror on bank num.overrun$"
+H5hMult	db	"> Select RAM for bank$"
+H4hMult	db	"> Make bank writable$"
+H3hMult	db	"> Disable bank$"
+H2hMult	db	"] 111-64kb, 110-32kb$"
+H1hMult	db	"] 101-16kb, 100-8kb$"
+H0hMult	db	"] 000-bank is disabled$"
+
+H7CMDR	db	"> Disable card.contr.regist.$"
+H6CMDR	db	"] C.c.register base: 00-0F80$"
+H5CMDR	db	"] 01-4F80, 10-8F80, 11-CF80$"
+H4CMDR	db	"> Enable Konami SCC sound$"
+H3CMDR	db	"> Enable delayed reconfig.$"
+H2CMDR	db	"> Reconf.p.: 0-reset,1-4000$"
+H1CMDR	db	"> Reserved$"	; adr.read$
+H0CMDR	db	"> Reserved$"
+
+H7MMRD	db	"> Reserved$"
+H6MMRD	db	"] N-position in 64kb block$"
+H5MMRD	db	"] 000-0, 001-1, 010-2, 011-3$"
+H4MMRD	db	"] 100-4, 101-5, 110-6, 111-7$"
+H3MMRD	db	"> 1-48kb ROM, 0-other size$"
+H2MMRD	db	"] ROM size: 000-not Mini ROM$"
+H1MMRD	db	"] 111-64kb, 110-32/48kb$" 
+H0MMRD	db	"] 101-16kb, 100-8kb$"
+
+H3SRo	db	"> Jump addr: 0-bit 2, 1-0002$"
+H2SRo	db	"> Jump addr: 0-4002, 1-8002$"
+H1SRo	db	"> ROM start: 0-no, 1-yes$"
+H0SRo	db	"> Reset MSX: 0-no, 1-yes$"
+
+H7Mconf	db	"> Expanded slot: 0-no, 1-yes$"
+H6Mconf	db	"> Enable mapper port reading$"
+H5Mconf	db	"> Enable YM2413 (OPLL) ports$"
+H4Mconf	db	"> Enable memory mapper port$"
+H3Mconf	db	"> Enable FMPAC and SRAM$"
+H2Mconf	db	"> Enable RAM and mapper$"
+H1Mconf	db	"> Enable IDE controller$"
+H0Mconf	db	"> Enable SCC and mappers$"
+
+GENHLP	db	"Use [UP] or [DOWN] to select an option",10,13
+	db	"Use [SPACE] or [ENTER] to confirm$"
+GENHLP1	db	"Use [UP] or [DOWN] to select an entry",10,13
+	db	"Use [SPACE] or [ENTER] to confirm$"
+
 BUFTOP:
-	db	"END_OF_CODE"		; only for measuring the space until #4000
+;	db	"END_OF_CODE"		; only for measuring the space until #4000
 
 
 ;------------------------------------------------------------------------------
@@ -7498,8 +7556,8 @@ BUFTOP:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge Manager v2.00",13,10
-	db	"(C) 2015-2018 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 MultiFunctional Cartridge Manager v2.05",13,10
+	db	"(C) 2015-2019 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
 Findcrt_S:
@@ -7512,8 +7570,8 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC Cartridge Manager v2.00",13,10
-	db	"(C) 2015-2018 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore MultiFlash SCC Cartridge Manager v2.05",13,10
+	db	"(C) 2015-2019 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found. Please specify its slot number - $"
 Findcrt_S:
@@ -7570,8 +7628,8 @@ NO_B_UPD:
    if CV=2
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v2.00",13,10
-	db	"(C) 2015-2018 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 MultiFunctional",10,13,"Cartridge Manager v2.05",13,10
+	db	"(C) 2015-2019 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found.",10,13
 	db	"Please specify its slot number - $"
@@ -7588,8 +7646,8 @@ M_Wnvc:
     else
 PRESENT_S:
 	db	3
-	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v2.00",13,10
-	db	"(C) 2015-2018 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore MultiFlash SCC",10,13,"Cartridge Manager v2.05",13,10
+	db	"(C) 2015-2019 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore cartridge was not found.",10,13
 	db	"Please specify its slot number - $"
@@ -7895,23 +7953,23 @@ DetVDPE:
 DirComr_S:
 	db	10,13,"Directory entries will be optimized. Proceed? (y/n) $"
 DirComr_E:
-	db	13,10,"Optimizing of directory entries is complete!",13,10,"$"
+	db	13,10,"Directory optimization succeeded.",13,10,"$"
 DIRINI_S:
 	db	10,13,"WARNING! All directory entries will be erased! Proceed? (y/n) $"
 DIRINC_S:
-	db	13,10,"All directory entries have been erased!",13,10,"$"
+	db	13,10,"Erasing directory succeeded.",13,10,"$"
 DIRINC_F:
-	db	13,10,"Failed to erase directory entries!",13,10,"$"
+	db	13,10,"Failed to erase directory!",13,10,"$"
 Boot_I_S:
-	db	10,13,"WARNING! The Boot Block will be overwritten! Proceed? (y/n) $"
+	db	10,13,"WARNING! Boot Block will be overwritten! Proceed? (y/n) $"
   if CV=2
 IDE_I_S:
-	db	10,13,"WARNING! The IDE BIOS will be overwritten! Proceed? (y/n) $"
+	db	10,13,"WARNING! IDE BIOS will be overwritten! Proceed? (y/n) $"
 FMPAC_I_S:
-	db	10,13,"WARNING! The FMPAC BIOS will be overwritten! Proceed? (y/n) $"
+	db	10,13,"WARNING! FMPAC BIOS will be overwritten! Proceed? (y/n) $"
   endif
 Flash_C_S:
-	db	13,10,"The operation completed successfully!",13,10,"$"
+	db	13,10,"Completed successfully!",13,10,"$"
 BootWrit:
 	db	"Writing Boot Block into FlashROM...$"
 ANIK_S:
@@ -7923,9 +7981,9 @@ EraseWRN2:
 Erasing:
 	db	10,13,"Erasing the FlashROM chip, please wait...$"
 EraseOK:
-	db	10,13,"The FlashROM chip was successfully erased!",13,10,"$"
+	db	10,13,"FlashROM chip was successfully erased!",13,10,"$"
 EraseFail:
-	db	10,13,"There was a problem erasing the FlashROM chip!",13,10,"$"
+	db	10,13,"There was a problem erasing FlashROM chip!",13,10,"$"
 ADD_RI_S:
 	db	13,10,"Input full ROM's file name or just press Enter to select files: $"
 SelMode:
@@ -7960,7 +8018,7 @@ FLEB_S:	db	"Erasing FlashROM chip's block(s): $"
 FLEBE_S:db	"Error erasing FlashROM chip's block(s)!",13,10,"$"
 LFRI_S:	db	"Writing ROM image, please wait...",13,10,"$"
 Prg_Su_S:
-	db	13,10,"The ROM image was successfully written into FlashROM!",13,10,"$"
+	db	13,10,"ROM image was successfully written into FlashROM!",13,10,"$"
 FL_er_S:
 	db	13,10,"Writing into FlashROM failed!",13,10,"$"
 FL_erd_S:
@@ -7979,20 +8037,20 @@ ConfName:
 	db	10,13,"Input new configuration entry name:",10,13,"$"
   if CV=2
 ExtSlot:
-	db	10,13,"Do you want to extend the slot? (y/n) $"
+	db	10,13,"Enable extended slot? (y/n) $"
 MapRAM:
-	db	10,13,"Do you want to enable RAM and Mapper? (y/n) $"
+	db	10,13,"Enable RAM and Mapper? (y/n) $"
 FmOPLL:
-	db	10,13,"Do you want to enable FMPAC? (y/n) $"
+	db	10,13,"Enable FMPAC? (y/n) $"
 IDEContr:
-	db	10,13,"Do you want to enable IDE controller? (y/n) $"
+	db	10,13,"Enable IDE controller? (y/n) $"
 MultiSCC:
-	db	10,13,"Do you want to enable SCC and MultiMapper? (y/n) $"
+	db	10,13,"Enable SCC and MultiMapper? (y/n) $"
   endif
 EntryOK:
-	db	10,13,"The new configuration entry was added successfully!",10,13,"$"
+	db	10,13,"Configuration entry added successfully!",10,13,"$"
 EntryFAIL:
-	db	10,13,"Failed to create new configuration entry!",10,13,"$"
+	db	10,13,"Failed to create configuration entry!",10,13,"$"
 NothingE:
 	db	10,13,"Input ignored: at least one device must be enabled!",10,13,"$"
 
@@ -8005,11 +8063,11 @@ MapTop:
 DirComr_S:
 	db	10,13,"Optimize the directory? (y/n) $"
 DirComr_E:
-	db	13,10,"Optimizing directory is complete!",13,10,"$"
+	db	13,10,"Optimizing directory succeeded.",13,10,"$"
 DIRINI_S:
 	db	10,13,"WARNING! Erase directory? (y/n) $"
 DIRINC_S:
-	db	13,10,"Erasing directory is complete!",13,10,"$"
+	db	13,10,"Erasing directory succeeded.",13,10,"$"
 DIRINC_F:
 	db	13,10,"Failed to erase directory!",13,10,"$"
 Boot_I_S:
@@ -8025,7 +8083,7 @@ FMPAC_I_S:
 	db	10,13,"WARNING! Overwrite FMPAC BIOS? (y/n) $"
   endif
 Flash_C_S:
-	db	13,10,"Operation completed successfully!",13,10,"$"
+	db	13,10,"Completed successfully!",13,10,"$"
 BootWrit:
 	db	"Writing Boot Block into FlashROM...$"
 ANIK_S:
@@ -8037,9 +8095,9 @@ EraseWRN2:
 Erasing:
 	db	10,13,"Erasing FlashROM chip, please wait...$"
 EraseOK:
-	db	10,13,"The FlashROM chip successfully erased!",13,10,"$"
+	db	10,13,"FlashROM chip successfully erased!",13,10,"$"
 EraseFail:
-	db	10,13,"Erasing the FlashROM chip failed!",13,10,"$"
+	db	10,13,"Erasing FlashROM chip failed!",13,10,"$"
 ADD_RI_S:
 	db	13,10,"Input full ROM's file name or just",10,13,"press Enter to select files:",10,13,"$"
 SelMode:
@@ -8074,7 +8132,7 @@ FLEB_S:	db	"Erasing FlashROM chip's block(s) - $"
 FLEBE_S:db	"Error erasing FlashROM's block(s)!",13,10,"$"
 LFRI_S:	db	"Writing ROM image, please wait...",13,10,"$"
 Prg_Su_S:
-	db	13,10,"The ROM image was written successfully!",13,10,"$"
+	db	13,10,"ROM image was written successfully!",13,10,"$"
 FL_er_S:
 	db	13,10,"Writing into FlashROM failed!",13,10,"$"
 FL_erd_S:
@@ -8095,7 +8153,7 @@ ConfName:
 	db	10,13,"Input new configuration entry name:",10,13,"$"
   if CV=2
 ExtSlot:
-	db	10,13,"Extend the slot? (y/n) $"
+	db	10,13,"Enable extended slot? (y/n) $"
 MapRAM:
 	db	10,13,"Enable RAM and Mapper? (y/n) $"
 FmOPLL:
@@ -8123,9 +8181,7 @@ MapTop:
 ; Common strings for both C2MAN and C2MAN40 utilities
 ;
 
-;PTCUL_S:
-;	db	"Load register preset from file$"
-
+ABCD:	db	"0123456789ABCDEF"
 PTCE_S:
 	db	"Return to editor menu [ESC]$"
 SSM_S:	db	"Select ROM's starting method:$"
@@ -8163,10 +8219,6 @@ D_RO:   db      "   Load register preset file",13,10
 D_LO    db      "Input file name for loading: $"
 D_SO    db      "Input file name for saving: $"
 
-GENHLP	db	"Use [UP] or [DOWN] to select an option",10,13
-	db	"Use [SPACE] or [ENTER] to confirm$"
-GENHLP1	db	"Use [UP] or [DOWN] to select an entry",10,13
-	db	"Use [SPACE] or [ENTER] to confirm$"
 GHME:	db	"Use cursor keys to select byte to edit",13,10
 	db	"Or type a new byte value (hexadecimal)",13,10
 	db	"Press [SPACE] to edit the bit values",13,10
@@ -8206,48 +8258,9 @@ HMRTB	db	"Mini and Multi ROM control register",13,10
 HSOB	db	"ROM's starting options register",13,10
 	db	"Press [SPACE] to edit the bitmask$"
 
-H7hMult	db	"> Enable bank number control$"
-H6hMult	db	"> Mirror on bank num.overrun$"
-H5hMult	db	"> Select RAM for bank$"
-H4hMult	db	"> Make bank writable$"
-H3hMult	db	"> Disable bank$"
-H2hMult	db	"] 111-64kb, 110-32kb$"
-H1hMult	db	"] 101-16kb, 100-8kb$"
-H0hMult	db	"] 000-bank is disabled$"
+EXIT_S:	db	10,13,"Thanks for using RBSC's products!",13,10,"$"
 
-H7CMDR	db	"> Disable card.contr.regist.$"
-H6CMDR	db	"] C.c.register base: 00-0F80$"
-H5CMDR	db	"] 01-4F80, 10-8F80, 11-CF80$"
-H4CMDR	db	"> Enable Konami SCC sound$"
-H3CMDR	db	"> Enable delayed reconfig.$"
-H2CMDR	db	"> Reconf.p.: 0-reset,1-4000$"
-H1CMDR	db	"> Reserved$"	; adr.read$
-H0CMDR	db	"> Reserved$"
-
-H7MMRD	db	"> Reserved$"
-H6MMRD	db	"] N-position in 64kb block$"
-H5MMRD	db	"] 000-0, 001-1, 010-2, 011-3$"
-H4MMRD	db	"] 100-4, 101-5, 110-6, 111-7$"
-H3MMRD	db	"> 1-48kb ROM, 0-other size$"
-H2MMRD	db	"] ROM size: 000-not Mini ROM$"
-H1MMRD	db	"] 111-64kb, 110-32/48kb$" 
-H0MMRD	db	"] 101-16kb, 100-8kb$"
-
-H3SRo	db	"> Jump addr: 0-bit 2, 1-0002$"
-H2SRo	db	"> Jump addr: 0-4002, 1-8002$"
-H1SRo	db	"> ROM start: 0-no, 1-yes$"
-H0SRo	db	"> Reset MSX: 0-no, 1-yes$"
-
-H7Mconf	db	"> Expanded slot: 0-no, 1-yes$"
-H6Mconf	db	"> Enable mapper port reading$"
-H5Mconf	db	"> Enable YM2413 (OPLL) ports$"
-H4Mconf	db	"> Enable memory mapper port$"
-H3Mconf	db	"> Enable FMPAC and SRAM$"
-H2Mconf	db	"> Enable RAM and mapper$"
-H1Mconf	db	"> Enable IDE controller$"
-H0Mconf	db	"> Enable SCC and mappers$"
-
-	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000:2018"
+	db	0
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER:2019"
 	db	0,0,0
 

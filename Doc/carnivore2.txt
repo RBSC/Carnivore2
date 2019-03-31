@@ -1,8 +1,8 @@
 --------------------------------------------------------------------------------
 Carnivore2 Technical Details
-Copyright (c) 2017-2018 by RBSC
+Copyright (c) 2017-2019 by RBSC
 English version
-Last updated on 17.05.2018
+Last updated on 31.03.2019
 --------------------------------------------------------------------------------
 
 NOTE: The hexadecimal numbers are shown as #90, 90h or 0x90
@@ -396,7 +396,7 @@ Fourth bank configuration registers
 --------------------------------------------------------------------------------
 [Directory Entry Format]
 
-There are 127 user-controlled directory entries available in the cartridge. The
+There are 255 user-controlled directory entries available in the cartridge. The
 first directory entry can't be edited or deleted because it sets the default
 cartridge's configuration - all enabled.
 
@@ -406,8 +406,8 @@ logical block number addressed by the AddrFr register is zero.
 
 Each directory entry occupies 40h (64 bytes) and has the following format:
 
-+#00	ACT - Active/empty record's flag (0xFF - empty record)
-+#01	PSV - Passive/active record (0xFF - active)
++#00	NUM - Record number (last one - #FF is ignored)
++#01	ACT - Active/empty record's flag (#FF - active record)
 +#02	STB - Starting 64kb block for data 
 +#03	LNB - Data size in 64kb blocks
 +#04	MAP - Mapper type symbol
@@ -538,6 +538,29 @@ The address allocation for the data in the configuration EEPROM (93C46) can be f
 
 [03] - PSG and clicker enable/disable flags and volumes, 3 bits per volume, max volume is 8, first 2 bits are used as enable/disable flags
 
+[04] - Entry sorting (0=disabled)
+
+[05] - Fade in/out effects (0=disabled)
+
+[06] - Keyboard/joystick speed (this is an increment for default value)
+
+[07-08] - Menu font palette
+
+[09-0A] - Menu background palette
+
+[0B-0C] - Help font palette
+
+[0D-0E] - Help background palette
+
+[0F-10] - Volume font palette
+
+[11-12] - Volume background palette
+
+[13-14] - PSG/PPI font palette
+
+[15-16] - PSG/PPI background palette
+
+[17] - Custom settings in use flag (must be #42)
 
 --------------------------------------------------------------------------------
 [DEFAULT VALUES]

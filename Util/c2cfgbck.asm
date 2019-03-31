@@ -1,16 +1,18 @@
 ;
-; Carnivore2 Cartridge's SRAM Manager
+; Carnivore2 Cartridge's Configuration EEPROM Backup
 ; Copyright (c) 2015-2019 RBSC
-; Version 1.06
+; Version 1.00
 ;
 
 
 ;--- Macro for printing a $-terminated string
 
 print	macro	
+	push	ix
 	ld	de,\1
 	ld	c,_STROUT
 	call	DOS
+	pop	ix
 	endm
 
 
@@ -31,9 +33,6 @@ CSRX	equ	#F3DD
 ARG:	equ	#F847
 EXTBIO:	equ	#FFCA
 MNROM:	equ	#FCC1		; Main-ROM Slot number & Secondary slot flags table
-
-SRAMBLK equ	#0F		; SRAM bank (#0F - last logical block of 1mb of RAM)
-SRAMBNK	equ	#07		; Last 8kb page of the block (#07=#E000)
 
 CardMDR:equ	#4F80
 AddrM0: equ	#4F80+1
@@ -209,6 +208,18 @@ Stfp010:
 	jp	Exit
 
 Stfp30:
+	print	M_Shad
+	call	Shadow			; shadow bios for C2
+	ld	a,(ShadowMDR)
+	cp	#21			; shadowing failed?
+	jr	z,Stfp30a
+	print	Shad_S
+	jr	Stfp30b
+Stfp30a:
+	print	Shad_F
+	jp	Exit
+
+Stfp30b:
 	ld	a,(p1e)
 	or	a
 	jr	z,MainM			; no file parameter?
@@ -220,6 +231,13 @@ Stfp30:
 
 	ld	ix,BUFFER
 	call	FnameP
+
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT			; enable RAM for #4000
+        ld      a,(TPASLOT2)
+        ld      h,#80
+        call    ENASLT			; enable RAM for #4000
 
 	ld	a,(F_U)
 	or	a
@@ -234,39 +252,47 @@ Stfp40:
 	ld	bc,1+8+3
 	ldir				; copy prepared fcb to fcb2
 
-
 	jp	rdt921
 
 
 ; Main menu
 MainM:
+	ld	a,"1"
+	ld	(DoneInd+3),a		; reset counter
+
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT			; enable RAM for #4000
+        ld      a,(TPASLOT2)
+        ld      h,#80
+        call    ENASLT			; enable RAM for #4000
+
 	xor	a
 	ld	(CURSF),a
 
 	print	MAIN_S
-
 Ma01:
 	ld	a,1
 	ld	(CURSF),a
 
 	ld	c,_INNOE
-	call	DOS
+	call	DOS	
 
 	push	af
 	xor	a
 	ld	(CURSF),a
 	pop	af
-	
+
 	cp	27
 	jp	z,Exit
 	cp	"0"
 	jp	z,Exit
 	cp	"1"
-	jp	z,DownSRAM
+	jp	z,DownFR
 	cp	"2"
-	jp	z,UploadSRAM
+	jp	z,UploadFR
 	cp	"3"
-	jr	z,DoReset
+	jp	z,DoReset
 	jr	Ma01
 
 
@@ -293,17 +319,19 @@ DoReset:
 	db	0			; slot
 	dw	0			; address
 
-;
-; Download SRAM's contents into a file
-;
-DownSRAM:
-        print   SRM_FNM
-	call	GetFname
-	jp	nz,DownSR
-	print	ONE_NL_S
-	jr	MainM
 
-DownSR:
+;
+; Download EEPROM's contents into a file
+;
+DownFR:
+        print   CBK_FNM
+	call	GetFname
+	jr	nz,DownF
+
+	print	ONE_NL_S
+	jp	MainM
+
+DownF:
 ; test if file exists
 	ld	de,FCB2
 	ld	c,_FSEARCHF		; Search First File
@@ -386,72 +414,52 @@ opff3:	push	bc
 	jp	MainM
 
 rdt923:
-	ld      hl,1
-	ld      (FCB2+14),hl     	; Record size = 1 byte
+	ld      hl,#80
+	ld      (FCB2+14),hl     	; Record size = 128 bytes
 
-	print	ONE_NL_S
-
-	ld	a,SRAMBLK
-	ld	(EBlock),a		; shift to the block of RAM where SRAM is located
-	ld	a,SRAMBNK
-	ld	(PreBnk),a		; shift to the address in block where SRAM is located: 0FE000h-0FFFFFh
-
-        ld      a,(ERMSlt)
-        ld      h,#40
-        call    ENASLT
-	ld	a,#34			; RAM instead of ROM, Bank write enabled, 8kb pages, control off
-	ld	(R2Mult),a		; set value for Bank2
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
-
-	ld	hl,#8000		; source
-	ld	de,BUFTOP		; destination
-	ld	bc,#2000		; size
-	call	RW_RAM			; read SRAM data to BUFTOP
-	jr	nc,rdt997
-
-	print	DATA_ERR
-	print	DL_erd_S
-	jr	rdt999
-
-rdt997:
 	ld      c,_SDMA
-	ld      de,BUFTOP
+	ld      de,CFGBUF
 	call    DOS			; set DMA
 
-	ld	hl,8192
+; read 128 bytes from EEPROM
+	ld	a,(ERMSlt)
+	ld	h,#40			; Set 1 page
+	call	ENASLT
+
+	ld	a,#20
+	ld	(CardMDR),a		; immediate changes in place
+
+	ld	hl,CFGBUF
+	ld	bc,#8000
+rdt04:
+	ld	a,c
+	push	bc
+	call	EERD			; read data from EEPROM
+	pop	bc
+	ld	(hl),a
+	inc	hl
+	inc	c
+	djnz	rdt04
+
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT			; enable RAM for #4000
+
+	ld	hl,1
 	ld	de,FCB2
 	ld	c,_RBWRITE
-	call	DOS			; write 8192 bytes of SRAM contents
+	call	DOS			; write 128 bytes of EEPROM contents
 	or	a
-	jp	z,rdt998
+	jr	z,rdt990
 
 	print	FR_ERW_S
 	print	ONE_NL_S
 	jr	rdt999
 
-rdt998:
-	print	Success		; print successful operation
+rdt990:
+	print	Success			; print successful operation
 
 rdt999:
-
-; Restore slot configuration!
-        ld      a,(ERMSlt)
-        ld      h,#40
-        call    ENASLT
-	ld	a,#15
-	ld	(R2Mult),a		; set 16kB Bank write
-	xor	a
-	ld	(EBlock),a
-	ld	(AddrFR),a
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
-        ld      a,(TPASLOT2)
-        ld      h,#80
-        call    ENASLT          	; Select Main-RAM at bank 8000h~BFFFh
-
 	ld	de,FCB2
 	ld	c,_FCLOSE
 	call	DOS
@@ -466,6 +474,8 @@ rdt999:
 
 	jp	MainM	
 
+
+; Enter file name
 GetFname:
 ;Bi_FNAM
 	ld	de,Bi_FNAM
@@ -475,7 +485,7 @@ GetFname:
 	or	a
 	ret	z
 
-	ld	hl,SRMFN
+	ld	hl,CBKFN
 	ld	de,FCB2
 	ld	bc,8+3+1
 	ldir
@@ -535,7 +545,7 @@ gcn04:	dec	b
 	jr	nz,gcn04
 
 gcn02:
-        print   SRM_Name
+        print   CBK_Name
         ld      bc,24           	; Prepare the FCB
         ld      de,FCB2+13
         ld      hl,FCB2+12
@@ -576,10 +586,10 @@ gcn07:	push	hl
 
 
 ;
-; Upload file's contents into SRAM
+; Upload file's contents into EEPROM
 ;
-UploadSRAM:
-	print	WR_SRAM_S
+UploadFR:
+	print	WR_FLROM_S
 	ld	de,Bi_FNAM
 	ld	c,_BUFIN
 	call	DOS
@@ -595,31 +605,31 @@ UploadSRAM:
 
 	ld	hl,Bi_FNAM+2
 	ld	b,13
-USRAM1:
+UPLFR1:
 	ld	a,(hl)
 	cp	'.'
-	jr	z,USRAM2
+	jr	z,UPLFR2
 	or	a
-	jr	z,USRAMC
+	jr	z,UPLFRC
 	inc	hl
-	djnz	USRAM1
+	djnz	UPLFR1
 
-USRAMC:
+UPLFRC:
 	ex	de,hl
-	ld	hl,SRMEXT		; copy extension and zero in the end
+	ld	hl,CBKEXT		; copy extension and zero in the end
 	ld	bc,5
 	ldir
-	jr	USRAM3
+	jr	UPLFR3
 
-USRAM2:
+UPLFR2:
 	inc	hl
 	ld	a,(hl)
 	or	a
-	jr	z,USRAM3
+	jr	z,UPLFR3
 	cp	32			; empty extension?
-	jr	c,USRAMC
-	
-USRAM3:
+	jr	c,UPLFRC
+
+UPLFR3:
 	ld	ix,Bi_FNAM+2
 	call	FnameP
 	jp	ADD_OF
@@ -631,7 +641,7 @@ SelFile:
 	call    DOS
 
 SelFile0:
-	ld	de,FCBSRM
+	ld	de,FCBCBK
 	ld	c,_FSEARCHF		; Search First File
 	call	DOS
 	or	a
@@ -671,10 +681,11 @@ Sf3:	ld	c,_INNOE
 	cp	13			; Enter? -> select file
 	jr	z,Sf5
 	cp	27			; ESC? -> exit
-	jp	nz,sf3z
-       	print	ONE_NL_S
+	jp	nz,Sf3z
+
+	print	ONE_NL_S
 	jp	MainM
-sf3z:
+Sf3z:
 	cp	9			; Tab? -> next file
 	jr	nz,Sf3	
 
@@ -714,6 +725,7 @@ Sf5:
 	ldir				; copy selected file name
 	xor	a
 	ld	(de),a			; zero in the end of the file
+
 	ld	ix,Bi_FNAM+2
 	call	FnameP
 
@@ -766,8 +778,8 @@ opf3:	push	bc
 	ld	de,FCB
 	ld	c,_FOPEN
 	call	DOS			; Open file
-	ld      hl,1
-	ld      (FCB+14),hl     	; Record size = 1 byte
+	ld      hl,#80
+	ld      (FCB+14),hl     	; Record size = 128 bytes
 	or	a
 	jr	z,Fpo
 
@@ -784,7 +796,7 @@ opf3:	push	bc
 Fpo:
 ; set DMA
 	ld      c,_SDMA
-	ld      de,BUFTOP
+	ld      de,CFGBUF
 	call    DOS
 
 ; get file size
@@ -793,7 +805,7 @@ Fpo:
 	ld	de,Size
 	ldir
 
-; print SRM size in hex
+; print CBK size in hex
 	ld	a,(F_V)			; verbose mode?
 	or	a
 	jr	z,vrb00
@@ -811,13 +823,16 @@ Fpo:
 	ld	de,ONE_NL_S
 	ld	c,_STROUT
 	call	DOS	
+
 vrb00:
+	ld	hl,(Size+2)		; we need #800000 = 8388608 bytes
+	ld	a,l
+	or	h
+	jr	nz,vbr01
 	ld	hl,(Size)
 	ld	a,l
-	or	a
-	jr	nz,vbr01
-	ld	a,h
-	cp	#20			; 2000h = 8192 bytes
+	or	h
+	cp	#80
 	jr	z,FMRM01
 vbr01:
 	print	FileOver_S
@@ -832,8 +847,39 @@ vbr01:
 
 	jp	MainM
 	
-FMRM01:					; fix size
+FMRM01:
+	ld	a,(F_A)
+	or	a
+	jr	nz,COwr3		; automatic overwrite
 
+	print	OverwrWRN1
+	ld	c,_INNOE
+	call	DOS			; warning 1
+	or	%00100000
+	call	SymbOut
+	cp	"y"
+	jr	z,COwr1
+	print	ONE_NL_S
+	jp	MainM
+COwr1:
+	print	ONE_NL_S
+	print	OverwrWRN2
+	ld	c,_INNOE
+	call	DOS			; warning 1
+	or	%00100000
+	call	SymbOut
+	cp	"y"
+	jr	z,COwr2
+	ld	e,a
+	ld	c,_CONOUT
+	call	DOS
+	print	ONE_NL_S
+	jp	MainM
+
+COwr2:
+	print	ONE_NL_S
+
+COwr3:
 ; !!!! file attribute fix by Alexey !!!!
 	ld	a,(FCB+#11)
 	cp	#20
@@ -846,13 +892,60 @@ FMRM01:					; fix size
 ; !!!! file attribute fix by Alexey !!!!
 
 DEF10:
+	ld	c,_RBREAD
+	ld	de,FCB
+	ld	hl,1
+	call	DOS			; read 128 bytes
+	ld	a,h
+	or	l
+	jr	nz,Fpr03
+
+	print	FR_ERS
+	print	ONE_NL_S
+	scf				; set carry flag because of an error
+	jp	Fpr08
+
+Fpr03:
+; save into EEPROM
+	ld	a,(ERMSlt)
+	ld	h,#40			; Set 1 page
+	call	ENASLT
+
+	ld	a,#20
+	ld	(CardMDR),a		; immediate changes in place
+
+	ld	a,%01100000		; write enable
+	call	EEWEN
+
+	ld	hl,CFGBUF
+	ld	bc,#8000
+Fpr04:
+	ld	a,(hl)
+	ld	e,a	         	; data
+	ld	a,c			; address
+	push	bc
+	call	EEWR			; save data to EEPROM
+	pop	bc
+	inc	hl
+	inc	c
+	djnz	Fpr04
+
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT			; enable RAM for #4000
+	ccf
+
+Fpr08:
+; file close
+	push	af
 	ld	de,FCB
 	ld	c,_FCLOSE
 	call	DOS
+	pop	af
+	jr	nc,DEF11
 
-	call	LoadImage
-	jr	c,DEF11			; if failed, C flag is set
 	print	Success
+	print	RestMsg
 
 DEF11:
 	ld	a,(F_R)
@@ -864,6 +957,7 @@ DEF11:
 	jp	nz,Exit
 
 	jp	MainM	
+
 
 Reset1:
 ; Restore slot configuration!
@@ -889,200 +983,328 @@ Reset1:
 	dw	0			; address
 
 
-; Load image and save it to SRAM
-;-----------------------------------------------------------------------------
-LoadImage:
-
-; Reopen file image
-        ld      bc,24			; Prepare the FCB
-        ld      de,FCB+13
-        ld      hl,FCB+12
-        ld      (hl),b
-        ldir                    	; Initialize the second half with zero
-	ld	de,FCB
-	ld	c,_FOPEN
-	call	DOS			; Open file
-	ld      hl,1
-	ld      (FCB+14),hl     	; Record size = 1 byte
-	or	a
-	jr	z,LIF01			; file open
-	print	F_NOT_F_S
-	ret
-LIF01:	ld      c,_SDMA
-	ld      de,BUFTOP
-	call    DOS
-
-LIFM1:
-
-; !!!! file attribute fix by Alexey !!!!
-	ld	a,(FCB+#11)
-	cp	#20
-	jr	nz,Fpr02a
-	ld	a,(FCB+#0D)
-	cp	#21
-	jr	nz,Fpr02a
-	dec	a
-	ld	(FCB+#0D),a
-; !!!! file attribute fix by Alexey !!!!
-
-;load file
-Fpr02a:	ld	c,_RBREAD
-	ld	de,FCB
-	ld	hl,#2000
-	call	DOS
-	ld	a,h
-	or	l
-	jp	z,Ld_Fail
-
-	ld	a,SRAMBLK
-	ld	(EBlock),a		; shift to the block of RAM where SRAM is located
-	ld	a,SRAMBNK
-	ld	(PreBnk),a		; shift to the address in block where SRAM is located: 0FE000h-0FFFFFh
-
-        ld      a,(ERMSlt)
-        ld      h,#40
-        call    ENASLT
-	ld	a,#34			; RAM instead of ROM, Bank write enabled, 8kb pages, control off
-	ld	(R2Mult),a		; set value for Bank2
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
-	
-	ld	hl,BUFTOP		; source
-	ld	de,#8000		; destination
-	ld	bc,#2000		; size
-	call	RW_RAM			; save loaded data into SRAM
-	jr	nc,LIF04
-
-	print	DATA_ERR
-	print	UL_erd_S
-	scf				; set carry flag because of an error
-
-LIF04:
-	push	af
-
-; Restore slot configuration!
-
-        ld      a,(ERMSlt)
-        ld      h,#40
-        call    ENASLT
-	ld	a,#15
-	ld	(R2Mult),a		; set 16kB Bank write
-	xor	a
-	ld	(EBlock),a
-	ld	(AddrFR),a
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
-        ld      a,(TPASLOT2)
-        ld      h,#80
-        call    ENASLT          	; Select Main-RAM at bank 8000h~BFFFh
-
-; file close
-	ld	de,FCB
-	ld	c,_FCLOSE
-	call	DOS
-	pop	af
+; Read 1 byte from EEPROM
+; input A - address
+; outut A - data
+EERD:
+	push	hl
+	ld	hl,CardMDR+#23
+	ld	c,a
+; one CLK pulse
+	ld	a,%00000100
+	ld	(hl),a
+	ld	a,%00000000	
+	ld	(hl),a
+; start bit
+	ld	a,%00000010
+	ld	(hl),a
+	ld	a,%00001010
+	ld	(hl),a
+	ld	a,%00001110
+	ld	(hl),a
+; opcode "10"
+	ld	a,%00001010
+	ld	(hl),a
+	ld	a,%00001110
+	ld	(hl),a
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+; address A6-A0
+	ld	b,7
+	rrc	c
+	rrc	c
+	rrc	c
+	rrc	c
+	rrc	c
+EERDa1:
+	ld	a,c
+	and	%00001010
+	or	%00001000
+	ld	(hl),a
+	or	%00001100
+	ld	(hl),a
+	rlc	c
+	djnz	EERDa1
+; 
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+; Read Data D7-D0
+	ld	c,0
+	ld	b,8
+EERDd1:
+	rlc	c
+	ld	a,(hl)
+	and	%00000001
+	or	c
+	ld	c,a
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+ 	djnz	EERDd1
+; and read data
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00000000
+	ld	(hl),a
+; return data A	
+	ld	a,c
+	pop	hl
 	ret
 
-Ld_Fail:
-	print	FR_ERS
-	scf				; set carry flag because of an error
-	jr	LIF04
 
+; Write 1 byte to EEPROM
+; E - data
+; A - address
+EEWR:
+	push	hl
+	ld	hl,CardMDR+#23
+	ld	c,a
+; one CLK pulse
+	ld	a,%00000100
+	ld	(hl),a
+	ld	a,%00000000	
+	ld	(hl),a
+; start bit
+	ld	a,%00000010
+	ld	(hl),a
+	ld	a,%00001010
+	ld	(hl),a
+	ld	a,%00001110
+	ld	(hl),a
+; opcode "01"
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+	ld	a,%00001010
+	ld	(hl),a
+	ld	a,%00001110
+	ld	(hl),a
+; address A6-A0
+	ld	b,7
+	rrc	c
+	rrc	c
+	rrc	c
+	rrc	c
+	rrc	c
+EEWRa1:
+	ld	a,c
+	and	%00001010
+	or	%00001000
+	ld	(hl),a
+	or	%00001100
+	ld	(hl),a
+	rlc	c
+	djnz	EEWRa1
+; Write Data
+	rlc	e
+	ld	b,8
+EEWRd1:
+	rlc	e
+	ld	a,e
+	and	%00001010
+	or	%00001000
+	ld	(hl),a
+	or	%00001100
+	ld	(hl),a
+	djnz	EEWRd1
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00000000
+	ld	(hl),a
+; write cycle
+EEWRwc:
+        ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+	ld	a,(hl)
+	and	%00000001
+	jr	nz,EERWce
+	djnz	EEWRwc
+EERWce:
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00000000
+	ld	(hl),a
+	pop	hl
+        ret
+
+
+;Write enable/disable EEPROM
+;A = %01100000 Write Enable
+;A = %00000000 Write Disable
+;A = %01000000 Erase All! 
+EEWEN:
+	push	hl
+	ld	hl,CardMDR+#23
+	ld	c,a
+; one CLK pulse
+	ld	a,%00000100
+	ld	(hl),a
+	ld	a,%00000000	
+	ld	(hl),a
+; start bit
+	ld	a,%00000010
+	ld	(hl),a
+	ld	a,%00001010
+	ld	(hl),a
+	ld	a,%00001110
+	ld	(hl),a
+; opcode "00"
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00001100
+	ld	(hl),a
+; address A6-A0
+	ld	b,7
+	rrc	c
+	rrc	c
+	rrc	c
+	rrc	c
+	rrc	c
+EEENa1:
+	ld	a,c
+	and	%00001010
+	or	%00001000
+	ld	(hl),a
+	or	%00001100
+	ld	(hl),a
+	rlc	c
+	djnz	EEENa1
+
+	ld	a,%00001000
+	ld	(hl),a
+	ld	a,%00000000
+	ld	(hl),a
+	pop	hl
+	ret
 
 
 ;-----------------------------------------------------------------------------
-RW_RAM:
-; Block (0..2000h) save into/from SRAM
-; hl - source address
-; de = destination address
-; bc - length
-; (EBlock)x64kB, (PreBnk)x8kB(16kB) - start address in RAM
-; output CF - failed flag
-	exx
-        ld      a,(ERMSlt)
-        ld      h,#40
-        call    ENASLT
-	ld	a,(PreBnk)
-	ld	(R2Reg),a
-	ld	a,(EBlock)
-	ld	(AddrFR),a
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
-        ld      a,(ERMSlt)
-        ld      h,#80
-        call    ENASLT 
-	exx
+; Move BIOS (CF card IDE and FMPAC) to shadow RAM
+Shadow:
+; Eblock, Eblock0 - block address
+	ld	a,(ERMSlt)
+	ld	h,#40			; Set 1 page
+	call	ENASLT
+	ld	a,(ERMSlt)
+	ld	h,#80			; Set 2 page
+	call	ENASLT
 	di
 
-Loop2:
-	ld	a,(hl)			; 1st byte copy
-	ld	(de),a
-	inc	hl
-	inc	de
-	ld	a,(hl)			; 2nd byte copy
-	ld	(de),a
-	call	CHECK			; check
-	jp	c,PrEr
-	inc	hl
-	inc	de
-	dec	bc
-	dec	bc
-	ld	a,b
-	or	c
-	jr	nz,Loop2
-PrEr:
-; save flag (CF - fail)
+	ld	a,#21
+	ld	(CardMDR),a
+
+	ld	hl,B23ON
+	ld	de,CardMDR+#0C		; set Bank 2 3
+	ld	bc,12
+	ldir
+	ld	a,1			; copy from 1st 64kb block
+	ld	(AddrFR),a
+
+	xor	a
+
+; Quick test RAM availability
+	ld	hl,#A000
+	ld	a,(hl)
+	ld	b,a
+	xor	a
+	ld	(hl),a
+	cp	(hl)
+	ld	(hl),b
+	jr	nz,Sha02
+
+; Work cycle
+Sha01:
+	ld	(CardMDR+#0E),a		; R2Reg
+	ld	(CardMDR+#14),a		; R3Reg
+	ld	hl,#8000
+	ld	de,#A000
+	ld	bc,#2000
+	push	hl
+	push	de
+	push	bc
+	ldir
+	pop	bc
+	pop	de
+	pop	hl
 	push	af
-	ei
 
-        ld      a,(ERMSlt)
-        ld      h,#40
-        call    ENASLT
-	ld	a,#A4			; RAM instead of ROM, Bank write disabled, 8kb pages, control on
-	ld	(R2Mult),a		; set value for Bank2
+Sha01t: ld	a,(F_A)
+	or	a			; skip testing in auto mode
+	jr	nz,Sha01e
 
-        ld      a,(TPASLOT2)
-        ld      h,#80
-        call    ENASLT          	; Select Main-RAM at bank 8000h~BFFFh
+	ld	a,(de)			; test copied data
+	cp	(hl)
+	jr	nz,Sha02		; failed check
+	inc	hl
+	inc	hl
+	inc	hl
+	inc	hl
+	inc	de
+	inc	de
+	inc	de
+	inc	de
+	dec	bc
+	dec	bc
+	dec	bc
+	dec	bc			; check every forth byte (for performance reasons)
+	ld	a,b
+	or	a
+	jr	nz,Sha01t
+	ld	a,c
+	or	a
+	jr	nz,Sha01t	
+
+Sha01e:
 	pop	af
-	exx
+	inc	a
+	cp	24 			; 8 * 3 128k+64k 
+	jr	c,Sha01
+
+	ld	a,#23
+	ld	(CardMDR),a
+	ld	(ShadowMDR),a
+	push	af
+
+Sha02:  pop	af
+	xor	a
+	ld	(AddrFR),a	
+	ld	a,#08
+	ld	(CardMDR+#15),a 	; off Bank3 R3Mult
+	ld	hl,B2ON
+	ld	de,CardMDR+#0C		; set Bank2
+	ld	bc,6
+	ldir
+
+	ei
+	ld      a,(TPASLOT2)
+        ld      h,#80
+        call    ENASLT
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT       		; Select Main-RAM at bank 4000h~7FFFh
 	ret
 
 
-;**********************
-CHECK:
-    	push	bc
-    	ld	c,a
-CHK_L1: ld	a,(de)
-    	xor	c
-    	jp	p,CHK_R1		; Jump if readed bit 7 = written bit 7
-    	xor	c
-    	and	#20
-    	jr	z,CHK_L1		; Jump if readed bit 5 = 1
-    	ld	a,(de)
-    	xor	c
-    	jp	p,CHK_R1		; Jump if readed bit 7 = written bit 7
-    	scf
-CHK_R1:	pop bc
-	ret	
-
-
-FrErr:
-; file close
-	ld	de,FCB
-	ld	c,_FCLOSE
-	call	DOS
-; print error
-	ld	de,FR_ER_S
-	ld	c,_STROUT
-	call	DOS
-; return main	
-	jp	MainM		
-
 Exit:
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT			; enable RAM for #4000
+        ld      a,(TPASLOT2)
+        ld      h,#80
+        call    ENASLT			; enable RAM for #4000
+
 	xor	a
 	ld	(CURSF),a
 
@@ -1353,10 +1575,10 @@ Trp02:	call	HEXOUT
 
 Trp02a:	ld	a,(Det00)
 	cp	#20
-	jr	nz,Trp03	
+	jp	nz,Trp03	
 	ld	a,(Det02)
 	cp	#7E
-	jr	nz,Trp03
+	jp	nz,Trp03
 	print	M29W640
 	ld	e,"x"
 	ld	a,(Det1C)
@@ -1465,7 +1687,7 @@ he2:	ld	b,a
 
 
 NO_FND:
-;;;;;;;;;;;;;;;;;;;;;
+
 AutoSeek:
 ; return reg A - slot
 ;	    
@@ -2104,15 +2326,18 @@ ROTA:	sla	l
 	ret
 
 
-; Clear screen and set screen 0
+; Clear screen, set screen 0
 CLRSCR:
+	push	ix
 	xor	a
 	rst	#30
 	db	0
 	dw	#005F
+	pop	ix
 
 	xor	a
 	ld	(CURSF),a
+
 	ret
 
 ; Hide functional keys
@@ -2120,7 +2345,6 @@ KEYOFF:
 	rst	#30
 	db	0
 	dw	#00CC
-
 	ret
 
 ; Unhide functional keys
@@ -2128,7 +2352,6 @@ KEYON:
 	rst	#30
 	db	0
 	dw	#00CF
-
 	ret
 
 
@@ -2166,26 +2389,26 @@ fkey02:	ld	hl,BUFFER+1
 fkey03:	ld	hl,BUFFER+1
 	ld	a,(hl)
 	and	%11011111
-	cp	"H"
+	cp	"V"
 	jr	nz,fkey04
 	inc	hl
 	ld	a,(hl)
 	or	a
 	jr	nz,fkey04
 	ld	a,3
-	ld	(F_H),a			; show help
+	ld	(F_V),a			; verbose mode flag
 	ret
 fkey04:	ld	hl,BUFFER+1
 	ld	a,(hl)
 	and	%11011111
-	cp	"V"
+	cp	"H"
 	jr	nz,fkey05
 	inc	hl
 	ld	a,(hl)
 	or	a
 	jr	nz,fkey05
 	ld	a,4
-	ld	(F_V),a			; verbose mode flag
+	ld	(F_H),a			; show help
 	ret
 fkey05:
 	ld	hl,BUFFER+1
@@ -2212,6 +2435,8 @@ fkey06:
 ;Variables
 ;
 DOS2:	db	0
+ShadowMDR
+	db	#21
 ERMSlt	db	1
 TRMSlt	db	#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF
 Binpsl	db	2,0,"1",0
@@ -2235,8 +2460,9 @@ EBlock0:
 EBlock:	db	0
 strp:	db	0
 strI:	dw	#8000
+CBKEXT:	db	".CBK",0
 
-Bi_FNAM db	14,0,"D:FileName.SRM",0
+Bi_FNAM db	14,0,"D:FileName.CBK",0
 ;--- File Control Block
 FCB:	db	0
 	db	"           "
@@ -2263,11 +2489,11 @@ CURPAG:	db	0,0
 
 ; /-flags parameter
 F_R	db	0
-F_A	db	0
+F_H	db	0
 F_D	db	0
 F_U	db	0
 F_V	db	0
-F_H	db	0
+F_A	db	0
 p1e	db	0
 
 ZeroB:	db	0
@@ -2276,24 +2502,26 @@ Space:
 	db	" $"
 Bracket:
 	db	" ",124," $"
-SRMEXT:
-	db	".SRM",0
-SRMFN:	db	0
-	db	"        SRM"
+CBKFN:	db	0
+	db	"        CBK"
 FCB2:	
 	db	0
-	db	"        SRM"
+	db	"        CBK"
 	ds	28
-FCBSRM:	
+FCBCBK:	
 	db	0
-	db	"????????SRM"
+	db	"????????CBK"
 	ds	28
 
 BUFFER:	ds	256
 	db	0,0,0
 
+CFGBUF:	ds	128
+	db	0,0,0	
+
 B1ON:	db	#F8,#50,#00,#85,#03,#40
-B2ON:	db	#F0,#70,#01,#15,#7F,#80
+B2ON:	db	#F0,#70,#00,#15,#7F,#80
+B2ON1:	db	#F0,#70,#00,#14,#7F,#80
 B23ON:	db	#F0,#80,#00,#04,#7F,#80	; for shadow source bank
 	db	#F0,#A0,#00,#34,#7F,#A0	; for shadow destination bank
 
@@ -2316,8 +2544,8 @@ ABCD:	db	"0123456789ABCDEF"
 MAIN_S:	db	13,10
 	db	"Main Menu",13,10
 	db	"---------",13,10
-	db	" 1 - Download SRAM's contents to a file",13,10
-	db	" 2 - Upload file's contents into SRAM",13,10
+	db	" 1 - Download EEPROM's contents to a file",13,10
+	db	" 2 - Upload file's contents into EEPROM",13,10
 	db	" 3 - Restart the computer",13,10
 	db	" 0 - Exit to MSX-DOS",13,10,"$"
 
@@ -2326,16 +2554,18 @@ FileSZH:
 	db	"File size (hexadecimal): $"
 Success:
 	db	13,10,"The operation completed successfully!",13,10,"$"
+RestMsg:
+	db	"Please restart your system to apply the changes.",13,10,"$"
 ANIK_S:
 	db	"Press any key to continue",13,10,"$"
-WR_SRAM_S:
-	db	13,10,"Input file name to upload into SRAM or just press Enter to select files: $"
-SRM_FNM:
-	db	13,10,"Input file name to download SRAM's contents to: $"
+WR_FLROM_S:
+	db	13,10,"Input file name to upload into EEPROM or just press Enter to select files: $"
+CBK_FNM:
+	db	13,10,"Input file name to download EEPROM's contents to: $"
 SelMode:
 	db	10,13,"Selection mode: TAB - next file, ENTER - select, ESC - exit",10,13,"Found file(s):",9,"$"
 NoMatch:
-	db	10,13,"No SRM files found in the current directory!",10,13,"$"
+	db	10,13,"No CBK files found in the current directory!",10,13,"$"
 OpFile_S:
 	db	10,13,"Opening file: ","$"
 CrFile_S:
@@ -2357,17 +2587,21 @@ FR_ERC_S:
 DATA_ERR:
 	db	13,10,"Data copying error!","$"
 UL_erd_S:
-	db	13,10,"Uploading file into SRAM failed!",13,10,"$"
+	db	13,10,"Uploading file into EEPROM failed!",13,10,"$"
 DL_erd_S:
-	db	13,10,"Downloading SRAM into file failed!",13,10,"$"
+	db	13,10,"Downloading EEPROM into file failed!",13,10,"$"
 F_EXIST_S:
         db      13,10,"File already exists, overwrite? (y/n) $"
+OverwrWRN1:
+	db	10,13,"WARNING! This will overwrite all data on the EEPROM chip. Proceed? (y/n) $"
+OverwrWRN2:
+	db	"DANGER! THE ENTIRE EEPROM CHIP WILL BE OVERWRITTEN! PROCEED? (y/n) $"
 FileOver_S:
 	db	10,13
-	db	"Incorrect file's size for loading into the emulated SRAM!",13,10
-	db	"The file for uploading into SRAM must be 8192 bytes long.",13,10
+	db	"Incorrect file's size for loading into the EEPROM!",13,10
+	db	"The file for uploading into EEPROM must be 128 bytes long.",13,10
 	db	"Please select another file...",13,10,"$"
-SRM_Name:
+CBK_Name:
         db      10,13,"Destination file name: $"
 TWO_NL_S:
 	db	13,10
@@ -2378,10 +2612,12 @@ CLStr_S:
 	db	27,"K$"
 MD_Fail:
 	db	"FAILED...",13,10,"$"
-
+PlsWait:
+	db	"Please wait, this may take up to 10 minutes...",10,13
+	db	"Press ESC to interrupt the process on your own risk.",10,13,10,13,"$"
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge SRAM Manager v1.06",13,10
+	db	"Carnivore2 MultiFunctional Cartridge EEPROM Backup v1.00",13,10
 	db	"(C) 2015-2019 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -2396,6 +2632,12 @@ FindcrI_S:
 	db	13,10,"Press ENTER for the found slot or input new slot number - $"
 
 SltN_S:	db	13,10,"Using slot - $"
+
+M_Shad:	db	"Copying ROM BIOS to RAM (shadow copy): $"
+Shad_S:	db	"OK",10,13,"$"
+Shad_F:	db	"FAILED!",10,13,"$"
+DoneInd:
+	db	" - 1/8 done",10,13,"$"
 
 M29W640:
         db      "FlashROM chip detected: M29W640G$"
@@ -2417,13 +2659,17 @@ I_MPAR_S:
 	db	"Too many parameters!",13,10,13,10,"$"
 H_PAR_S:
 	db	"Usage:",13,10,13,10
-	db	" c2sram [filename.srm] [/h] [/v] [/d] [/u]",13,10,13,10
+	db	" c2cfgbck [filename.cbk] [/h] [/v] [/d] [/u]",13,10,13,10
 	db	"Command line options:",13,10
 	db	" /h  - this help screen",13,10
 	db	" /v  - verbose mode (show detailed information)",13,10
-	db	" /d  - download contents of SRAM into a file",10,13
-	db	" /u  - upload file's contents into SRAM",13,10
-	db	" /r  - restart computer after up/downloading",10,13,"$"
+	db	" /d  - download EEPROM's contents into a file",10,13
+	db	" /u  - upload file's contents into EEPROM",13,10
+	db	" /r  - restart computer after up/downloading",10,13
+	db	10,13
+	db	"WARNING!"
+	db	10,13
+	db	"There will be no overwrite warnings when /u option is used!",10,13,"$"
 
 	db	0,0,0
 	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER:2019"

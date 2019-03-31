@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's FlashROM Backup
-; Copyright (c) 2015-2018 RBSC
-; Version 1.05
+; Copyright (c) 2015-2019 RBSC
+; Version 1.07
 ;
 
 
@@ -146,7 +146,7 @@ PRTITLE:
 ; Command line options processing
 	ld	a,1
 	call	F_Key			; C- no parameter; NZ- not flag; S(M)-ilegal flag
-	jr	c,Stfp010
+	jp	c,Stfp010
 	jr	nz,Stfp07
 	jp	p,Stfp02
 Stfp03:
@@ -172,6 +172,15 @@ Stfp04:
 	call	F_Key
 	jr	c,Stfp01
 	jp	m,Stfp03
+	jr	z,Stfp04a
+	print	I_MPAR_S
+	jr	Stfp09
+
+Stfp04a:
+	ld	a,4
+	call	F_Key
+	jr	c,Stfp01
+	jp	m,Stfp03
 	jr	z,Stfp01
 	print	I_MPAR_S
 	jr	Stfp09
@@ -193,8 +202,14 @@ Stfp08:
 	jr	z,Stfp010
 	ld	a,1
 	ld	(F_A),a			; Automatic flag active
-
 Stfp010:
+	ld	a,(F_P)
+	or	a
+	jr	z,Stfp011
+	ld	a,1
+	ld	(F_P),a			; Preserve flag active
+
+Stfp011:
 ; Find used slot
 	call	FindSlot
 	jp	c,Exit
@@ -696,6 +711,34 @@ UploadFR:
 	ld	hl,Bi_FNAM+2
 	add	hl,bc
 	ld	(hl),0
+
+	ld	hl,Bi_FNAM+2
+	ld	b,13
+UPLFR1:
+	ld	a,(hl)
+	cp	'.'
+	jr	z,UPLFR2
+	or	a
+	jr	z,UPLFRC
+	inc	hl
+	djnz	UPLFR1
+
+UPLFRC:
+	ex	de,hl
+	ld	hl,FRBEXT		; copy extension and zero in the end
+	ld	bc,5
+	ldir
+	jr	UPLFR3
+
+UPLFR2:
+	inc	hl
+	ld	a,(hl)
+	or	a
+	jr	z,UPLFR3
+	cp	32			; empty extension?
+	jr	c,UPLFRC
+
+UPLFR3:
 	ld	ix,Bi_FNAM+2
 	call	FnameP
 	jp	ADD_OF
@@ -916,8 +959,27 @@ vbr01:
 FMRM01:
 	ld	a,(F_A)
 	or	a
-	jr	nz,COwr3		; automatic overwrite
+	jp	nz,COwr3		; automatic overwrite
 
+	ld	a,(F_P)
+	or	a
+	jr	nz,PRESB3
+	print	PRES_BB			; ask to preserve boot blok
+PRESB1:	ld	c,_INNOE
+	call	DOS
+	or	%00100000
+	cp	"y"
+	jr	z,PRESB2
+	cp	"n"
+	jr	z,PRESB3
+	call	SymbOut
+	jr	PRESB1
+	
+PRESB2:
+	ld	a,1
+	ld	(F_P),a			; preserve boot block
+
+PRESB3:
 	print	OverwrWRN1
 	ld	c,_INNOE
 	call	DOS			; warning 1
@@ -960,19 +1022,9 @@ COwr3:
 DEF10:
 	print	PlsWait
 
-	ld	e,">"			; first indicator
-	ld	c,_CONOUT
-	call	DOS
-
         ld      a,(ERMSlt)
         ld      h,#40
         call    ENASLT
-
-	xor	a
-	ld	(AddrFR),a
-	ld	(EBlock),a
-	ld	(PreBnk),a
-	ld	(EBlock0),a
 
 	ld	hl,B2ON1
 	ld	de,CardMDR+#0C		; set Bank2
@@ -986,6 +1038,50 @@ DEF10:
 	ld      c,_SDMA
 	ld      de,BUFTOP
 	call    DOS			; set DMA
+
+	ld	a,(F_P)			; Preserve flag active?
+	or	a
+	jr	z,DEF10a
+
+	xor	a
+	ld	(EBlock),a		; first 64kb block
+	ld	(AddrFR),a		; first 64kb block
+	ld	a,2
+	ld	(PreBnk),a		; skip 16kb (boot block)
+	ld	a,#40
+	ld	(EBlock0),a		; skip 16kb (boot block)
+
+; read 16kb of file to skip boot block
+	ld	c,_RBREAD
+	ld	de,FCB
+	ld	hl,1
+	call	DOS			; read #2000 bytes
+	ld	a,h
+	or	l
+	jr	z,Fpr02b
+	ld	c,_RBREAD
+	ld	de,FCB
+	ld	hl,1
+	call	DOS			; read #2000 bytes
+	ld	a,h
+	or	l
+	jr	z,Fpr02b
+
+	ld	e,"-"			; first indicator - skip
+	ld	c,_CONOUT
+	call	DOS
+	jr	Fpr02
+
+DEF10a:
+	xor	a
+	ld	(AddrFR),a
+	ld	(EBlock),a
+	ld	(PreBnk),a
+	ld	(EBlock0),a
+
+	ld	e,">"			; first indicator
+	ld	c,_CONOUT
+	call	DOS
 
 ; Load file in 8kb chunks and write to FlashROM
 Fpr02:
@@ -1018,6 +1114,7 @@ Fpr02a:
 	or	l
 	jr	nz,Fpr03
 
+Fpr02b:
 	print	FR_ERS
 	print	ONE_NL_S
 	scf				; set carry flag because of an error
@@ -2555,6 +2652,20 @@ fkey05:
 	ld	(F_R),a			; reset after loading ROM
 	ret
 fkey06:
+	ld	hl,BUFFER+1
+	ld	a,(hl)
+	and	%11011111
+	cp	"P"
+	jr	nz,fkey07
+	inc	hl
+	ld	a,(hl)
+	or	a
+	jr	nz,fkey07
+	ld	a,6
+	ld	(F_P),a			; preserve original boot block
+	ret
+
+fkey07:
 	xor	a
 	dec	a			; S - Illegal flag
 	ret
@@ -2591,6 +2702,7 @@ EBlock0:
 EBlock:	db	0
 strp:	db	0
 strI:	dw	#8000
+FRBEXT:	db	".FRB",0
 
 Bi_FNAM db	14,0,"D:FileName.FRB",0
 ;--- File Control Block
@@ -2624,6 +2736,7 @@ F_D	db	0
 F_U	db	0
 F_V	db	0
 F_A	db	0
+F_P	db	0
 p1e	db	0
 
 ZeroB:	db	0
@@ -2721,6 +2834,8 @@ DL_erd_S:
 	db	13,10,"Downloading FlashROM into file failed!",13,10,"$"
 F_EXIST_S:
         db      13,10,"File already exists, overwrite? (y/n) $"
+PRES_BB:
+        db      13,10,"Preserve the existing boot block? (y/n) $"
 OverwrWRN1:
 	db	10,13,"WARNING! This will overwrite all data on the FlashROM chip. Proceed? (y/n) $"
 OverwrWRN2:
@@ -2750,8 +2865,8 @@ OpInterr2:
 	db	10,13,"ABORTED! This will result in an partially written FlashROM...",10,13,"$"
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge FlashROM Backup v1.05",13,10
-	db	"(C) 2015-2018 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 MultiFunctional Cartridge FlashROM Backup v1.07",13,10
+	db	"(C) 2015-2019 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
 Findcrt_S:
@@ -2792,12 +2907,13 @@ I_MPAR_S:
 	db	"Too many parameters!",13,10,13,10,"$"
 H_PAR_S:
 	db	"Usage:",13,10,13,10
-	db	" c2backup [filename.frb] [/h] [/v] [/d] [/u]",13,10,13,10
+	db	" c2backup [filename.frb] [/h] [/v] [/d] [/u] [/p]",13,10,13,10
 	db	"Command line options:",13,10
 	db	" /h  - this help screen",13,10
 	db	" /v  - verbose mode (show detailed information)",13,10
 	db	" /d  - download FlashROM's contents into a file",10,13
 	db	" /u  - upload file's contents into FlashROM",13,10
+	db	" /p  - preserve the existing boot block on upload",10,13
 	db	" /r  - restart computer after up/downloading",10,13
 	db	10,13
 	db	"WARNING!"
@@ -2805,7 +2921,7 @@ H_PAR_S:
 	db	"There will be no overwrite warnings when /u option is used!",10,13,"$"
 
 	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000:2018"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER:2019"
 	db	0,0,0
 
 BUFTOP:

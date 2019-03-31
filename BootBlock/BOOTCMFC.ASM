@@ -1,15 +1,13 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's Boot Block
-; Copyright (c) 2015-2018 RBSC
+; Copyright (c) 2015-2019 RBSC
 ; Portions (c) Grauw
-; Version 2.06
+; Version 2.10
 ;
 
 ; !COMPILATION OPTIONS!
 CV	equ	2		; 1 = Canivore
 				; 2 = Canivore2
-EFF	equ	1		; 1 = effects (fade, palette) enabled
-				; 0 = effects disabled
 SPC	equ	0		; 1 = only basic characters are used for UI (for Arabic and Korean computers)
 				; 0 = all characters are used for UI
 
@@ -23,18 +21,59 @@ CHSETS	equ	#F91F
 SCR0WID	equ	#F3AE
 BSLT	equ	#F560
 BFNT	equ	#F562
-DIRCNT	equ	#F564
-DIRPAG	equ	#F566
-CURPAG	equ	#F568
+DIRCNT	equ	#F564	; 2 bytes!
+DIRPAG	equ	#F566	; 2 bytes!
+CURPAG	equ	#F568	; 2 bytes!
 VDPVER	equ	#F56A
 PALNTSC	equ	#F56C
-XYPOS	equ	#F56E
+XYPOS	equ	#F56E	; 2 bytes!
 AUTOST	equ	#F570
 PSGCFG	equ	#F572
 ORGVR10	equ	#F574
 MSXTYPE	equ     #F576
 TURBOM	equ	#F578
+
+; Variables for UI setup
+SKIPFD	equ	#F579	; 1 byte
+SELITEM	equ	#F57A	; 1 byte
+SORT	equ	#F580	; 1 byte
+EFF	equ	#F581	; 1 byte
+SPD	equ	#F582	; 1 byte
+
+; Colors for main menu screen -------------
+; First value - foreground color
+; Second value - foreground color palette
+; Third value - background color
+; Fourth value - background color palette
+
+C2FCOLM	equ	15
+C2FPALM	equ	#F583	; 2 bytes!
+C2BCOLM	equ	13
+C2BPALM	equ	#F585	; 2 bytes!
+
+; Colors for help screen -------------
+C2FCOLH	equ	15
+C2FPALH	equ	#F587	; 2 bytes!
+C2BCOLH	equ	4
+C2BPALH	equ	#F589	; 2 bytes!
+
+; Colors for volume screen -------------
+C2FCOLV	equ	15
+C2FPALV	equ	#F58B	; 2 bytes!
+C2BCOLV	equ	12
+C2BPALV	equ	#F58D	; 2 bytes!
+
+; Colors for PSG setup screen -------------
+C2FCOLP	equ	15
+C2FPALP	equ	#F58F	; 2 bytes!
+C2BCOLP	equ	6
+C2BPALP	equ	#F591	; 2 bytes!
+
+SETXY	equ	#F593	; 2 bytes!
+SORTBUF	equ	#F595	; will use 64 characters for sorting!
+
 VDPR10	equ	#FFE8
+KEYBUF	equ	#FBF0
 
 ; Card configuration registers
 CardMDR equ	#4F80
@@ -45,8 +84,9 @@ FDelay	equ	#1000
 ; Delay for autostart
 ADelay	equ	3
 
-; Delay for joystick (divided by 5)
-JDelay	equ	1
+; Delay for joystick (video frame based: assuming 60Hz for NTSC, 50Hz for PAL)
+NTSC_dl	equ	6
+PAL_dl	equ	5
 
 R_Base	equ	#C010
 L_STR	equ	16
@@ -67,118 +107,8 @@ L_STR	equ	16
 	db	"CSCCFRC"
   endif
 	db	0
-Vers	db	"v2.06"  ; Version | also update it in the header!
+Vers	db	"v2.10"  ; Version | also update it in the header!
 	db	0
-
-
-; Colors for main menu screen -------------
-; First value - foreground color
-; Second value - foreground color palette
-; Third value - background color
-; Fourth value - background color palette
-
-C2FCOLM	equ	15
-C2FPALM	equ	#7707
-
-C2BCOLM	equ	13
-C2BPALM	equ	#4301		; default
-;C2BPALM	equ	#1101	; black
-;C2BPALM	equ	#1401	; blue
-;C2BPALM	equ	#1304	; green
-;C2BPALM	equ	#4101	; red
-
-; Colors for volume screen -------------
-; First value - foreground color
-; Second value - foreground color palette
-; Third value - background color
-; Fourth value - background color palette
-
-C2FCOLV	equ	15
-C2FPALV	equ	#7707
-
-C2BCOLV	equ	12
-C2BPALV	equ	#1304		; default
-;C2BPALV	equ	#1101	; black
-;C2BPALV	equ	#1401	; blue
-;C2BPALV	equ	#1304	; green
-;C2BPALV	equ	#4101	; red
-
-; Colors for PSG setup screen -------------
-; First value - foreground color
-; Second value - foreground color palette
-; Third value - background color
-; Fourth value - background color palette
-
-C2FCOLP	equ	15
-C2FPALP	equ	#7707
-
-C2BCOLP	equ	6
-C2BPALP	equ	#4101		; default
-;C2BPALP	equ	#1101	; black
-;C2BPALP	equ	#1401	; blue
-;C2BPALP	equ	#1304	; green
-;C2BPALP	equ	#4101	; red
-
-; Colors for help screen -------------
-; First value - foreground color
-; Second value - foreground color palette
-; Third value - background color
-; Fourth value - background color palette
-
-C2FCOLH	equ	15
-C2FPALH	equ	#7707
-
-C2BCOLH	equ	4
-C2BPALH	equ	#1401		; default
-;C2BPALH	equ	#1101	; black
-;C2BPALH	equ	#1401	; blue
-;C2BPALH	equ	#1304	; green
-;C2BPALH	equ	#4101	; red
-
-
-; Default colors and palette on MSX startup
-
-DefFCol	equ	15		; white
-DefWhP	equ	#7707		; 15
-DefBCol	equ	4		; blue
-DefBlP	equ	#1701		; 4
-
-
-;	Frames ASCII codes
-;	
-;	Thick
-;	#80,#85,#85,#81
-;	#86,#20,#20,#87
-;	#82,#84,#84,#83
-;	
-;	Thin
-;	#01,#50,#01,#51,#01,#51,#01,#52
-;	#01,#57,#20,#20,#01,#53
-;	#01,#56,#01,#55,#01,#55,#01,#54
-;	
-;	Medium
-;	#88,#8A,#8A,#8F
-;	#8C,#20,#20,#8D
-;	#8E,#8B,#8B,#89
-;	
-;	Double
-;	#01,#58,#01,#59,#01,#59,#01,#5A
-;	#01,#5B,#20,#20,#01,#5F
-;	#01,#5E,#01,#5D,#01,#5D,#01,#5C
-;	
-;	Copyright sign
-;
-;	#90
-
-;	Cursor (2 bytes)
-;
-  if SPC=0
-CURS1	equ	#94
-CURS2	equ	#95
-  else
-CURS1	equ	'>'
-CURS2	equ	'>'
-  endif
 
 
 Boot:
@@ -197,7 +127,8 @@ Boot:
 	ld	bc,6
 	ldir
 
-; Load FMPAC/SCC/SCC+ audio volume data from small EEPROM
+
+; Load data (FMPAC/SCC/SCC+/PSG audio volume and other settings) from small EEPROM
   if CV=2
 	ld	a,1
 	call	EERD		; read volume setting from EEPROM
@@ -214,6 +145,7 @@ TA_0A:
 	ld	(ORGVR10),a	; save original value
 	ld	(PALNTSC),a	; save current mode
 	xor	a
+	ld	(SKIPFD),a	; skip fade disabled
 	ld	(VDPVER),a	; VDP is v9918 by default	
 	call	DetVDP		; Detect actual VDP
 	ld	(VDPVER),a	; save vdp verison (0=v9918, 1=v9938, 2=v9958)
@@ -238,10 +170,91 @@ TA_0B:
 	ld	(CardMDR+#24),a	; set the previously stored PSG volume
 	ld 	(PSGCFG),a
 
+	ld	hl,SORTD
+	ld	de,SORT
+	ld	bc,19
+	ldir			; reset all UI settings to defaults
+	ld	a,(#FBEB)
+	and	%10000000	; F3 - don't load UI settings
+	jr	z,TA_0B3
+
+	ld	a,#17		; address
+	call	EERD		; read custom flag from EEPROM
+	cp	#42		; custom settings?
+	jr	nz,TA_0B3
+
+	ld	a,4
+	call	EERD		; read sorting flag
+	ld	(SORT),a
+	ld	a,5
+	call	EERD		; read effects flag
+	ld	(EFF),a
+	ld	a,6
+	call	EERD		; read key/joystick speed
+	cp	10		; max value
+	jr	nc,TA_0B1
+	ld	(SPD),a
+
+TA_0B1:
+	ld	a,7
+	ld	hl,C2FPALM
+TA_0B2:
+	push	af
+	call	EERD		; read palette from EEPROM
+	ld	(hl),a
+	inc	hl
+	pop	af
+	inc	a
+	cp	#17
+	jr	nz,TA_0B2
+
+TA_0B3:
 	ld	a,(VDPVER)
 	inc	a
 	ld	(MSXTYPE),a	; save MSX type
   endif
+
+        call	SetEnv		; set environment (screen, colors, fonts)
+
+; Count all directory enrties and pages
+DirCnt:
+	ld	hl,0
+	ld	(DIRCNT),hl	; zero dir entry count
+	ld	d,0		; first entry
+	ld	a,1
+	ld	(DIRPAG),a	; one page by default
+	ld	(CURPAG),a	; 1st page to output first
+DirC0:
+	call 	c_dir		; calc dir entry point
+	jr	nz,DirC1	; normal entry?
+	inc	d
+	ld	a,d
+	or	a		; 255+1 limit
+	jr	z,DirC2
+	jr	DirC0
+
+DirC1:	inc	d
+	ld	a,d
+	or	a		; 255+1 limit
+	jr	z,DirC2
+	ld	hl,DIRCNT
+	inc	(hl)		; add one entry
+	jr	DirC0
+
+DirC2:  ld	hl,DIRCNT
+	ld	a,(hl)
+	ld	hl,DIRPAG
+DirC3:
+	cp	L_STR		; number of strings on page
+	jr	z,DSort		; last page?
+	jr	c,DSort		; last page?
+	inc	(hl)		; add one dir page
+	sub	L_STR		; more dir pages?
+	jr	DirC3
+
+
+DSort:	call	DirSort		; sort directory
+
 
 ; Check for autostart
 	xor	a
@@ -250,6 +263,14 @@ TA_0B:
 	ld	d,#FF
 	ld	a,2
 	ld	(CardMDR+#0E),a ; set 2nd bank to autostart map
+	ld	a,(SORT)
+	or	a
+	jr	z,TA_02
+	ld	hl,B2ON+#03
+	ld	a,(hl)
+	ld	(CardMDR+#0F),a	; show flash instead of RAM for autostart
+
+TA_02:
 	ld	hl,#8000
 TA_00:	ld	a,(hl)
 	or	a
@@ -263,6 +284,14 @@ TA_00:	ld	a,(hl)
 ; Autostart entry found!
 	ld	a,1
 	ld	(CardMDR+#0E),a ; set 2nd bank to directory map		
+	ld	a,(SORT)
+	or	a
+	jr	z,TA_06
+	ld	hl,RAM_SORT+#03
+	ld	a,(hl)
+	ld	(CardMDR+#0F),a	; show RAM instead of flash for directory
+
+TA_06:
 	call 	c_dir
 	jp	z,Menu		; empty record, go to menu
 
@@ -352,7 +381,7 @@ AutoWait2:
 AutoWAb:
 	xor	a
 	ld	(AUTOST),a	; no autostart
-	jp	Menu
+	jr	Menu
 
 TA_01:	inc	hl		; next auto
 	inc	hl
@@ -364,52 +393,23 @@ TA_01:	inc	hl		; next auto
 ; Main Menu
 ; Search records (64b) max - 256
 Menu:
-; !!! check for incompatible systems and skip font loading
-        call	SetEnv		; set environment (screen, colors, fonts)
-
 	ld	c,d
 	exx
 	ld	a,1
 	ld	(CardMDR+#0E),a ; set 2nd bank to directory map
+	ld	a,(SORT)
+	or	a
+	jr	z,TA_07
+	push	hl
+	ld	hl,RAM_SORT+#03
+	ld	a,(hl)
+	ld	(CardMDR+#0F),a	; show RAM instead of flash for directory
+	pop	hl
+
+TA_07:
 	exx
 	ld	d,0
 	exx
-
-; Count all directory enrties and pages
-DirCnt:
-	ld	hl,0
-	ld	(DIRCNT),hl	; zero dir entry count
-	ld	d,0		; first entry
-	ld	a,1
-	ld	(DIRPAG),a	; one page by default
-	ld	(CURPAG),a	; 1st page to output first
-DirC0:
-	call 	c_dir		; calc dir entry point
-	jr	nz,DirC1	; normal entry?
-	inc	d
-	ld	a,d
-	or	a		; 255+1 limit
-	jr	z,DirC2
-	jr	DirC0
-
-DirC1:	inc	d
-	ld	a,d
-	or	a		; 255+1 limit
-	jr	z,DirC2
-	ld	hl,DIRCNT
-	inc	(hl)		; add one entry
-	jr	DirC0
-
-DirC2:  ld	hl,DIRCNT
-	ld	a,(hl)
-	ld	hl,DIRPAG
-DirC3:
-	cp	L_STR		; number of strings on page
-	jr	z,Menu1		; last page?
-	jr	c,Menu1		; last page?
-	inc	(hl)		; add one dir page
-	sub	L_STR		; more dir pages?
-	jr	DirC3
 
 ; Set screen for menu
 Menu1:
@@ -426,24 +426,33 @@ Menu1:
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors (foreground=background)
 	push	de
-	ld	de,#1101
+	ld	de,#1701
+	ld	hl,#7707
+	ld	b,C2FCOLM
+	ld	c,#0D
+	call	FadeOut		; fade out text
+
+	call	CLS
+
+	ld	de,#0000
 	ld	hl,#1701
 	ld	b,C2BCOLM
 	ld	c,#0D
 	call	FadeOut		; fade out background
   if CV=2
-	ld	de,C2BPALM
+	ld	hl,(C2BPALM)
+	ex	de,hl
   else
 	ld	de,#1304
   endif
-	ld	hl,#1101
+	ld	hl,#0000
 	ld	b,C2BCOLM
 	ld	c,#0D
 	call	FadeIn		; fade in background
 	pop	de
 	ld	a,C2FCOLM
   if CV=2
-	ld	hl,C2BPALM
+	ld	hl,(C2BPALM)
   else
 	ld	hl,#1304
   endif
@@ -479,7 +488,7 @@ Pagep0:
 	call	print	
   endif
 
-	call	PrintInf	; print page number and frequency
+	call	PrintInf	; print page number
 	call	PrintFrq	; print frequency of the display (50/60)
 	call	PrintVol	; print volumes
         call    PrintTur        ; print turbo/r800/z80 mode
@@ -504,10 +513,14 @@ Pagep1:
 ; print page ( 16 record )
 sPrr1:	call 	c_dir		; calc dir entry point
 	jr	nz,prStr	; valid dir entry?
+
 nRec:	inc	d
-	jp	z,dRec		; done, last record
+	ld	a,d
+	or	a
+	jp	z,sPr0		; done, last record
 	jr	sPrr1
 
+	
 ; Print directory entry
 prStr:
 ;----str---------------------
@@ -629,7 +642,17 @@ sPr:	ld	a,(hl)
 	djnz	sPr
 
 	inc	d
-	jr	z,dRec		; last found dir entry?
+	ld	a,d
+	or	a
+	jr	nz,sPr1		; last found dir entry?
+sPr0:
+	call	PrintER		; print empty record
+	inc	e
+	ld	a,e		; last string on the page?
+	cp	L_STR
+	jr	c,sPr0
+	jr	dRec
+sPr1:
 	inc	e
 	ld	a,e		; last string on the page?
 	cp	L_STR
@@ -642,10 +665,16 @@ dRec:
 	exx
 	ld	d,a		; restore dir entries to top page
 
+	push	af
+	ld	a,(SKIPFD)
+	or	a		; skip fade on page flip?
+	jr	nz,dRec1
+
 	push	de
-	ld	de,C2FPALM
+	ld	hl,(C2FPALM)
+	ex	de,hl
   if CV=2
-	ld	hl,C2BPALM
+	ld	hl,(C2BPALM)
   else
 	ld	hl,#1304
   endif
@@ -653,6 +682,11 @@ dRec:
 	ld	c,#0D
 	call	FadeIn		; fade in text
 	pop	de
+
+dRec1:
+	xor	a
+	ld	(SKIPFD),a	; skip fade disabled
+	pop	af
 
 ; set cursor pos on first entry
 CH00:
@@ -743,7 +777,7 @@ GetKey:
 	jp	z,C_DOWN
 	cp	29		; LEFT
 	jp	z,P_B
-	cp	28		; RIGTH
+	cp	28		; RIGHT
 	jp	z,P_F
 	cp	32		; SPACE
 	jp	z,RUN_CT	; run selected record
@@ -785,9 +819,13 @@ GetKey:
 	cp	"p"
 	jp	z,PSGVolume	; set PSG volume
         cp      "T"
-        jp      z,TurboMode     ; toggle Turbo modes
+        jp      z,TurboMode	; toggle Turbo modes
         cp      "t"
-        jp      z,TurboMode     ; toggle Turbo modes
+        jp      z,TurboMode	; toggle Turbo modes
+        cp      "S"
+        jp      z,UISetup	; UI setup
+        cp      "s"
+        jp      z,UISetup	; UI setup
    endif
 	jp	CH01
 
@@ -844,10 +882,17 @@ P_F:
 	cp	(hl)		; current page = max pages?
 	jp	z,CH01
 
+	ld	a,(EFF)
+	or	a		; effects enabled?
+	jr	z,PF00
+
 	push	de
-	ld	hl,C2FPALM
+	ld	hl,(C2FPALM)
   if CV=2
-	ld	de,C2BPALM
+	push	hl
+	ld	hl,(C2BPALM)
+	ex	de,hl
+	pop	hl
   else
 	ld	de,#1304
   endif
@@ -856,6 +901,7 @@ P_F:
 	call	FadeOut		; fade out text
 	pop	de
 
+PF00:
 	exx
 	ld	a,d
 	exx
@@ -880,7 +926,14 @@ PF01:	inc	d
 
 	ld	hl,CURPAG
 	inc	(hl)		; increment page number
-	jp	Pagep
+
+	ld	a,(EFF)
+	or	a		; effects enabled?
+	jp	nz,Pagep
+	ld	a,#FF
+	ld	(SKIPFD),a	; skip fade enabled
+	call	PrintInf	; print page number
+	jp	Pagep1
 
 
 ; Flip page back
@@ -894,10 +947,17 @@ P_B:
 	cp	1		; current page = first page?
 	jp	z,CH01
 
+	ld	a,(EFF)
+	or	a		; effects enabled?
+	jr	z,PB00
+
 	push	de
-	ld	hl,C2FPALM
+	ld	hl,(C2FPALM)
   if CV=2
-	ld	de,C2BPALM
+	push	hl
+	ld	hl,(C2BPALM)
+	ex	de,hl
+	pop	hl
   else
 	ld	de,#1304
   endif
@@ -906,6 +966,7 @@ P_B:
 	call	FadeOut		; fade out text
 	pop	de
 
+PB00:
 	exx
 	ld	a,d
 	exx
@@ -930,7 +991,14 @@ PB03:	ld	a,d
 
 	ld	hl,CURPAG
 	dec	(hl)		; increment page number
-	jp	Pagep
+
+	ld	a,(EFF)
+	or	a		; effects enabled?
+	jp	nz,Pagep
+	ld	a,#FF
+	ld	(SKIPFD),a	; skip fade enabled
+	call	PrintInf	; print page number
+	jp	Pagep1
 
 PB02:	ld	d,0
 	ld	hl,CURPAG
@@ -955,9 +1023,12 @@ RUN_CT:
 	jr	z,RUN_CT2	; skip effects
 
 RUN_CT1:
-	ld	hl,C2FPALM
+	ld	hl,(C2FPALM)
   if CV=2
-	ld	de,C2BPALM
+	push	hl
+	ld	hl,(C2BPALM)
+	ex	de,hl
+	pop	hl
   else
 	ld	de,#1304
   endif
@@ -967,9 +1038,9 @@ RUN_CT1:
 
 	call	CLS
 
-	ld	de,#1101
+	ld	de,#0000
   if CV=2
-	ld	hl,C2BPALM
+	ld	hl,(C2BPALM)
   else
 	ld	hl,#1304
   endif
@@ -1010,9 +1081,12 @@ RUN_CR:
 
 ; Effects
 RUN_CR1:
-	ld	hl,C2FPALM
+	ld	hl,(C2FPALM)
   if CV=2
-	ld	de,C2BPALM
+	push	hl
+	ld	hl,(C2BPALM)
+	ex	de,hl
+	pop	hl
   else
 	ld	de,#1304
   endif
@@ -1022,9 +1096,9 @@ RUN_CR1:
 
 	call	CLS
 
-	ld	de,#1101
+	ld	de,#0000
   if CV=2
-	ld	hl,C2BPALM
+	ld	hl,(C2BPALM)
   else
 	ld	hl,#1304
   endif
@@ -1314,9 +1388,12 @@ RUN_CJ1:
 	cp	'c'
 	jp	z,CH01		; ignore direct start for configuration entries
 
-	ld	hl,C2FPALM
+	ld	hl,(C2FPALM)
   if CV=2
-	ld	de,C2BPALM
+	push	hl
+	ld	hl,(C2BPALM)
+	ex	de,hl
+	pop	hl
   else
 	ld	de,#1304
   endif
@@ -1326,9 +1403,9 @@ RUN_CJ1:
 
 	call	CLS
 
-	ld	de,#1101
+	ld	de,#0000
   if CV=2
-	ld	hl,C2BPALM
+	ld	hl,(C2BPALM)
   else
 	ld	hl,#1304
   endif
@@ -1400,7 +1477,14 @@ RJPE:	nop
 DAUTO_R:
 	ld	a,2
 	ld	(CardMDR+#0E),a	; set 2nd bank to autostart map
+	ld	a,(SORT)
+	or	a
+	jr	z,DSA_00
+	ld	hl,B2ON+#03
+	ld	a,(hl)
+	ld	(CardMDR+#0F),a	; show flash instead of RAM for autostart
 
+DSA_00:
 ; seek to active autostart
 	ld	hl,#8000
 DSA_01:	ld	a,(hl)
@@ -1434,7 +1518,14 @@ DSA_02:
 AUTO_R:
 	ld	a,2
 	ld	(CardMDR+#0E),a	; set 2nd bank to autostart map
+	ld	a,(SORT)
+	or	a
+	jr	z,ATR_000
+	ld	hl,B2ON+#03
+	ld	a,(hl)
+	ld	(CardMDR+#0F),a	; show flash instead of RAM for autostart
 
+ATR_000:
 ; seek to active autostart
 	ld	hl,#8000
 ATR_01:	ld	a,(hl)
@@ -1463,7 +1554,14 @@ ATR_04:
 	exx
 	ld	a,1
 	ld	(CardMDR+#0E),a	; set 2nd bank to directory map
+	ld	a,(SORT)
+	or	a
+	jr	z,ATR_06
+	ld	hl,RAM_SORT+#03
+	ld	a,(hl)
+	ld	(CardMDR+#0F),a	; show RAM instead of flash for directory
 
+ATR_06:
 ; print new autostart record number
 	ld	hl,35*256+05	; #23 position
 	call	POSIT
@@ -1601,20 +1699,21 @@ Help:
 
 Help1:
   if CV=2
-	ld	de,C2BPALM
+	ld	hl,(C2BPALM)
+	ex	de,hl
   else
 	ld	de,#1304
   endif
-	ld	hl,C2FPALM
+	ld	hl,(C2FPALM)
 	ld	b,C2FCOLM
 	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
-	ld	de,#1101
+	ld	de,#0000
   if CV=2
-	ld	hl,C2BPALM
+	ld	hl,(C2BPALM)
   else
 	ld	hl,#1304
   endif
@@ -1623,7 +1722,7 @@ Help1:
 	call	FadeOut		; fade out background
 
 	ld	a,C2BCOLH
-	ld	hl,#1101
+	ld	hl,#0000
 	call	PALETTE
 	ld	a,C2FCOLH
 	ld	(FORCLR),a
@@ -1633,11 +1732,12 @@ Help1:
 	call	CHCOLOR		; set screen colors (foreground=background)
 
 	ld	a,C2FCOLH
-	ld	hl,C2BPALH
+	ld	hl,(C2BPALH)
 	call	PALETTE
 
-	ld	de,C2BPALH
-	ld	hl,#1101
+	ld	hl,(C2BPALH)
+	ex	de,hl
+	ld	hl,#0000
 	ld	b,C2BCOLH
 	ld	c,#0D
 	call	FadeIn		; fade in background
@@ -1666,8 +1766,9 @@ Help1:
 	ld	hl,Vers
 	call	print		; print boot block version
 
-	ld	de,C2FPALH
-	ld	hl,C2BPALH
+	ld	hl,(C2FPALH)
+	ex	de,hl
+	ld	hl,(C2BPALH)
 	ld	b,C2FCOLH
 	ld	c,#0D
 	call	FadeIn		; fade in text
@@ -1682,8 +1783,9 @@ Wait1:
 
 	call	CHGET		; wait for a key
 
-	ld	de,C2BPALH
-	ld	hl,C2FPALH
+	ld	hl,(C2BPALH)
+	ex	de,hl
+	ld	hl,(C2FPALH)
 	ld	b,C2FCOLH
 	ld	c,#0D
 	call	FadeOut		; fade out text
@@ -1720,8 +1822,9 @@ Help2:
 	ld	hl,Vers
 	call	print		; print boot block version
 
-	ld	de,C2FPALH
-	ld	hl,C2BPALH
+	ld	hl,(C2FPALH)
+	ex	de,hl
+	ld	hl,(C2BPALH)
 	ld	b,C2FCOLH
 	ld	c,#0D
 	call	FadeIn		; fade in text
@@ -1736,33 +1839,35 @@ Wait11:
 
 	call	CHGET		; wait for a key
 
-	ld	de,C2BPALH
-	ld	hl,C2FPALH
+	ld	hl,(C2BPALH)
+	ex	de,hl
+	ld	hl,(C2FPALH)
 	ld	b,C2FCOLH
 	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
-	ld	de,#1101
-	ld	hl,C2BPALH
+	ld	de,#0000
+	ld	hl,(C2BPALH)
 	ld	b,C2BCOLH
 	ld	c,#0D
 	call	FadeOut		; fade out background
 
   if CV=2
-	ld	de,C2BPALM
+	ld	hl,(C2BPALM)
+	ex	de,hl
   else
 	ld	de,#1304
   endif
-	ld	hl,#1101
+	ld	hl,#0000
 	ld	b,C2BCOLM
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
 	ld	a,C2FCOLM
   if CV=2
-	ld	hl,C2BPALM
+	ld	hl,(C2BPALM)
   else
 	ld	hl,#1304
   endif
@@ -1774,20 +1879,21 @@ Wait11:
 ; Exit from boot block
 Exit:
   if CV=2
-	ld	de,C2BPALM
+	ld	hl,(C2BPALM)
+	ex	de,hl
   else
 	ld	de,#1304
   endif
-	ld	hl,C2FPALM
+	ld	hl,(C2FPALM)
 	ld	b,C2FCOLM
 	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
-	ld	de,#1101
+	ld	de,#0000
   if CV=2
-	ld	hl,C2BPALM
+	ld	hl,(C2BPALM)
   else
 	ld	hl,#1304
   endif
@@ -1805,14 +1911,15 @@ Exit:
 ; In: hl (current palette)
 ; In: bc (foreground/background colors)
 FadeIn:
-  if EFF=0
+	ld	a,(EFF)
+	or	a
+	jr	nz,FadeL
 	ld	a,b
 	push	de
 	pop	hl
 	call	PALETTE		; set target palette without fade effect
 	ret
-  endif
-
+FadeL:
 	ld	a,b
 	call	PALETTE		; initial palette set for color
 
@@ -1825,8 +1932,13 @@ FadeL0:
 	ld	a,l
 	cp	e
 	jr	z,FadeL1
+	jr	c,FadeL0a
+	dec	l
+	jr	FadeL1
+FadeL0a:
 	inc	l
-FadeL1:	ld	a,h
+FadeL1:
+	ld	a,h
 	and	#0F
 	push	de
 	push	af
@@ -1836,6 +1948,10 @@ FadeL1:	ld	a,h
 	pop	af
 	cp	d
 	jr	z,FadeL2
+	jr	c,FadeL1a
+	dec	h
+	jr	FadeL2
+FadeL1a:
 	inc	h
 FadeL2:
 	pop	de
@@ -1849,8 +1965,14 @@ FadeL2:
 	pop	af
 	cp	d
 	jr	z,FadeL3
+	jr	c,FadeL2a
 	ld	a,h
-	add	a,#10
+	sub	#10
+	ld	h,a
+	jr	FadeL3
+FadeL2a:
+	ld	a,h
+	add	#10
 	ld	h,a
 FadeL3:	
 	pop	de
@@ -1870,14 +1992,15 @@ FadeL3:
 ; In: hl (current palette)
 ; In: bc (foreground/background colors)
 FadeOut:
-  if EFF=0
+	ld	a,(EFF)
+	or	a
+	jr	nz,FadeLS
 	ld	a,b
 	push	de
 	pop	hl
 	call	PALETTE		; set target palette without fade effect
 	ret
-  endif
-
+FadeLS:
 	ld	a,b
 	call	PALETTE		; initial palette set for foreground color
 
@@ -1890,8 +2013,13 @@ FadeL4:
 	ld	a,l
 	cp	e
 	jr	z,FadeL5
+	jr	c,FadeL4a
 	dec	l
-FadeL5:	ld	a,h
+	jr	FadeL5
+FadeL4a:
+	inc	l
+FadeL5:
+	ld	a,h
 	and	#0F
 	push	de
 	push	af
@@ -1901,7 +2029,11 @@ FadeL5:	ld	a,h
 	pop	af
 	cp	d
 	jr	z,FadeL6
+	jr	c,FadeL5a
 	dec	h
+	jr	FadeL6
+FadeL5a:
+	inc	h
 FadeL6: 
 	pop	de
 	ld	a,h
@@ -1914,9 +2046,14 @@ FadeL6:
 	pop	af
 	cp	d
 	jr	z,FadeL7
+	jr	c,FadeL6a
 	ld	a,h
-	ld	h,#10
-	sub	h
+	sub	#10
+	ld	h,a
+	jr	FadeL7
+FadeL6a:
+	ld	a,h
+	add	#10
 	ld	h,a
 FadeL7:	
 	pop	de
@@ -1954,17 +2091,17 @@ RestEnv:
 	ld	(CHSETA),hl	; restore bios font's address
 
 	ld	a,C2FCOLM
-	ld	hl,#1101
+	ld	hl,#0000
 	call	PALETTE
 	ld	a,C2BCOLM
-	ld	hl,#1101
+	ld	hl,#0000
 	call	PALETTE
 
 	ld	a,DefFCol
-	ld	hl,#1101
+	ld	hl,#0000
 	call	PALETTE
 	ld	a,DefBCol
-	ld	hl,#1101
+	ld	hl,#0000
 	call	PALETTE
 
 	ld	a,DefFCol
@@ -1975,7 +2112,7 @@ RestEnv:
 	call	CHCOLOR		; set screen colors (foreground=background)
 
 	ld	de,DefBlP
-	ld	hl,#1101
+	ld	hl,#0000
 	ld	b,DefBCol
 	ld	c,#0D
 	call	FadeIn		; fade in background
@@ -2140,7 +2277,7 @@ sldet1:	ld	c,a
 c_dir:
 ; input d - dir index num
 ; outut	ix - dir entry pointer
-; output Z - empty/deleted entry
+; output Z - last/empty/deleted entry
 
  	ld	b,0
 	or	a 
@@ -2161,10 +2298,10 @@ c_dir:
 	ld	ix,#8000
 	add	ix,bc		; 8000h + b*64
 
-; test empty/delete
 	ld	a,(ix)
-	cp	#FF		; empty record?
+	cp	#FF		; last record?
 	ret	z
+
 	ld	a,(ix+1)
 	or	a		; deleted/empty record?
 	ret
@@ -2411,6 +2548,125 @@ CLS:	push	af
 	ret
 
 
+; Sort directory
+DirSort:
+	ld	a,(SORT)
+	or	a
+	ret	z
+
+	ld	a,#20
+	ld	(CardMDR),a	; set immediate configuration change flag, registers at #4F80
+
+	ld	hl,B2ON1
+	ld	de,CardMDR+#0C	; set Bank2 to 8kb
+	ld	bc,6
+	ldir
+	ld	de,CardMDR+#12
+	ld	hl,RAM_SORT1
+	ld	bc,6
+	ldir			; set 8kb RAM at #A000
+
+	di
+	ld	hl,#8000
+	ld	de,#A000
+	ld	bc,#2000
+	ldir			; copy directory
+	ei
+
+	ld	a,(CardMDR+#0E)
+	inc	a
+	ld	(CardMDR+#0E),a	; next directory page
+	ld	de,CardMDR+#12
+	ld	hl,RAM_SORT2
+	ld	bc,6
+	ldir			; set next 8kb RAM at #A000
+
+	di
+	ld	hl,#8000
+	ld	de,#A000
+	ld	bc,#2000
+	ldir			; copy directory (2nd part)
+	ei
+
+	ld	de,CardMDR+#0C
+	ld	hl,RAM_SORT   
+	ld	bc,6
+	ldir			; set second bank to map 16kb of RAM with directory at #8000
+
+	xor	a
+	ld	(CardMDR+#15),a	; disable third bank
+
+; Sort directory
+	di
+	ld	hl,DIRCNT	; read directory count
+	ld	a,(hl)
+	dec	a		; exclude first entry
+	or	a
+	ret	z
+	cp	1
+	ret	z	
+
+	ld	a,#ff		; max dir number
+	ld	b,a		; number of sort attempts
+	ld	c,a
+
+DSortL1:
+	ld	ix,#8040
+	ld	iy,#8080
+DSortL2:
+	ld	a,(ix+5)
+	cp	(iy+5)		; sort using 1st character in name
+	jr	nz,DSortL3
+	cp	#ff		; skip cycle if no data found
+	jr	z,DSortE1
+	ld	a,(ix+6)
+	cp	(iy+6)		; sort using 2nd character in name
+	jr	nz,DSortL3
+	ld	a,(ix+7)
+	cp	(iy+7)		; sort using 3rd character in name
+	jr	nz,DSortL3
+	ld	a,(ix+8)
+	cp	(iy+8)		; sort using 4th character in name
+	jr	nz,DSortL3
+	ld	a,(ix+9)
+	cp	(iy+9)		; sort using 5th character in name
+	jr	z,DSortE
+
+DSortL3:
+	jr	c,DSortE
+	push	bc
+	push	ix
+	pop	hl
+	ld	de,SORTBUF
+	ld	bc,#40
+	ldir
+	push	iy	
+	pop	hl
+	ld	de,ix
+	ld	bc,#40
+	ldir
+	ld	hl,SORTBUF
+	ld	de,iy
+	ld	bc,#40
+	ldir
+	pop	bc
+
+DSortE:
+	ld	de,#40
+	add	ix,de		; next entry
+	add	iy,de		; next entry
+	ld	a,#c0
+	cp	iyh		; limit reached?
+	jr	z,DSortE1
+	djnz	DSortL2		; sort N*N times
+DSortE1:
+	ld	b,c
+	dec	c
+	djnz	DSortL1		; sort N times
+	ei
+	ret
+
+
 ; Print Turbo/R800 indicator
 PrintTur:
 	push	hl
@@ -2455,15 +2711,32 @@ PrintTE:
 	ret
 
 
+PrintER:
+	push	de
+	ld	h,3
+	ld	a,e
+	add	a,7
+	ld	l,a
+	call	POSIT
+	ld	b,36
+PrintERC:
+	ld	a,' '
+	call	CHPUT		; output empty record
+	djnz	PrintERC
+	pop	de
+	ret
+
+
+;
+; EXTRA CODE AND DATA AREA
+; The extra code and data area must start above the control registers (#4F80-#4FFF)!
+;	
+
+	org	#5000
+
+
 ; Print page number and max pages
 PrintInf:
-;	push	hl
-;	ld	hl,DIRPAG
-;	ld	a,(hl)
-;	cp	1		; only one page?
-;	pop	hl
-;	ret	z
-
 	push	hl
 	push	de
 	push	bc
@@ -2562,6 +2835,791 @@ PrintVol:
   endif
 
 
+; UI setup screen
+UISetup:
+	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
+	or	a
+	jr	nz,UISetup1
+	call	DISDISP		; disable display
+
+UISetup1:
+  if CV=2
+	ld	hl,(C2BPALM)
+	ex	de,hl
+  else
+	ld	de,#1304
+  endif
+	ld	hl,(C2FPALM)
+	ld	b,C2FCOLM
+	ld	c,#0D
+	call	FadeOut		; fade out text
+
+UISetup2:
+	call	CLS
+
+	ld	de,#0000
+  if CV=2
+	ld	hl,(C2BPALM)
+  else
+	ld	hl,#1304
+  endif
+	ld	b,C2BCOLM
+	ld	c,#0D
+	call	FadeOut		; fade out background
+
+	ld	a,C2BCOLS
+	ld	hl,#0000
+	call	PALETTE
+	ld	a,C2FCOLS
+	ld	(FORCLR),a
+	ld	a,C2BCOLS
+	ld	(BAKCLR),a
+	ld	(BDRCLR),a
+	call	CHCOLOR		; set screen colors (foreground=background)
+
+	ld	a,C2FCOLS
+	ld	hl,(C2BPALS)
+	call	PALETTE
+
+	ld	hl,(C2BPALS)
+	ex	de,hl
+	ld	hl,#0000
+	ld	b,C2BCOLS
+	ld	c,#0D
+	call	FadeIn		; fade in background
+
+  if SPC=1
+	ld	a,#20
+	ld	(#F3B1),a
+	ld	hl,SetupScr	; print setup screen
+	call	print	
+	ld	a,#18
+	ld	(#F3B1),a
+  else
+	ld	hl,SetupScr	; print setup screen
+	call	print
+  endif
+
+  if SPC=1
+	ld	hl,#0118
+	call    POSIT
+	ld	hl,Setupll
+	call	print		; print additional line
+  endif
+
+        xor	a
+	ld	(SELITEM),a	
+	ld	hl,#040b
+	call    POSIT
+	ld	a,OnSym
+	call	CHPUT		; selected item indicator
+
+	ld	hl,#250b
+	call    POSIT
+	ld	a,(SORT)
+	or	a
+	jr	z,Set1
+	ld	a,'Y'
+	jr	Set2
+Set1:
+	ld	a,'N'
+Set2:
+	call	CHPUT		; sorting Y/N
+	ld	hl,#250c
+	call    POSIT
+
+	ld	a,(EFF)
+	or	a
+	jr	z,Set3
+	ld	a,'Y'
+	jr	Set4
+Set3:
+	ld	a,'N'
+Set4:
+	call	CHPUT		; effects Y/N
+	ld	hl,#250d
+	call    POSIT
+	ld	a,(SPD)
+	add	'0'
+	call	CHPUT		; speed value
+
+	ld	hl,#1b0e
+	call    POSIT
+	ld	a,(C2FPALM+1)	; menu foreground
+	and	%11110000
+	rra
+	rra
+	rra
+	rra
+	add	'0'
+	call	CHPUT		; R value
+	ld	hl,#200e
+	call    POSIT
+	ld	a,(C2FPALM)
+	add	'0'
+	call	CHPUT		; G value
+	ld	hl,#250e
+	call    POSIT
+	ld	a,(C2FPALM+1)
+	and	%00000111
+	add	'0'
+	call	CHPUT		; B value
+
+	ld	hl,#1b0f
+	call    POSIT
+	ld	a,(C2BPALM+1)	; menu background
+	and	%11110000
+	rra
+	rra
+	rra
+	rra
+	add	'0'
+	call	CHPUT		; R value
+	ld	hl,#200f
+	call    POSIT
+	ld	a,(C2BPALM)
+	add	'0'
+	call	CHPUT		; G value
+	ld	hl,#250f
+	call    POSIT
+	ld	a,(C2BPALM+1)
+	and	%00000111
+	add	'0'
+	call	CHPUT		; B value
+
+	ld	hl,#1b10
+	call    POSIT
+	ld	a,(C2FPALH+1)	; help foreground
+	and	%11110000
+	rra
+	rra
+	rra
+	rra
+	add	'0'
+	call	CHPUT		; R value
+	ld	hl,#2010
+	call    POSIT
+	ld	a,(C2FPALH)
+	add	'0'
+	call	CHPUT		; G value
+	ld	hl,#2510
+	call    POSIT
+	ld	a,(C2FPALH+1)
+	and	%00000111
+	add	'0'
+	call	CHPUT		; B value
+
+	ld	hl,#1b11
+	call    POSIT
+	ld	a,(C2BPALH+1)	; help background
+	and	%11110000
+	rra
+	rra
+	rra
+	rra
+	add	'0'
+	call	CHPUT		; R value
+	ld	hl,#2011
+	call    POSIT
+	ld	a,(C2BPALH)
+	add	'0'
+	call	CHPUT		; G value
+	ld	hl,#2511
+	call    POSIT
+	ld	a,(C2BPALH+1)
+	and	%00000111
+	add	'0'
+	call	CHPUT		; B value
+
+	ld	hl,#1b12
+	call    POSIT
+	ld	a,(C2FPALV+1)	; volume foreground
+	and	%11110000
+	rra
+	rra
+	rra
+	rra
+	add	'0'
+	call	CHPUT		; R value
+	ld	hl,#2012
+	call    POSIT
+	ld	a,(C2FPALV)
+	add	'0'
+	call	CHPUT		; G value
+	ld	hl,#2512
+	call    POSIT
+	ld	a,(C2FPALV+1)
+	and	%00000111
+	add	'0'
+	call	CHPUT		; B value
+
+	ld	hl,#1b13
+	call    POSIT
+	ld	a,(C2BPALV+1)	; volume background
+	and	%11110000
+	rra
+	rra
+	rra
+	rra
+	add	'0'
+	call	CHPUT		; R value
+	ld	hl,#2013
+	call    POSIT
+	ld	a,(C2BPALV)
+	add	'0'
+	call	CHPUT		; G value
+	ld	hl,#2513
+	call    POSIT
+	ld	a,(C2BPALV+1)
+	and	%00000111
+	add	'0'
+	call	CHPUT		; B value
+
+	ld	hl,#1b14
+	call    POSIT
+	ld	a,(C2FPALP+1)	; psg foreground
+	and	%11110000
+	rra
+	rra
+	rra
+	rra
+	add	'0'
+	call	CHPUT		; R value
+	ld	hl,#2014
+	call    POSIT
+	ld	a,(C2FPALP)
+	add	'0'
+	call	CHPUT		; G value
+	ld	hl,#2514
+	call    POSIT
+	ld	a,(C2FPALP+1)
+	and	%00000111
+	add	'0'
+	call	CHPUT		; B value
+
+	ld	hl,#1b15
+	call    POSIT
+	ld	a,(C2BPALP+1)	; psg background
+	and	%11110000
+	rra
+	rra
+	rra
+	rra
+	add	'0'
+	call	CHPUT		; R value
+	ld	hl,#2015
+	call    POSIT
+	ld	a,(C2BPALP)
+	add	'0'
+	call	CHPUT		; G value
+	ld	hl,#2515
+	call    POSIT
+	ld	a,(C2BPALP+1)
+	and	%00000111
+	add	'0'
+	call	CHPUT		; B value
+
+	ld	hl,#250b
+	ld	(SETXY),hl	; cursor coordinates
+
+	ld	hl,(C2FPALS)
+	ex	de,hl
+	ld	hl,(C2BPALS)
+	ld	b,C2FCOLS
+	ld	c,#0D
+	call	FadeIn		; fade in text
+
+SetLoop:
+	call	ENADISP		; enable display
+
+	call	KILBUF
+
+	ld	hl,(SETXY)
+	ld	h,#25
+	ld	a,(SELITEM)
+	cp	3
+	jp	c,SetLoop1
+	ld	h,#1b
+	ld	(SETXY),hl
+	call    POSIT
+
+SetColor:
+	ld	a,(SELITEM)
+	cp	5
+	jr	c,SetColorM
+	cp	7
+	jr	c,SetColorH
+	cp	9
+	jr	c,SetColorV
+
+SetColorP:
+	ld	a,C2FCOLP
+	ld	hl,(C2FPALP)
+	call	PALETTE		; set menu palette
+	ld	a,C2BCOLP
+	ld	hl,(C2BPALP)
+	call	PALETTE		; set menu palette
+	ld	a,C2FCOLP
+	ld	(FORCLR),a
+	ld	a,C2BCOLP
+	ld	(BAKCLR),a
+	ld	(BDRCLR),a
+	call	CHCOLOR		; set menu color
+	jp	SetLoop2
+
+SetColorM:
+	ld	a,C2FCOLM
+	ld	hl,(C2FPALM)
+	call	PALETTE		; set menu palette
+	ld	a,C2BCOLM
+	ld	hl,(C2BPALM)
+	call	PALETTE		; set menu palette
+	ld	a,C2FCOLM
+	ld	(FORCLR),a
+	ld	a,C2BCOLM
+	ld	(BAKCLR),a
+	ld	(BDRCLR),a
+	call	CHCOLOR		; set menu color
+	jp	SetLoop2
+
+SetColorH:
+	ld	a,C2FCOLH
+	ld	hl,(C2FPALH)
+	call	PALETTE		; set menu palette
+	ld	a,C2BCOLH
+	ld	hl,(C2BPALH)
+	call	PALETTE		; set menu palette
+	ld	a,C2FCOLH
+	ld	(FORCLR),a
+	ld	a,C2BCOLH
+	ld	(BAKCLR),a
+	ld	(BDRCLR),a
+	call	CHCOLOR		; set menu color
+	jp	SetLoop2
+
+SetColorV:
+	ld	a,C2FCOLV
+	ld	hl,(C2FPALV)
+	call	PALETTE		; set menu palette
+	ld	a,C2BCOLV
+	ld	hl,(C2BPALV)
+	call	PALETTE		; set menu palette
+	ld	a,C2FCOLV
+	ld	(FORCLR),a
+	ld	a,C2BCOLV
+	ld	(BAKCLR),a
+	ld	(BDRCLR),a
+	call	CHCOLOR		; set menu color
+	jp	SetLoop2
+
+SetLoop1:
+	ld	(SETXY),hl
+	call    POSIT
+
+	ld	a,C2FCOLS
+	ld	hl,(C2FPALS)
+	call	PALETTE		; set default UI setup palette
+	ld	a,C2BCOLS
+	ld	hl,(C2BPALS)
+	call	PALETTE		; set default UI setup palette
+	ld	a,C2FCOLS
+	ld	(FORCLR),a
+	ld	a,C2BCOLS
+	ld	(BAKCLR),a
+	ld	(BDRCLR),a
+	call	CHCOLOR		; set default UI setup color
+
+SetLoop2:
+	call	CHGET		; wait for a key
+	cp	27		; ESC
+	jp	z,SetEnd
+	cp	9		; TAB
+	jp	z,NextItem
+	cp	32		; SPACE
+	jr	z,Set_Val
+	cp	29		; LEFT
+	jp	z,SetLeft
+	cp	28		; RIGHT
+	jp	z,SetRight
+	cp	11		; HOME
+	jp	z,SetReset
+	jp	SetLoop
+
+
+Set_Val:
+	ld	a,(SELITEM)
+	or	a
+	jr	z,Set_V0
+	cp	1
+	jr	z,Set_V1
+	cp	2
+	jr	z,Set_V2
+	jp	Set_V3
+
+Set_V0:
+	ld	a,(SORT)
+	or	a
+	jr	z,Set_V01
+	xor	a
+	ld	(SORT),a
+	ld	a,'N'
+	jp	Set_VE
+Set_V01:
+	ld	a,1	
+	ld	(SORT),a
+	ld	a,'Y'
+	jp	Set_VE
+
+Set_V1:
+	ld	a,(EFF)
+	or	a
+	jr	z,Set_V11
+	xor	a
+	ld	(EFF),a		; no effects
+	ld	a,'N'
+	jp	Set_VE
+Set_V11:
+	ld	a,1	
+	ld	(EFF),a
+	ld	a,'Y'		; with effects
+	jp	Set_VE
+
+Set_V2:
+	ld	a,(SPD)
+	cp	9		; max?
+	jr	c,Set_V22
+	xor	a
+Set_V21:
+	ld	(SPD),a
+	add	'0'
+	jp	Set_VE
+Set_V22:
+	inc	a
+	jr	Set_V21
+
+Set_V3:
+	ld	hl,C2FPALM-2
+	ld	a,(SELITEM)
+	sub	2
+	ld	b,a
+Set_V30:
+	inc	hl
+	inc	hl
+	djnz	Set_V30		; find appropriate color area
+	ex	de,hl
+	ld	hl,(SETXY)
+	ld	a,h
+	cp	#1b		; R
+	jr	z,Set_V31
+	cp	#25		; B
+	jr	z,Set_V32
+
+	ex	de,hl
+	ld	a,(hl)		; point to G value
+	and	%00000111
+	inc	a
+	and	%00000111
+	ld	(hl),a
+	push	af
+	ex	de,hl
+	call    POSIT
+	pop	af
+	add	'0'
+	call	CHPUT		; print G value
+	ld	hl,(SETXY)
+	call    POSIT
+	jp	SetColor
+
+Set_V31:
+	ex	de,hl
+	inc	hl
+	ld	a,(hl)		; point to R value
+	and	%01110111
+	add	#10
+	and	%01110111
+	ld	(hl),a
+	push	af
+	ex	de,hl
+	call    POSIT
+	pop	af
+	and	%01110000
+	rra
+	rra
+	rra
+	rra
+	add	'0'
+	call	CHPUT		; print R value
+	ld	hl,(SETXY)
+	call    POSIT
+	jp	SetColor
+
+Set_V32:
+	ex	de,hl
+	inc	hl
+	ld	a,(hl)		; point to B value
+	and	%01110111
+	inc	a
+	and	%01110111
+	ld	(hl),a
+	push	af
+	ex	de,hl
+	call    POSIT
+	pop	af
+	and	%00000111
+	add	'0'
+	call	CHPUT		; print B value
+	ld	hl,(SETXY)
+	call    POSIT
+	jp	SetColor
+
+
+Set_VE:
+	push	af
+	ld	hl,(SETXY)
+	call    POSIT
+	ld	a,' '
+	call	CHPUT		; erase setting
+	ld	hl,(SETXY)
+	call    POSIT
+	pop	af
+	call	CHPUT		; put new setting
+	ld	hl,(SETXY)
+	call    POSIT
+	jp	SetLoop2
+
+
+SetLeft:
+	ld	a,(SELITEM)
+	cp	3
+	jp	c,SetLoop2
+	ld	hl,(SETXY)
+	ld	a,h
+	cp	#1b
+	jr	z,SetLeft1
+	sub	5
+	ld	h,a
+	ld	(SETXY),hl
+	call    POSIT
+	jp	SetLoop2
+SetLeft1:
+	ld	h,#25
+	ld	(SETXY),hl
+	call    POSIT
+	jp	SetLoop2
+
+
+SetRight:
+	ld	a,(SELITEM)
+	cp	3
+	jp	c,SetLoop2
+	ld	hl,(SETXY)
+	ld	a,h
+	cp	#25
+	jr	z,SetRight1
+	add	5
+	ld	h,a
+	ld	(SETXY),hl
+	call    POSIT
+	jp	SetLoop2
+SetRight1:
+	ld	h,#1b
+	ld	(SETXY),hl
+	call    POSIT
+	jp	SetLoop2
+
+
+NextItem:
+	ld	hl,(SETXY)
+	ld	a,(SELITEM)
+	push	af
+	push	hl
+	ld	h,#04
+	call    POSIT
+	ld	a,' '
+	call	CHPUT		; erase item indicator
+	pop	hl
+	pop	af
+
+	ld	a,(VDPVER)	; detect if 9918 is used, skip pallette operations then
+	or	a
+	jr	nz,NextItem0
+	ld	a,(SELITEM)
+	cp	#02
+	jr	nz,NextItem1
+	ld	a,#ff
+	ld	l,#0a
+	jr	NextItem1
+
+NextItem0:
+	ld	a,(SELITEM)
+	cp	#0a
+	jr	nz,NextItem1
+	ld	a,#ff
+	ld	l,#0a
+
+NextItem1:
+	inc	a
+	inc	l
+	ld	(SELITEM),a
+	ld	(SETXY),hl
+	ld	h,#04
+	call    POSIT
+	ld	a,OnSym
+	call	CHPUT		; selected item indicator
+	jp	SetLoop
+
+
+SetReset:
+	ld	hl,SORTD
+	ld	de,SORT
+	ld	bc,19
+	ldir			; reset all settings to defaults
+	jp	UISetup2
+
+
+SetEnd:
+	ld	a,%01100000	; write enable
+	call	EEWEN
+
+	ld	a,4
+	call	EERD		; read originalsorting flag
+	ld	b,a
+	ld	a,(SORT)
+	cp	b		; sorting status changed?
+	jp	z,SetEnd0
+	ld	a,b		; sorting currently enabled?
+	or	a
+	jr	z,SetEnd00
+
+	ld	hl,B2ON
+	ld	de,CardMDR+#0C	; set Bank2 to Flash
+	ld	bc,6
+	ldir
+	jr	SetEnd01
+
+SetEnd00:
+	call	DirSort		; sort directory and set RAM instead of flash
+
+SetEnd01:
+	ld	a,2
+	ld	(CardMDR+#0E),a	; set 2nd bank to autostart map
+	ld	a,(SORT)
+	or	a
+	jr	z,SetEndEr
+	ld	hl,B2ON+#03
+	ld	a,(hl)
+	ld	(CardMDR+#0F),a	; show flash instead of RAM for autostart
+
+SetEndEr:
+	xor	a
+	ld	(AUTOST),a	; no autostart
+	exx
+	dec	a
+	ld	c,a		; erase autostart
+	exx
+	call	ATR_M_Erase	; erase all records
+
+	ld	a,1
+	ld	(CardMDR+#0E),a	; set 2nd bank to directory map
+	ld	a,(SORT)
+	or	a
+	jr	z,SetEndHm
+	ld	hl,RAM_SORT+#03
+	ld	a,(hl)
+	ld	(CardMDR+#0F),a	; show RAM instead of flash for directory
+
+SetEndHm:
+	exx
+	xor	a
+	ld	d,a
+	ld	hl,#0001
+	ld	(CURPAG),hl	; set page 1 after sorting mode change
+	exx
+
+SetEnd0:
+	ld	a,(SORT)
+	ld	e,a             ; data
+	ld	a,4		; address
+	call	EEWR		; save sort to EEPROM
+	ld	a,(EFF)
+	ld	e,a             ; data
+	ld	a,5		; address
+	call	EEWR		; save speed to EEPROM
+	ld	a,(SPD)
+	ld	e,a             ; data
+	ld	a,6		; address
+	call	EEWR		; save speed to EEPROM
+
+	ld	a,7
+	ld	hl,C2FPALM
+SetEnd1:
+	push	af
+	push	af
+	ld	a,(hl)
+	ld	e,a
+	pop	af
+	call	EEWR		; save palette EEPROM
+	inc	hl
+	pop	af
+	inc	a
+	cp	#17
+	jr	nz,SetEnd1
+
+	ld	a,#42
+	ld	e,a             ; data
+	ld	a,#17		; address
+	call	EEWR		; save custom flag to EEPROM
+
+	ld	a,C2FCOLS
+	ld	hl,(C2FPALS)
+	call	PALETTE		; set default UI setup palette
+	ld	a,C2BCOLS
+	ld	hl,(C2BPALS)
+	call	PALETTE		; set default UI setup palette
+	ld	a,C2FCOLS
+	ld	(FORCLR),a
+	ld	a,C2BCOLS
+	ld	(BAKCLR),a
+	ld	(BDRCLR),a
+	call	CHCOLOR		; set default UI setup color
+	
+	ld	hl,(C2BPALS)
+	ex	de,hl
+	ld	hl,(C2FPALS)
+	ld	b,C2FCOLS
+	ld	c,#0D
+	call	FadeOut		; fade out text
+
+	call	CLS
+
+	ld	de,#0000
+	ld	hl,(C2BPALS)
+	ld	b,C2BCOLS
+	ld	c,#0D
+	call	FadeOut		; fade out background
+
+  if CV=2
+	ld	hl,(C2BPALM)
+	ex	de,hl
+  else
+	ld	de,#1304
+  endif
+	ld	hl,#0000
+	ld	b,C2BCOLM
+	ld	c,#0D
+	call	FadeIn		; fade in background
+
+	ld	a,C2FCOLM
+  if CV=2
+	ld	hl,(C2BPALM)
+  else
+	ld	hl,#1304
+  endif
+	call	PALETTE
+
+	jp	Pagep
+
+
 ; Test if the VDP is a TMS9918A
 ; Out A: 0=9918, 1=9938, 2=9958
 ;
@@ -2637,18 +3695,19 @@ Change2:
 
 ; Fade out font and background
   if CV=2
-	ld	de,C2BPALM
+	ld	hl,(C2BPALM)
+	ex	de,hl
   else
 	ld	de,#1304
   endif
-	ld	hl,C2FPALM
+	ld	hl,(C2FPALM)
 	ld	b,C2FCOLM
 	ld	c,#0D
 	call	FadeOut		; fade out text
 	call	CLS
-	ld	de,#1101
+	ld	de,#0000
   if CV=2
-	ld	hl,C2BPALM
+	ld	hl,(C2BPALM)
   else
 	ld	hl,#1304
   endif
@@ -2678,18 +3737,19 @@ Change2:
 	call	CLS
 
   if CV=2
-	ld	de,C2BPALM
+	ld	hl,(C2BPALM)
+	ex	de,hl
   else
 	ld	de,#1304
   endif
-	ld	hl,#1101
+	ld	hl,#0000
 	ld	b,C2BCOLM
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
 	ld	a,C2FCOLM
   if CV=2
-	ld	hl,C2BPALM
+	ld	hl,(C2BPALM)
   else
 	ld	hl,#1304
   endif
@@ -2759,14 +3819,6 @@ VDP_VSDO:
 	pop	af
 	ei
 	ret
-
-
-;
-; DATA AREA
-; The extra code and data area must start above the control registers (#4F80-#4FFF)!
-;	
-
-	org	#5000
 
 
 ; Toggle Turbo mode for Panasonic MSX2+ or R800 mode for Turbo-R
@@ -2854,25 +3906,26 @@ SetVolume:
 
 SetVol1:
   if CV=2
-	ld	de,C2BPALM
+	ld	hl,(C2BPALM)
+	ex	de,hl
   else
 	ld	de,#1304
   endif
-	ld	hl,C2FPALM
+	ld	hl,(C2FPALM)
 	ld	b,C2FCOLM
 	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
-	ld	de,#1101
-	ld	hl,C2BPALM
+	ld	de,#0000
+	ld	hl,(C2BPALM)
 	ld	b,C2BCOLM
 	ld	c,#0D
 	call	FadeOut		; fade out background
 
 	ld	a,C2BCOLV
-	ld	hl,#1101
+	ld	hl,#0000
 	call	PALETTE
 	ld	a,C2FCOLV
 	ld	(FORCLR),a
@@ -2882,11 +3935,12 @@ SetVol1:
 	call	CHCOLOR		; set screen colors (foreground=background)
 
 	ld	a,C2FCOLV
-	ld	hl,C2BPALV
+	ld	hl,(C2BPALV)
 	call	PALETTE
 
-	ld	de,C2BPALV
-	ld	hl,#1101
+	ld	hl,(C2BPALV)
+	ex	de,hl
+	ld	hl,#0000
 	ld	b,C2BCOLV
 	ld	c,#0D
 	call	FadeIn		; fade in background
@@ -2910,8 +3964,9 @@ SetVol1:
 	call	print		; print additional line
   endif
 
-	ld	de,C2FPALV
-	ld	hl,C2BPALV
+	ld	hl,(C2FPALV)
+	ex	de,hl
+	ld	hl,(C2BPALV)
 	ld	b,C2FCOLV
 	ld	c,#0D
 	call	FadeIn		; fade in text
@@ -3009,9 +4064,9 @@ Wait2:
 	jr	z,VFM_UP
 	cp	31		; DOWN
 	jr	z,VFM_DOWN
-	cp	28		; LEFT
+	cp	28		; RIGHT
 	jr	z,VSCC_UP
-	cp	29		; RIGTH
+	cp	29		; LEFT
 	jr	z,VSCC_DOWN
 	cp	11		; HOME
 	jr	z,VolReset
@@ -3090,28 +4145,30 @@ VolEnd:
 	ld	a,1		; address
 	call	EEWR		; save volume data to EEPROM
 
-	ld	de,C2BPALV
-	ld	hl,C2FPALV
+	ld	hl,(C2BPALV)
+	ex	de,hl
+	ld	hl,(C2FPALV)
 	ld	b,C2FCOLV
 	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
-	ld	de,#1101
-	ld	hl,C2BPALV
+	ld	de,#0000
+	ld	hl,(C2BPALV)
 	ld	b,C2BCOLV
 	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	de,C2BPALM
-	ld	hl,#1101
+	ld	hl,(C2BPALM)
+	ex	de,hl
+	ld	hl,#0000
 	ld	b,C2BCOLM
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
 	ld	a,C2FCOLM
-	ld	hl,C2BPALM
+	ld	hl,(C2BPALM)
 	call	PALETTE
 
 	jp	Pagep
@@ -3129,25 +4186,26 @@ PSGVolume:
 
 SetPSG1:
   if CV=2
-	ld	de,C2BPALM
+	ld	hl,(C2BPALM)
+	ex	de,hl
   else
 	ld	de,#1304
   endif
-	ld	hl,C2FPALM
+	ld	hl,(C2FPALM)
 	ld	b,C2FCOLM
 	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
-	ld	de,#1101
-	ld	hl,C2BPALM
+	ld	de,#0000
+	ld	hl,(C2BPALM)
 	ld	b,C2BCOLM
 	ld	c,#0D
 	call	FadeOut		; fade out background
 
 	ld	a,C2BCOLP
-	ld	hl,#1101
+	ld	hl,#0000
 	call	PALETTE
 	ld	a,C2FCOLP
 	ld	(FORCLR),a
@@ -3157,11 +4215,12 @@ SetPSG1:
 	call	CHCOLOR		; set screen colors (foreground=background)
 
 	ld	a,C2FCOLP
-	ld	hl,C2BPALP
+	ld	hl,(C2BPALP)
 	call	PALETTE
 
-	ld	de,C2BPALP
-	ld	hl,#1101
+	ld	hl,(C2BPALP)
+	ex	de,hl
+	ld	hl,#0000
 	ld	b,C2BCOLP
 	ld	c,#0D
 	call	FadeIn		; fade in background
@@ -3185,8 +4244,9 @@ SetPSG1:
 	call	print		; print additional line
   endif
 
-	ld	de,C2FPALP
-	ld	hl,C2BPALP
+	ld	hl,(C2FPALP)
+	ex	de,hl
+	ld	hl,(C2BPALP)
 	ld	b,C2FCOLP
 	ld	c,#0D
 	call	FadeIn		; fade in text
@@ -3276,7 +4336,7 @@ PSGStPr:
 	ld	hl,#1004
 	call    POSIT	
 	ld	a,OnSym
-	call	CHPUT		; mark device as disabled
+	call	CHPUT		; mark device as enabled
 PSGPrn3:
 	ld	hl,#2504
 	call    POSIT	
@@ -3288,7 +4348,7 @@ PSGPrn3:
 	ld	hl,#2504
 	call    POSIT	
 	ld	a,OnSym
-	call	CHPUT		; mark device as disabled
+	call	CHPUT		; mark device as enabled
 
 
 PSGLoop:
@@ -3307,9 +4367,9 @@ Wait3:
 	jr	z,PSG_UP
 	cp	31		; DOWN
 	jr	z,PSG_DOWN
-	cp	28		; LEFT
+	cp	28		; RIGHT
 	jr	z,CLKR_UP
-	cp	29		; RIGTH
+	cp	29		; LEFT
 	jr	z,CLKR_DOWN
 	cp	11		; HOME
 	jp	z,PSGReset
@@ -3416,28 +4476,30 @@ PSGEnd:
 	ld	a,3		; address
 	call	EEWR		; save PSG configuration data to EEPROM
 
-	ld	de,C2BPALP
-	ld	hl,C2FPALP
+	ld	hl,(C2BPALP)
+	ex	de,hl
+	ld	hl,(C2FPALP)
 	ld	b,C2FCOLP
 	ld	c,#0D
 	call	FadeOut		; fade out text
 
 	call	CLS
 
-	ld	de,#1101
-	ld	hl,C2BPALP
+	ld	de,#0000
+	ld	hl,(C2BPALP)
 	ld	b,C2BCOLP
 	ld	c,#0D
 	call	FadeOut		; fade out background
 
-	ld	de,C2BPALM
-	ld	hl,#1101
+	ld	hl,(C2BPALM)
+	ex	de,hl
+	ld	hl,#0000
 	ld	b,C2BCOLM
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
 	ld	a,C2FCOLM
-	ld	hl,C2BPALM
+	ld	hl,(C2BPALM)
 	call	PALETTE
 
 	jp	Pagep
@@ -3445,7 +4507,6 @@ PSGEnd:
 
 
 ; Delay subroutine for joystick
-; in A = delay in seconds/2
 
 JoyDelay:
 	push	af
@@ -3455,11 +4516,19 @@ JoyDelay:
 
 	ei
 	ld	hl,#0000
-	ld	bc,JDelay*12	; set delay for joystick in NTSC
+	ld	bc,NTSC_dl	; set delay for joystick in NTSC
+	ld	a,(SPD)
+	add	a		; double the delay
+	add	a,c
+	ld	c,a		; add speed increment
 	ld	a,(PALNTSC)
 	bit	1,a
 	jr	z,JoyWait
-	ld	bc,JDelay*10	; set delay for joystick for PAL
+	ld	bc,PAL_dl	; set delay for joystick for PAL
+	ld	a,(SPD)
+	add	a,c
+	ld	c,a		; add speed increment
+
 JoyWait:
 	ld	a,2
 	call	VDP_VScan	; wait for VSYNC to start
@@ -3669,7 +4738,7 @@ MainScr:
 	db	#8C,"  ",#90,#91," RBSC ",#96," Help",#A5,#92,#91," Volume",#A5,#93,#91," PSG",#A5,#99,#91,"  ",#8D
   else
 	db	#8C,"  Carnivore MultiFlash SCC Cartridge  ",#8D
-	db	#8C,"    ",#90,#91,"2018 RBSC. Press ",#93,#91," for Help    ",#8D
+	db	#8C,"    ",#90,#91,"2019 RBSC. Press ",#93,#91," for Help    ",#8D
   endif
 	db	#8C," ",#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A," ",#8D
 	db	#8C,"  Entry selected for autostart: [  ]  ",#8D
@@ -3699,23 +4768,23 @@ MainScr:
 	db	#01,#5B," (C) RBSC Help:'H' Volume:'V' PSG:'P' ",#01,#5F
 	db	#01,#5B,"  ----------------------------------  ",#01,#5F
 	db	#01,#5B,"  Entry selected for autostart: [  ]  ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
-	db	#01,#5B,#01,#50,"                                    ",#01,#52,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,"                                    ",#01,#53,#01,#5F
-	db	#01,#5B,#01,#56,"                                    ",#01,#54,#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
+	db	#01,#5B,#01,#50,9,9,9,9,"      ",#01,#52,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#57,9,9,9,9,"      ",#01,#53,#01,#5F
+	db	#01,#5B,#01,#56,9,9,9,9,"      ",#01,#54,#01,#5F
 	db	#01,#5E,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D
 	db	#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5C
 	db	0
@@ -3756,24 +4825,24 @@ VolumeScr:
 	db	#01,#5B,"  Carnivore2 Cartridge's Sound Setup  ",#01,#5F
 	db	#01,#5B,"   --------------------------------   ",#01,#5F
 	db	#01,#5B," Control Keys:                        ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[UP]    - increase FMPAC volume     ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[DOWN]  - decrease FMPAC volume     ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[RIGHT] - increase SCC/SCC+ volume  ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[LEFT]  - decrease SCC/SCC+ volume  ",#01,#5F
 	db	#01,#5B,#20,#01,#56,"[HOME]  - reset to default values   ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B," FMPAC Volume:                        ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B,#20,#20,#01,#50,"--------------------------------",#01,#52,#20,#20,#01,#5F
 	db	#01,#5B,#20,#20,#01,#56,"--------------------------------",#01,#54,#20,#20,#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B," SCC/SCC+ Volume:                     ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B,#20,#20,#01,#50,"--------------------------------",#01,#52,#20,#20,#01,#5F
 	db	#01,#5B,#20,#20,#01,#56,"--------------------------------",#01,#54,#20,#20,#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5E,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D
 	db	#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5C
 	db	0
@@ -3815,7 +4884,7 @@ PSGScr:
 	db	#01,#5B,"   Carnivore2 Cartridge's PSG Setup   ",#01,#5F
 	db	#01,#5B,"    ------------------------------    ",#01,#5F
 	db	#01,#5B," PSG Enabled [ ]  Clicker Enabled [ ] ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B," Control Keys:                        ",#01,#5F
 	db	#01,#5B,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[ENTER] - enable/disable PSG        ",#01,#5F
@@ -3825,11 +4894,11 @@ PSGScr:
 	db	#01,#5B,#20,#01,#57,"[RIGHT] - increase Clicker volume   ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[LEFT]  - decrease Clicker volume   ",#01,#5F
 	db	#01,#5B,#20,#01,#56,"[HOME]  - reset to default values   ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B," PSG Volume:                          ",#01,#5F
 	db	#01,#5B,#20,#20,#01,#50,"--------------------------------",#01,#52,#20,#20,#01,#5F
 	db	#01,#5B,#20,#20,#01,#56,"--------------------------------",#01,#54,#20,#20,#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B," PPI Clicker Volume:                  ",#01,#5F
 	db	#01,#5B,#20,#20,#01,#50,"--------------------------------",#01,#52,#20,#20,#01,#5F
 	db	#01,#5B,#20,#20,#01,#56,"--------------------------------",#01,#54,#20,#20,#01,#5F
@@ -3850,7 +4919,6 @@ HelpScr1:
   endif
 	db	#8C,"  ",#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,"  ",#8D
 	db	#8C," Menu Navigation and Action Keys:     ",#8D
-	db	#8C,"                                      ",#8D
 	db	#8C,#20,#01,#50,"[ESC] - boot MSX using the default  ",#8D
   if CV=2
 	db	#8C,#20,#01,#57,"        configuration: all enabled  ",#8D
@@ -3867,11 +4935,12 @@ HelpScr1:
 	db	#8C,#20,#01,#57,"[A] - select an entry for autostart ",#8D
 	db	#8C,#20,#01,#57,"[D] - disable autostart option      ",#8D
 	db	#8C,#20,#01,#57,"[F] - select 50Hz or 60Hz frequency ",#8D
-	db	#8C,#20,#01,#56,"[T] - toggle Turbo or R800 mode     ",#8D
+	db	#8C,#20,#01,#57,"[T] - toggle Turbo or R800 mode     ",#8D
+	db	#8C,#20,#01,#56,"[S] - customize boot block's UI     ",#8D
 	db	#8C,"                                      ",#8D
 	db	#8C," Boot Option Keys:                    ",#8D
-	db	#8C,"                                      ",#8D
-	db	#8C,#20,#01,#50,"[F4] - disable autostart option     ",#8D
+	db	#8C,#20,#01,#50,"[F3] - disable custom UI settings   ",#8D
+	db	#8C,#20,#01,#57,"[F4] - disable autostart option     ",#8D
 	db	#8C,#20,#01,#56,"[F5] - disable startup menu         ",#8D
 	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
 helpll	db	" v2.00     Press any key to continue...",0
@@ -3882,7 +4951,6 @@ helpll	db	" v2.00     Press any key to continue...",0
 	db	#01,#5B,"  Carnivore2 Cartridge's Help Screen  ",#01,#5F
 	db	#01,#5B,"   --------------------------------   ",#01,#5F
 	db	#01,#5B," Menu Navigation and Action Keys:     ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
 	db	#01,#5B,#20,#01,#50,"[ESC] - boot MSX using the default  ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"        configuration: all enabled  ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"                                    ",#01,#5F
@@ -3894,11 +4962,12 @@ helpll	db	" v2.00     Press any key to continue...",0
 	db	#01,#5B,#20,#01,#57,"[A] - select an entry for autostart ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[D] - disable autostart option      ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[F] - select 50Hz or 60Hz frequency ",#01,#5F
-	db	#01,#5B,#20,#01,#56,"[T] - toggle Turbo or R800 mode     ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[T] - toggle Turbo or R800 mode     ",#01,#5F
+	db	#01,#5B,#20,#01,#56,"[S] - customize boot block's UI     ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B," Boot Option Keys:                    ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
-	db	#01,#5B,#20,#01,#50,"[F4] - disable autostart option     ",#01,#5F
+	db	#01,#5B,#20,#01,#50,"[F3] - disable custom UI settings   ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[F4] - disable autostart option     ",#01,#5F
 	db	#01,#5B,#20,#01,#56,"[F5] - disable startup menu         ",#01,#5F
 	db	#01,#5E,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D
 	db	#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5C
@@ -3943,22 +5012,22 @@ helplll	db	" v2.00       Press any key to return..."
 	db	#01,#5B,"  Carnivore2 Cartridge's Help Screen  ",#01,#5F
 	db	#01,#5B,"   --------------------------------   ",#01,#5F
 	db	#01,#5B," Menu Navigation and Joystick Action: ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B,#20,#01,#50,"[LEFT],[RIGHT] - previous/next page ",#01,#5F
 	db	#01,#5B,#20,#01,#56,"[UP],[DOWN] - select ROM/CFG entry  ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B,"  NOTE:                               ",#01,#5F
 	db	#01,#5B,"  All other directions are ignored    ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B,#20,#01,#50,"[BUTTON A] - start selected entry   ",#01,#5F
 	db	#01,#5B,#20,#01,#57,"[BUTTON B] - reset MSX and start    ",#01,#5F
 	db	#01,#5B,#20,#01,#56,"             selected entry         ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B," Autostart Joystick Action:           ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B,#20,#01,#50,"[BUTTON A] - disable autostart      ",#01,#5F
 	db	#01,#5B,#20,#01,#56,"[BUTTON B] - disable autostart      ",#01,#5F
-	db	#01,#5B,"                                      ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
 	db	#01,#5B,"  NOTE:                               ",#01,#5F
 	db	#01,#5B,"  Please hold a button for 1 second   ",#01,#5F
 	db	#01,#5E,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D
@@ -3966,6 +5035,108 @@ helplll	db	" v2.00       Press any key to return..."
 helplll	db	" v2.00       Press any key to return..."
 	db	0
   endif
+
+
+  if CV=2
+SetupScr:
+  if SPC=0
+	db	#88,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8A,#8F
+	db	#8C,"   Carnivore2 Cartridge's UI Setup    ",#8D
+	db	#8C,"   ",#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,#9A,"    ",#8D
+	db	#8C," Control Keys:                        ",#8D
+	db	#8C,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#8D
+	db	#8C,#20,#01,#57,"[TAB]   - select options to modify  ",#8D
+	db	#8C,#20,#01,#57,"[SPACE] - change selected value     ",#8D
+	db	#8C,#20,#01,#57,"[RIGHT],[LEFT] - select RGB options ",#8D
+	db	#8C,#20,#01,#56,"[HOME]  - reset to default values   ",#8D
+	db	#8C,"                                      ",#8D
+	db	#8C," [ ] Entry sorting in main menu:  ( ) ",#8D
+	db	#8C," [ ] Fade in/out effects:         ( ) ",#8D
+	db	#8C," [ ] Keyboard/joystick speed:     ( ) ",#8D
+	db	#8C," [ ] Menu font:        R( ) G( ) B( ) ",#8D
+	db	#8C," [ ] Menu background:  R( ) G( ) B( ) ",#8D
+	db	#8C," [ ] Help font:        R( ) G( ) B( ) ",#8D
+	db	#8C," [ ] Help background:  R( ) G( ) B( ) ",#8D
+	db	#8C," [ ] Volume font:      R( ) G( ) B( ) ",#8D
+	db	#8C," [ ] Volume backg.:    R( ) G( ) B( ) ",#8D
+	db	#8C," [ ] PSG setup font:   R( ) G( ) B( ) ",#8D
+	db	#8C," [ ] PSG setup backg.: R( ) G( ) B( ) ",#8D
+	db	#8E,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#8B,#89
+	db	"        Set up UI colors and options..."   
+	db	0
+  else
+	db	#01,#58,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59
+	db	#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#59,#01,#5A
+	db	#01,#5B,"   Carnivore2 Cartridge's UI Setup    ",#01,#5F
+	db	#01,#5B,"    -----------------------------     ",#01,#5F
+	db	#01,#5B," Control Keys:                        ",#01,#5F
+	db	#01,#5B,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[TAB]   - select options to modify  ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[SPACE] - change selected value     ",#01,#5F
+	db	#01,#5B,#20,#01,#57,"[RIGHT],[LEFT] - select RGB options ",#01,#5F
+	db	#01,#5B,#20,#01,#56,"[HOME]  - reset to default values   ",#01,#5F
+	db	#01,#5B,9,9,9,9,"       ",#01,#5F
+	db	#01,#5B," [ ] Entry sorting in main menu:  ( ) ",#01,#5F
+	db	#01,#5B," [ ] Fade in/out effects:         ( ) ",#01,#5F
+	db	#01,#5B," [ ] Keyboard/joystick speed:     ( ) ",#01,#5F
+	db	#01,#5B," [ ] Menu font:        R( ) G( ) B( ) ",#01,#5F
+	db	#01,#5B," [ ] Menu background:  R( ) G( ) B( ) ",#01,#5F
+	db	#01,#5B," [ ] Help font:        R( ) G( ) B( ) ",#01,#5F
+	db	#01,#5B," [ ] Help background:  R( ) G( ) B( ) ",#01,#5F
+	db	#01,#5B," [ ] Volume font:      R( ) G( ) B( ) ",#01,#5F
+	db	#01,#5B," [ ] Volume backg.:    R( ) G( ) B( ) ",#01,#5F
+	db	#01,#5B," [ ] PSG setup font:   R( ) G( ) B( ) ",#01,#5F
+	db	#01,#5B," [ ] PSG setup backg.: R( ) G( ) B( ) ",#01,#5F
+	db	#01,#5E,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D
+	db	#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5D,#01,#5C
+	db	0
+Setupll	db	"        Set up UI colors and options..."   
+  endif
+  endif
+
+
+; Default variables for colors and settings
+SORTD	db	0
+EFFD	db	1
+SPDD	db	2
+
+C2FPALMD
+	dw	#7707		; default
+C2BPALMD
+	dw	#4301		; default
+C2FPALHD
+	dw	#7707		; default
+C2BPALHD
+	dw	#1401		; default
+C2FPALVD
+	dw	#7707		; default
+C2BPALVD
+	dw	#1304		; default
+C2FPALPD
+	dw	#7707		; default
+C2BPALPD
+	dw	#4101		; default
+
+; Colors for setup screen -------------
+; First value - foreground color
+; Second value - foreground color palette
+; Third value - background color
+; Fourth value - background color palette
+
+C2FCOLS	equ	15
+C2FPALS	dw	#7707		; default
+
+C2BCOLS	equ	1
+C2BPALS	dw	#0000		; default
+
+
+; Default colors and palette on MSX startup
+
+DefFCol	equ	15		; white
+DefWhP	equ	#7707		; 15
+DefBCol	equ	4		; blue
+DefBlP	equ	#1701		; 4
+
 
 ; Default palette
 DefPal:
@@ -4069,10 +5240,19 @@ DefPSG:
 	db	#1B		; 00011011
 B2ON:
 	db	#F0,#70,#01,#15,#7F,#80
+B2ON1:
+	db	#F0,#70,#02,#14,#7F,#80
 RAM_TS4B:
 	db	#F8,#80,#00,#35,#7F,#80
 RAM_TS4BR:
 	db	#F8,#80,#00,#25,#7F,#40
+RAM_SORT1:
+	db	#F8,#80,#02,#34,#7F,#A0
+RAM_SORT2:
+	db	#F8,#80,#03,#34,#7F,#A0
+RAM_SORT:
+	db	#F8,#80,#01,#35,#7F,#80
+
 
 
   if SPC=1
@@ -4514,6 +5694,42 @@ RDBTST  equ     RDBTST_E
 GTSTCK	equ	GTSTCK_E
 GTTRIG	equ	GTTRIG_E
   endif
+
+;	Cursor (2 bytes)
+;
+  if SPC=0
+CURS1	equ	#94
+CURS2	equ	#95
+  else
+CURS1	equ	'>'
+CURS2	equ	'>'
+  endif
+
+;	Frames ASCII codes
+;	
+;	Thick
+;	#80,#85,#85,#81
+;	#86,#20,#20,#87
+;	#82,#84,#84,#83
+;	
+;	Thin
+;	#01,#50,#01,#51,#01,#51,#01,#52
+;	#01,#57,#20,#20,#01,#53
+;	#01,#56,#01,#55,#01,#55,#01,#54
+;	
+;	Medium
+;	#88,#8A,#8A,#8F
+;	#8C,#20,#20,#8D
+;	#8E,#8B,#8B,#89
+;	
+;	Double
+;	#01,#58,#01,#59,#01,#59,#01,#5A
+;	#01,#5B,#20,#20,#01,#5F
+;	#01,#5E,#01,#5D,#01,#5D,#01,#5C
+;	
+;	Copyright sign
+;
+;	#90
 
 
 ; Font data

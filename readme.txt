@@ -1,6 +1,6 @@
 Carnivore2 MultiFunctional Cartridge Readme File
-Copyright (c) 2017-2018 RBSC
-Last updated: 20.11.2018
+Copyright (c) 2017-2019 RBSC
+Last updated: 31.03.2019
 ------------------------------------------------
 
 WARNING! To avoid damage to the Carnivore2 cartridge and your MSX computer hardware never insert or remove the cartridge
@@ -88,6 +88,7 @@ easy. Here are the key assignments:
 	[D] - disable autostart option
 	[F] - select 50Hz or 60Hz frequency
 	[T] - toggle Turbo or R800 mode
+	[S] - customize boot block's UI
 
 The boot block also supports the built-in joypads and external joysticks connected to any of the 2 joystick ports. The joystick's
 stick movements are interpreted as follows:
@@ -115,6 +116,7 @@ using the direct start or start after system's reset.
 There are several keys that can affect the cartridge's functionality at boot level. Certain keys can skip the autostart option,
 other keys can skip the boot block's main menu:
 
+	[F3] - disable custom UI settings
 	[F4] - disable autostart option
 	[F5] - disable startup menu
 
@@ -170,6 +172,27 @@ The volume's value is stored within the small EEPROM on the cartridge board. The
 the main menu. If the small EEPROM is not present, then the volume setting is only preserved until the power-off. So setting the
 volume once allows to play games and listening to the music until the computer is completely switched off.
 
+Starting from version 2.10 the boot block can be customized and the custom settings will be stored in the configuration EEPROM.
+To customize the boot block use the 'S' key from the main menu. The following keys can be used in customization screen:
+
+	[ESC]   - save & exit to main menu
+	[TAB]   - select options to modify
+	[SPACE] - change selected value
+	[RIGHT],[LEFT] - select RGB options
+	[HOME]  - reset to default values
+
+A user can customize various UI settings including directory sorting, fade in/out effects, keyboard/joystick speed as well as
+the colors (font and background) for the main menu, help screen, volume control screen and PSG setup screen. Pressing 'Home' at
+any time will restore all customized values to default settings. Holding 'F3' key at the boot block's startup allows to use the
+default settings for the UI - all custom settings will be ignored for the session.
+
+Please note that editing of the palette on MSX computers with v991x or v992x video processors will be disabled. Also if the
+directory sorting is enabled or disabled, the current autostart entry is cleared to prevent a mix-up.
+
+The directory sorting is a complex operation, so if there are many entries in the boot block's directory, then it may take a few
+seconds to completely sort all of them. The sorting only happens at the boot block's startup and when the sorting gets enabled
+in the UI settings screen. If the delay is too uncomfortable for you, please disable the directory sorting option.
+
 
 C2MAN and C2MAN40 utilities
 ---------------------------
@@ -217,10 +240,10 @@ until the ROM is successfully written into the chip and the main menu re-appears
 detected automatically by the utility, but on some ROMs autodetecting may fail. In this case the utility will ask you to choose the
 mapper. The ROM will not start with incorrect mapper settings, so if your setting didn't work, try to change the mapper type.
 
-The FlashROM chip contains 128 blocks by 64kb (8mb in total). The first 4 blocks are occupied by the Boot Block, IDE BIOS and FMPAC BIOS.
-Other blocks are available for a user to add the ROMs. The ROMs that are smaller than 64kb are grouped into one block. For example two 32kb
-ROMs will be written into the same 64kb block, eight 8kb ROMs will be grouped into the same 64kb block and finally four 16kb ROMs will be
-grouped written into the same 64kb block. All this is done automatically.
+The FlashROM chip contains 128 blocks by 64kb (8mb in total). The first 4 blocks are occupied by the Boot Block, directory, IDE BIOS and
+FMPAC BIOS. Other blocks are available for a user to add the ROMs. The ROMs that are smaller than 64kb are grouped into one block. For
+example two 32kb ROMs will be written into the same 64kb block, eight 8kb ROMs will be grouped into the same 64kb block and finally four
+16kb ROMs will be grouped written into the same 64kb block. All this is done automatically.
 
 You can add a ROM into the chip without user interaction. The following command line should be used:
 
@@ -342,9 +365,29 @@ The utility also allows to copy the contents of the FlashROM's dump back into th
 can be performed live, however the system must be restarted as soon as possible after uploading the new contents into the FlashROM
 chip.
 
+The utility asks a user whether he would like to preserve the existing boot block on the cartridge and in case of a positive answer
+it doesn't overwrite the existing boot block with the one stored in the backup file. In this case the utility shows the '-' symbol
+instead of '>' when skipping the boot block writing.
+
 WARNING! Interrupting the FlashROM's contents uploading may result in a non-working Carnivore2 cartridge! In this case the cartridge
 must be re-initialized. The description of the procedure can be found in the "How to enable the cartridge and install BIOS ROMs"
 section of this readme file.
+
+
+Backing up and restoring configuration EEPROM's contents
+--------------------------------------------------------
+
+The "c2cfgbck.com" utility allows to dump the contents of the configuration EEPROM chip into a file. The size of the file is 128
+bytes. The utility also allows to copy the contents of the EEPROM's dump back into the chip. The system must be restarted after
+uploading the new data into the EEPROM chip for the configuration changes to be taken into use.
+
+
+Testing IDE controller's functionality
+--------------------------------------
+
+The "c2idetst.com" utility is used to test IDE controller's read/write functionality. When run, it performs 16384 read/write
+iterations and shows the passed/failed status of any of the disk operations fail. To stop the test it's necessary to hold the
+ESC key. In the end the utility shows the total/success/failed counters.
 
 
 Notes for SCC+ mode

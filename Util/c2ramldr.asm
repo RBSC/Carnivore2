@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's ROM->RAM Loader
-; Copyright (c) 2015-2018 RBSC
-; Version 1.25
+; Copyright (c) 2015-2019 RBSC
+; Version 1.31
 ;
 
 
@@ -299,6 +299,34 @@ ADDimgR:
 	ld	hl,Bi_FNAM+2
 	add	hl,bc
 	ld	(hl),0
+
+	ld	hl,Bi_FNAM+2
+	ld	b,13
+ADDIM1:
+	ld	a,(hl)
+	cp	'.'
+	jr	z,ADDIM2
+	or	a
+	jr	z,ADDIMC
+	inc	hl
+	djnz	ADDIM1
+
+ADDIMC:
+	ex	de,hl
+	ld	hl,ROMEXT		; copy extension and zero in the end
+	ld	bc,5
+	ldir
+	jr	ADDIM3
+
+ADDIM2:
+	inc	hl
+	ld	a,(hl)
+	or	a
+	jr	z,ADDIM3
+	cp	32			; empty extension?
+	jr	c,ADDIMC
+
+ADDIM3:
 	ld	ix,Bi_FNAM+2
 	call	FnameP
 	jp	ADD_OF
@@ -1632,29 +1660,35 @@ DEFMR1:
 DEFMR2:
 	ld	(Record+03),a		; Record+03 - length in 64kb blocks
 	ld	a,#FF
-	ld	(Record+01),a		; set "not erase" byte
+	ld	(Record+01),a		; set active flag
 
-; search free DIR record
-DEF09:	call	FrDIR
-	jr	nz,DEF06
-
+DEF09:
 	ld	a,(F_A)
 	or	a
-	jp	nz,DEF08		; Automatic action
+	jr	nz,DEF10AA
 
-; Directory overfilling?
-	print	DirOver_S
-DEF07:	ld	c,_INNOE
+	print	CreaDir			; create directory entry?
+	xor	a
+	ld	(F_D),a			; by default create directory
+DEF10A:
+	ld	c,_INNOE
 	call	DOS
 	or	%00100000
 	cp	"y"
-	jr	z,DEF08
+	jr	z,DEF10AA
 	cp	"n"
-	jp	z,MainM
-	jr	DEF07
+	jp	nz,DEF10A
+	ld	a,1
+	ld	(F_D),a			; don't create directory
+	jp	DEF10
 
-DEF08:	call	CmprDIR
-	jr	DEF09
+DEF10AA:
+	print	ONE_NL_S
+	call	FrDIR			; search free DIR record
+	jr	nz,DEF06
+
+	print	DirOver_S		; no action on directory overfilling
+	jp	MainM
 
 DEF06:	
 	ld	(Record),a		; save DIR number
@@ -1733,26 +1767,12 @@ DEF12:
 	ld	de,Record+10
 	ldir
 	jr	DEF13
+
 DEF10:
 	ld	a,(F_A)
 	or	a
-	jr	nz,DEF11
+	jr	nz,DEF11		; flag automatic confirm
 
-	print	CreaDir			; create directory entry?
-	xor	a
-	ld	(F_D),a			; by default create directory
-DEF10A:
-	ld	c,_INNOE
-	call	DOS
-	or	%00100000
-	cp	"y"
-	jr	z,DEF10AA
-	cp	"n"
-	jp	nz,DEF10A
-	ld	a,1
-	ld	(F_D),a			; don't create directory
-
-DEF10AA:
 	print	ONE_NL_S
 	print	LOAD_S			; ready?
 
@@ -2083,6 +2103,7 @@ Ld_Fail:
 	scf				; set carry flag because of an error
 	jr	LIF04
 
+
 FBProg:
 ; Block (0..2000h) programm to Flash
 ; hl - buffer source
@@ -2200,11 +2221,9 @@ CHK_R1:	pop bc
 	ret	
 
 
-FrDIR:
 ; Search free DIR record
-; output A - DIR number
-
-; Set flash configuration
+; output A - DIR number, otherwise NZ - free record found
+FrDIR:
 	ld	a,(ERMSlt)
 	ld	h,#40			; set 1 page
 	call	ENASLT
@@ -2223,11 +2242,20 @@ FrDIR:
 	ld	d,0
 FRD02:	call	c_dir
 	ld	a,(ix)
-	cp	#FF
-	jr	z,FRD01			; found empty
-	inc	d
+	cp	#ff			; empty or last record?
+	jr	nz,FRD00
+	ld	a,(ix+1)
+	cp	#ff			; active record?
+	jr	nz,FRD00
+	ld	a,d
+	cp	#ff			; last record?
+	jr	nz,FRD01
+FRD00:	inc	d
+	ld	a,d
+	or	a
 	jr	nz,FRD02		; next DIR
 	xor	a
+	or	a
 	jr	FRD03			; not found Zero
 FRD01:	ld	a,d
 	or	a			; not zero?
@@ -2251,6 +2279,7 @@ B23ON:	db	#F0,#80,#00,#04,#7F,#80
 c_dir:
 ; input d - dir idex num
 ; outut	ix - dir point enter
+; output Z - last/empty/deleted entry
  	ld	b,0
 	or	a 
 	ld	a,d
@@ -2269,13 +2298,15 @@ c_dir:
 	ld	c,a
 	ld	ix,#8000
 	add	ix,bc			; 8000h + b*64
-; test empty/delete
+
 	ld	a,(ix)
-	cp	#FF			; empty ?
-	ret	z			; RET Z=1
+	cp	#FF			; last record?
+	ret	z
+
 	ld	a,(ix+1)
-	or	a			; delete ?
+	or	a			; deleted record ?
 	ret
+
 ;-------------------------------
 TTAB:
 ;	ld	b,(DMAP)
@@ -2763,57 +2794,6 @@ ASt03:
         call    ENASLT	
 	pop	af
 	ret
-
-
-CmprDIR:
-; Compress directory 
-; Set flash configuration
-	ld	a,(ERMSlt)
-	ld	h,#40			; set 1 page
-	call	ENASLT
-
-	ld	hl,B2ON
-	ld	de,CardMDR+#0C		; set Bank2
-	ld	bc,6
-	ldir
- 
-	ld	a,(ERMSlt)		; set 2 page
-	ld	h,#80
-	call	ENASLT
-	ld	a,1
-	ld	(CardMDR+#0E),a 	; set 2nd bank to directory map
-
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
-; copy valid record 1st 8kB
-	xor	a
-	ld	(Dpoint+2),a		; start number record
-	ld	hl,#8000
-	ld	(Dpoint),hl
-
-
-SET2PD:
-	ld	a,(ERMSlt)
-	ld	h,#40			; set 1 page
-	call	ENASLT
-
-	ld	hl,B2ON
-	ld	de,CardMDR+#0C		; set Bank2
-	ld	bc,6
-	ldir
- 
-	ld	a,(ERMSlt)		; set 2 page
-	ld	h,#80
-	call	ENASLT
-	ld	a,1
-	ld	(CardMDR+#0E),a 	; set 2nd bank to directory map
-
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT
-	ret
-
 
 
 HEXA:
@@ -3563,6 +3543,8 @@ CRTT5:	db	"M"
 protect:
 	db	1
 DOS2:	db	0
+ShadowMDR
+	db	#21
 ERMSlt	db	1
 TRMSlt	db	#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF,#FF
 Binpsl	db	2,0,"1",0
@@ -3587,6 +3569,7 @@ EBlock0:
 EBlock:	db	0
 strp:	db	0
 strI:	dw	#8000
+ROMEXT:	db	".ROM",0
 
 Bi_FNAM db	14,0,"D:FileName.ROM",0
 ;--- File Control Block
@@ -3672,10 +3655,6 @@ MAIN_S:	db	13,10
 	db	" 0 - Exit to MSX-DOS",13,10,"$"
 
 EXIT_S:	db	10,13,"Thanks for using the RBSC's products!",13,10,"$"
-DirComr_S:
-	db	10,13,"Directory entries will be optimized. Proceed? (y/n) $"
-DirComr_E:
-	db	13,10,"Optimizing of directory entries is complete!",13,10,"$"
 ANIK_S:
 	db	"Press any key to continue",13,10,"$"
 ADD_RI_S:
@@ -3726,7 +3705,7 @@ FNRE_S:	db	"Using Record-FBlock-NBank for Mini ROM",#0D,#0A
 	db	"[Multi ROM entry] - $"
 DirOver_S:
 	db	"No more free directory entries!",13,10
-DirCmpr:db	"Optimize directory entries now? (y/n)",13,10,"$"
+	db	"Please optimize the directory with c2man utility...",13,10,"$"
 FDE_S:	db	"Found free directory entry at: $"
 NR_I_S:	db	"Name of directory entry: $"
 FileSZH:
@@ -3757,8 +3736,8 @@ TestRDT:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.25",13,10
-	db	"(C) 2015-2017 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.31",13,10
+	db	"(C) 2015-2019 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
 Findcrt_S:
@@ -3806,7 +3785,7 @@ RCPData:
 	ds	30
 
 	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000:2018"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER:2019"
 	db	0,0,0
 
 BUFTOP:

@@ -1,7 +1,37 @@
 Changelog for Carnifore2 MultiFunctional Cartridge
-Copyright (c) 2017-2018 by RBSC
+Copyright (c) 2017-2019 by RBSC
 English verison
 --------------------------------------------------
+
+31.03.2019
+
+1. Added UI settings screen that can be called with "S" button into the boot block. A user can
+   now enable sorting of the menu entries, enable/disable fade in/out effects, set the speed
+   of the keyboard/joystick and customize the font and the background colors of all boot block's
+   screens (on MSX2 and later computers). A user can also restore the default settings with
+   just one button. The UI settings are stored in the configuration EEPROM
+
+2. The F3 key loads the UI defaults on startup, but it doesn't clear the settings in the EEPROM.
+   This function may be used to bypass bad configuration settings
+
+3. The C2MAN, C2MAN40, C2RAMLDR, C2SRAM and C2BACKUP utilities now assume the default extension
+   for their data files and ROM images if a user doesn't input the extension himself
+
+4. The C2MAN, C2MAN40 and C2RAMLDR utilities got a bugfix to better identify the free directory
+   entries in order to re-use them. The directory optimization now works better
+
+5. The C2MAN and C2MAN40 utilities were optimized in size to better fit into RAM under MSX-DOS2
+
+6. The new utility C2CFGBCK allows to backup and restore the data in the configuration EEPROM
+
+7. The C2BACKUP utility asks a user whether he wants to preserve the existing boot block on the
+   cartridge and in case of a positive answer it doesn't overwrite the existing boot block with
+   the one stored in the backup file
+
+8. Added C2IDETST utility to test IDE controller's functionality. The utility performs 16384
+   read/write operations and shows the status for each of them. In the end the utility shows the
+   total/success/failed counters
+
 
 30.09.2018
 

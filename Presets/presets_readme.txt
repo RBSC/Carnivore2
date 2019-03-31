@@ -1,6 +1,6 @@
 Register Configuration Presets
 Carnivore and Carnivore2 Cartridges
-Copyright (C) 2017-2018 by RBSC
+Copyright (C) 2017-2019 by RBSC
 
 The RCP files should be loaded for certain ROM files or for ROM files of certain size.
 Below is the list of currently available RCP files and their descriptions.

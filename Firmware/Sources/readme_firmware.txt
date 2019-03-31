@@ -1,5 +1,5 @@
 Carnivore2 MultiFunctional Cartridge version 2.2
-Copyright (c) 2017-2018 RBSC
+Copyright (c) 2017-2019 RBSC
 Portions (c) Mitsutaka Okazaki
 Portions (c) Kazuhiro Tsujikawa
 Last updated: 12.06.2018
