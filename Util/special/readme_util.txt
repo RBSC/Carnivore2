@@ -1,5 +1,5 @@
-Carnivore2 MultiFunctional Cartridge version 2.2
-Copyright (c) 2017-2019 RBSC
+Carnivore2 MultiFunctional Cartridge version 2.30
+Copyright (c) 2017-2020 RBSC
 
 The provided utilities allow to work with certain cartridge's features:
 

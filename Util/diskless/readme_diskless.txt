@@ -1,14 +1,17 @@
-Carnivore2 MultiFunctional Cartridge version 2.2
-Copyright (c) 2017-2019 RBSC
+Carnivore2 MultiFunctional Cartridge version 2.30
+Copyright (c) 2017-2020 RBSC
 
 The utilities and the readme.txt file were made by Vladimir and shared with the
-RBSC team for deploying into the repository.
+RBSC team for deploying into the repository. Please note that this solution
+contains older versions of Boot Menu and BIOSes, so it's advised to update the
+firmware, Boot Menu, BIOSes and tools from the repository after enabling your
+cartridge.
 
 
 Installing ROMs on diskless machine
 -----------------------------------
 
-This directory contains utilities that allow flashing Boot Block, IDE BIOS and
+This directory contains utilities that allow flashing Boot Menu, IDE BIOS and
 FMPAC BIOS to flash memory of newly assembled cartridge using MSX machine
 that does not have disk drive. The installation uses CF card with BIOS images
 plugged into the cartridge itself. Thus before using this method the FPGA

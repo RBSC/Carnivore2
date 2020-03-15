@@ -1,13 +1,98 @@
 Changelog for Carnifore2 MultiFunctional Cartridge
-Copyright (c) 2017-2019 by RBSC
+Copyright (c) 2017-2020 by RBSC
 English verison
 --------------------------------------------------
 
+15.03.2020 (required updates: FPGA firmware, Boot Menu, all utilities, DefConfig entry;
+           the "Power-up fix" must be removed if it was implemented on board!)
+
+1. The new setup screen was introduced - slot configuration. It can be called with "O" hotkey or
+   with "Enter". The new setup screen allows to run dual-slot configuration with flexible
+   options selection for the master slot (you can choose what Carnivore2 built-in devices to
+   enable). You can select 2 ROMs to run simultaneously. The only restriction for the slave slot
+   is that it can run games with Konami4 and Konami5 mappers as well as small games up to 32kb
+   without mapper. The slave slot becomes available if there's one unused physical slot in MSX
+   and it is not occupied by another device
+
+2. The Boot Menu main page's UI was adjusted to have all main hotkeys easily visible. Also the
+   Boot Menu now has the visible selection for master and slave slots called "Dual-Slot". The
+   entry for the master slot can be selected by pressing "1", the entry for the slave slot can be
+   selected by pressing "2". The "D" key clears the selection as well as Autostart entry
+
+3. The DefConfig's settings were changed and the Boot Menu was adjusted so that when this default
+   configuration is started, the Boot Menu remains in the primary slot, allows the system to
+   start and is always detectable by C2MAN and other utilities. The C2MAN and C2MAN40 utilities
+   now write the adjusted DefConfig entry into the directory when you optimize directory entries
+   from the Service Menu
+
+4. A new setting has been added into the Configuration screen to set the desired frequency at
+   startup. A user can choose between 50Hz, 60Hz and the default computer's frequency (no forcing,
+   this is marked as "--"). The setting is saved into the configuration EEPROM. Now the "F" button
+   in the Boot Menu only temporarily switches the frequency between 50Hz and 60Hz
+
+5. The Configuration screen got yet another new setting - "Dual-reset on cold boot". It makes the
+   computer restart twice after the cold boot. This is necessary to make sure that the cartridge
+   is fully initialized when a computer is just powered on. So it is recommended to enable the
+   dual-reset feature
+
+6. The C2CFGBCK utility no longer does the BIOS ROM shadowing and therefore starts faster
+
+7. The Boot Menu's data section has been heavily optimized to have space for more features. The
+   repeated characters are now output with a macros (this saves space). The data for Boot Menu's
+   screens is now written in the last two 8kb blocks of the first 64kb FlashROM block. This
+   saves a lot of space
+
+8. The firmware now reports its internal version in the configuration registers (3 bytes) in
+   ASCII format (only starting from v2.30)
+
+9. The cartridge now outputs the actual versions of the Boot Menu and the firmware during the
+   cold boot and then either reboots a system again (dual-reset) or continues to the Boot Menu
+
+10. The cartridge will not work in slot 0 and slot 3, it will output a message and halt a
+    system if it detects that it's used in those slots
+
+11. The IDE BIOS has been changed to Nextor 2.1.0 Beta 2. This is a stable version with many
+    bugfixes and new features provided by Konamiman
+
+12. The Configuration screen got another new setting - "Disable FMPAC stereo". It disables the
+    stereo output of FMPAC from Carnivore2's audio socket
+
+13. The Boot Menu now detects that it is running on Korean or Arabic MSXs and in case it is
+    not compatible with those systems, it will output a message and will try to boot to DOS
+    after 10 seconds. In such a case a compatible Boot Menu (BOOTCMFC.BIN) should be installed
+    into the cartridge (see the "Special" subfolder in the repository for the compatible
+    version of the Boot Menu
+
+14. ROMs can be selected with the "Space" key in the Dual-Slot screen. Pressing space will
+    allow to cycle through compatible ROMs for each slot. After the full cycle there will be an
+    "empty" selection to keep the slot vacant. In addition, the master slot can also use the
+    "Konami SCC+" configuration. So you can run SCC+ games in the slave slot and enjoy SCC+
+    and a game on a single cartridge. When the master slot's expansion is enabled, any of
+    its devices (RAM, FMPAC, IDE) can be enabled or disabled with the "Space" key
+
+15. The autostart countdown can be skipped with "Space" key. The same applies to the message
+    about the incompatible Boot Menu
+
+16. All screens now support joystick. The joystick's directions are interpreted as cursor
+    keys and the buttons are interpreted as "Space" or "ESC". Please see the readme.txt for
+    more info
+
+17. In the PSG/PPI settings the "Space" key now enables or disables the PSG and the "Enter"
+    key enables or disables the PPI clicker. This is done to better support joystick usage
+    in this screen
+
+18. During the autostart countdown joystick buttons allow to either skip the countdown and
+    start an entry or to cancel the countdown and go to the main menu. Please see the
+    readme.txt for more info
+
+19. The Boot Menu detects Russian network modules and halts a system to prevent conflicts
+
+
 31.03.2019
 
-1. Added UI settings screen that can be called with "S" button into the boot block. A user can
+1. Added UI settings screen that can be called with "S" button into the Boot Menu. A user can
    now enable sorting of the menu entries, enable/disable fade in/out effects, set the speed
-   of the keyboard/joystick and customize the font and the background colors of all boot block's
+   of the keyboard/joystick and customize the font and the background colors of all Boot Menu's
    screens (on MSX2 and later computers). A user can also restore the default settings with
    just one button. The UI settings are stored in the configuration EEPROM
 
@@ -24,8 +109,8 @@ English verison
 
 6. The new utility C2CFGBCK allows to backup and restore the data in the configuration EEPROM
 
-7. The C2BACKUP utility asks a user whether he wants to preserve the existing boot block on the
-   cartridge and in case of a positive answer it doesn't overwrite the existing boot block with
+7. The C2BACKUP utility asks a user whether he wants to preserve the existing Boot Menu on the
+   cartridge and in case of a positive answer it doesn't overwrite the existing Boot Menu with
    the one stored in the backup file
 
 8. Added C2IDETST utility to test IDE controller's functionality. The utility performs 16384
@@ -40,11 +125,11 @@ English verison
 
 22.09.2018
 
-1. The boot block now supports joypads and joysticks connected to any of the 2 joystick ports.
+1. The Boot Menu now supports joypads and joysticks connected to any of the 2 joystick ports.
    They allow to control the cursor in the main menu, start the games and configuration entries
    and also to stop the autostart of the selected entry
 
-2. Added the second help screen with the description of joystick's actions into the boot block.
+2. Added the second help screen with the description of joystick's actions into the Boot Menu.
    The autostart message now mentions joystick's action as well
 
 
@@ -67,14 +152,14 @@ English verison
 6. The SCC and PSG filters were optimized in the firmware, the sound quality is much improved
 
 7. The Altera's firmware now has the hardware-based interceptor for starting ROM images, but
-   this feature is not yet used in the boot block
+   this feature is not yet used in the Boot Menu
 
 8. The /r restart option is now supported by C2BACKUP and C2SRAM utilities
 
 
 10.05.2018
 
-1. The tools and the boot block now work on Daewoo and Arabic MSX computers
+1. The tools and the Boot Menu now work on Daewoo and Arabic MSX computers
 
 2. The new tool is available - C2BACKUP: it allows to read and write the contents of the entire
    FlashROM chip
@@ -133,7 +218,7 @@ English verison
 
 26.12.2017
 
-1. Slightly improved font and volume indicators in the boot block
+1. Slightly improved font and volume indicators in the Boot Menu
 
 2. Improved presets DSK2ROM and LIFEMARS
 
@@ -143,7 +228,7 @@ English verison
 1. Fixed a bug in C2MAN, C2MAN_40 and C2RAMLDR utilities - when the reset was selected for a ROM, the second
    reset flag was not set in configuration registers, that led to a conflict
 
-2. Improved font for boot block, changed a few symbols, added horizontal lines after screen titles
+2. Improved font for Boot Menu, changed a few symbols, added horizontal lines after screen titles
 
 
 05.12.2017 (firmware update is required)
@@ -154,10 +239,10 @@ English verison
 2. The firmware now supports enabling or disabling the internal PSG and PPI Clicker devices and setting the
    volumes for both of them
 
-3. The boot block was updated to support PSG and PPI enabling/disabling as well as setting the volumes for
+3. The Boot Menu was updated to support PSG and PPI enabling/disabling as well as setting the volumes for
    both devices
 
-4. The boot block is now also available in red color scheme
+4. The Boot Menu is now also available in red color scheme
 
 
 16.11.2017
@@ -167,10 +252,10 @@ English verison
 
 2. Now the entry can be started with default settings by using Enter key in addition to Space
 
-3. You no longer need to press Shift in boot block to do some action. Both upper and lower case characters are
+3. You no longer need to press Shift in Boot Menu to do some action. Both upper and lower case characters are
    accepted and action is taken regardles of the case
 
-4. The help screen was updated with the changes (keys assignments) and it now shows the boot block's version
+4. The help screen was updated with the changes (keys assignments) and it now shows the Boot Menu's version
    number. Thanks to 8bits4ever for the idea!
 
 5. Fixed a bug: now the configuration entries can't be started with G/g key
@@ -205,7 +290,7 @@ English verison
    copyright sign, 'V' and 'H' key symbols. The selection marker has been changed to a better one
 
 2. The colors and palette for the main, help and volume screens have been moved to variables. Now you can easily
-   compile yourself a custom color scheme boot block without much hassle
+   compile yourself a custom color scheme Boot Menu without much hassle
 
 3. An attempt was made to remove the cursor. Also the key click sound was disabled
 
@@ -231,15 +316,15 @@ English verison
 13.09.2017 (firmware update is required)
 
 1. The volume of FMPAC and SCC can be now saved into the additional configuration EEPROM on board. The change
-   requires updating the firmware and boot block
+   requires updating the firmware and Boot Menu
 
 
 02.09.2017 (firmware update is required)
 
 1. The DAC output has been drastically improved. The sound of FMPAC is way better now. The change requires
-   updating the firmware and boot block
+   updating the firmware and Boot Menu
 
-2. The volume of SCC and FMPAC can now be controlled from the boot block
+2. The volume of SCC and FMPAC can now be controlled from the Boot Menu
 
 3. SCC+ support has been added
 

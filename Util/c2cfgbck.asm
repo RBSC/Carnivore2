@@ -1,7 +1,7 @@
 ;
-; Carnivore2 Cartridge's Configuration EEPROM Backup
-; Copyright (c) 2015-2019 RBSC
-; Version 1.00
+; Carnivore2 Cartridge's CFG EEPROM Backup
+; Copyright (c) 2015-2020 RBSC
+; Version 1.05
 ;
 
 
@@ -208,18 +208,6 @@ Stfp010:
 	jp	Exit
 
 Stfp30:
-	print	M_Shad
-	call	Shadow			; shadow bios for C2
-	ld	a,(ShadowMDR)
-	cp	#21			; shadowing failed?
-	jr	z,Stfp30a
-	print	Shad_S
-	jr	Stfp30b
-Stfp30a:
-	print	Shad_F
-	jp	Exit
-
-Stfp30b:
 	ld	a,(p1e)
 	or	a
 	jr	z,MainM			; no file parameter?
@@ -321,7 +309,7 @@ DoReset:
 
 
 ;
-; Download EEPROM's contents into a file
+; Download CFG EEPROM's contents into a file
 ;
 DownFR:
         print   CBK_FNM
@@ -421,7 +409,7 @@ rdt923:
 	ld      de,CFGBUF
 	call    DOS			; set DMA
 
-; read 128 bytes from EEPROM
+; read 128 bytes from CFG EEPROM
 	ld	a,(ERMSlt)
 	ld	h,#40			; Set 1 page
 	call	ENASLT
@@ -434,7 +422,7 @@ rdt923:
 rdt04:
 	ld	a,c
 	push	bc
-	call	EERD			; read data from EEPROM
+	call	EERD			; read data from CFG EEPROM
 	pop	bc
 	ld	(hl),a
 	inc	hl
@@ -448,7 +436,7 @@ rdt04:
 	ld	hl,1
 	ld	de,FCB2
 	ld	c,_RBWRITE
-	call	DOS			; write 128 bytes of EEPROM contents
+	call	DOS			; write 128 bytes of CFG EEPROM contents
 	or	a
 	jr	z,rdt990
 
@@ -584,9 +572,8 @@ gcn07:	push	hl
 	or	a
 	ret
 
-
 ;
-; Upload file's contents into EEPROM
+; Upload file's contents into CFG EEPROM
 ;
 UploadFR:
 	print	WR_FLROM_S
@@ -906,7 +893,7 @@ DEF10:
 	jp	Fpr08
 
 Fpr03:
-; save into EEPROM
+; save into CFG EEPROM
 	ld	a,(ERMSlt)
 	ld	h,#40			; Set 1 page
 	call	ENASLT
@@ -924,7 +911,7 @@ Fpr04:
 	ld	e,a	         	; data
 	ld	a,c			; address
 	push	bc
-	call	EEWR			; save data to EEPROM
+	call	EEWR			; save data to CFG EEPROM
 	pop	bc
 	inc	hl
 	inc	c
@@ -983,7 +970,7 @@ Reset1:
 	dw	0			; address
 
 
-; Read 1 byte from EEPROM
+; Read 1 byte from CFG EEPROM
 ; input A - address
 ; outut A - data
 EERD:
@@ -1057,7 +1044,7 @@ EERDd1:
 	ret
 
 
-; Write 1 byte to EEPROM
+; Write 1 byte to CFG EEPROM
 ; E - data
 ; A - address
 EEWR:
@@ -1136,7 +1123,7 @@ EERWce:
         ret
 
 
-;Write enable/disable EEPROM
+;Write enable/disable CFG EEPROM
 ;A = %01100000 Write Enable
 ;A = %00000000 Write Disable
 ;A = %01000000 Erase All! 
@@ -2544,8 +2531,8 @@ ABCD:	db	"0123456789ABCDEF"
 MAIN_S:	db	13,10
 	db	"Main Menu",13,10
 	db	"---------",13,10
-	db	" 1 - Download EEPROM's contents to a file",13,10
-	db	" 2 - Upload file's contents into EEPROM",13,10
+	db	" 1 - Download CFG EEPROM's contents to a file",13,10
+	db	" 2 - Upload file's contents into CFG EEPROM",13,10
 	db	" 3 - Restart the computer",13,10
 	db	" 0 - Exit to MSX-DOS",13,10,"$"
 
@@ -2559,9 +2546,9 @@ RestMsg:
 ANIK_S:
 	db	"Press any key to continue",13,10,"$"
 WR_FLROM_S:
-	db	13,10,"Input file name to upload into EEPROM or just press Enter to select files: $"
+	db	13,10,"Input file name to upload into CFG EEPROM or just press Enter to select files:  $"
 CBK_FNM:
-	db	13,10,"Input file name to download EEPROM's contents to: $"
+	db	13,10,"Input file name to download CFG EEPROM's contents to: $"
 SelMode:
 	db	10,13,"Selection mode: TAB - next file, ENTER - select, ESC - exit",10,13,"Found file(s):",9,"$"
 NoMatch:
@@ -2587,19 +2574,19 @@ FR_ERC_S:
 DATA_ERR:
 	db	13,10,"Data copying error!","$"
 UL_erd_S:
-	db	13,10,"Uploading file into EEPROM failed!",13,10,"$"
+	db	13,10,"Uploading file into CFG EEPROM failed!",13,10,"$"
 DL_erd_S:
-	db	13,10,"Downloading EEPROM into file failed!",13,10,"$"
+	db	13,10,"Downloading CFG EEPROM into file failed!",13,10,"$"
 F_EXIST_S:
         db      13,10,"File already exists, overwrite? (y/n) $"
 OverwrWRN1:
-	db	10,13,"WARNING! This will overwrite all data on the EEPROM chip. Proceed? (y/n) $"
+	db	10,13,"WARNING! This will overwrite all data on the CFG EEPROM chip. Proceed? (y/n) $"
 OverwrWRN2:
-	db	"DANGER! THE ENTIRE EEPROM CHIP WILL BE OVERWRITTEN! PROCEED? (y/n) $"
+	db	"DANGER! THE ENTIRE CFG EEPROM CHIP WILL BE OVERWRITTEN! PROCEED? (y/n) $"
 FileOver_S:
 	db	10,13
-	db	"Incorrect file's size for loading into the EEPROM!",13,10
-	db	"The file for uploading into EEPROM must be 128 bytes long.",13,10
+	db	"Incorrect file's size for loading into the CFG EEPROM!",13,10
+	db	"The file for uploading into CFG EEPROM must be 128 bytes long.",13,10
 	db	"Please select another file...",13,10,"$"
 CBK_Name:
         db      10,13,"Destination file name: $"
@@ -2612,13 +2599,10 @@ CLStr_S:
 	db	27,"K$"
 MD_Fail:
 	db	"FAILED...",13,10,"$"
-PlsWait:
-	db	"Please wait, this may take up to 10 minutes...",10,13
-	db	"Press ESC to interrupt the process on your own risk.",10,13,10,13,"$"
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge EEPROM Backup v1.00",13,10
-	db	"(C) 2015-2019 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 Multi-Cartridge CFG EEPROM Backup v1.05",13,10
+	db	"(C) 2015-2020 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
 Findcrt_S:
@@ -2663,8 +2647,8 @@ H_PAR_S:
 	db	"Command line options:",13,10
 	db	" /h  - this help screen",13,10
 	db	" /v  - verbose mode (show detailed information)",13,10
-	db	" /d  - download EEPROM's contents into a file",10,13
-	db	" /u  - upload file's contents into EEPROM",13,10
+	db	" /d  - download CFG EEPROM's contents into a file",10,13
+	db	" /u  - upload file's contents into CFG EEPROM",13,10
 	db	" /r  - restart computer after up/downloading",10,13
 	db	10,13
 	db	"WARNING!"
@@ -2672,7 +2656,7 @@ H_PAR_S:
 	db	"There will be no overwrite warnings when /u option is used!",10,13,"$"
 
 	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER:2019"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER/GREYWOLF:2020"
 	db	0,0,0
 
 BUFTOP:

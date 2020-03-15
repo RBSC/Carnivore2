@@ -1,6 +1,6 @@
 ;
 ; Stress tester for Carnivore2 IDE controller
-; Copyright (c) 2019 RBSC
+; Copyright (c) 2019-2020 RBSC
 ; Version 1.00
 ;
 
@@ -400,9 +400,9 @@ CRLF:
 
 PRESENT_S:
 	db	"Carnivore2 IDE Stress Tester v1.00",13,10
-	db	"Copyright (c) 2019 by RBSC",13,10,13,10,"$"
+	db	"Copyright (c) 2019-2020 by RBSC",13,10,13,10,"$"
 
 	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER:2019"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER/GREYWOLF:2020"
 	db	0,0,0
 

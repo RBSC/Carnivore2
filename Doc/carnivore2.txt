@@ -1,12 +1,11 @@
 --------------------------------------------------------------------------------
 Carnivore2 Technical Details
-Copyright (c) 2017-2019 by RBSC
+Copyright (c) 2017-2020 by RBSC
 English version
-Last updated on 31.03.2019
+Last updated on 15.03.2020
 --------------------------------------------------------------------------------
 
 NOTE: The hexadecimal numbers are shown as #90, 90h or 0x90
-
 
 --------------------------------------------------------------------------------
 Main features:
@@ -29,9 +28,9 @@ Main features:
 
  - BIDECMFC.ROM: Nextor Alpha 2.1 Alpha2 BIOS (131072 bytes) in Subslot 1
  - FMPCCMFC.ROM: Translated FMPAC BIOS (65536 bytes) in Subslot 3
- - BOOTCMFC.ROM: Carnivore Boot block (variable size) in Subslot 0
+ - BOOTCMFC.ROM: Carnivore Boot Menu (variable size) in Subslot 0
 
-The layout of boot block, directory and BIOSes is described below. There are logical
+The layout of boot menu, directory and BIOSes is described below. There are logical
 and physcal blocks and they have different numbering. 
 
 
@@ -39,14 +38,14 @@ and physcal blocks and they have different numbering.
 ----------
 
 The first eight 8kb blocks are united into the first logical block that is addressed by
-the AddrFr register. The first 2 blocks contain the boot block code
+the AddrFr register. The first 2 blocks contain the boot menu code
 
  - 000000h-001FFFh (block 0) - after power on (AddrFR=#00, R1Mult="10000101" B1AdrD = #4000)
-   is visible in subslot 0 at address #4000-#5FFF and contains the first 8kb of boot block
+   is visible in subslot 0 at address #4000-#5FFF and contains the first 8kb of boot menu
    (ROM "AB" header + start addresses)
  - 002000h-003FFFh (block 1) - after power on is visible in subslot 0 at addresses #6000-#7FFF
    (bits 2-0 of R1Mult = "101" are the size of the shown block (16kb)) and contain the second
-   8kb of boot block
+   8kb of boot menu
 
 Blocks 2 and 3 contain the directory entries
 
@@ -61,9 +60,11 @@ Block 4 contains the "autostart table"
 
 Blocks 5, 6 and 7 are not used
 
- - 00A000h-00BFFFh (block 5)
- - 00C000h-00DFFFh (block 6)
- - 00E000h-00FFFFh (block 7)
+ - 00A000h-00BFFFh (block 5) - used for "screen" data of the boot menu, manually switched when
+   needed
+ - 00C000h-00DFFFh (block 6) - used for "screen" data of the boot menu, manually switched when
+   needed
+ - 00E000h-00FFFFh (block 7) - not used
 
 
 64kb blocks
@@ -120,7 +121,7 @@ Commands:
 
 FlashROM ID: #7E
 
-Block 0 is reserved for the directory and the boot block: BOOTCMFC.ROM
+Block 0 is reserved for the directory and the boot menu: BOOTCMFC.ROM
 Blocks 1-2 are reserved for the IDE BIOS: BIDECMFC.ROM
 Block 3 is reserved for the FMPAC BIOS: FMPCCMFC.ROM
 
@@ -206,8 +207,8 @@ Below you can find the description of configuration registers.
 		1 - configuration is enabled after reading from address 4000h
 		The delayed configuration works only for AddrFR and bank control registers
         1 bit - source for BIOS of embedded devices
-                0 - BIOS data (boot block, IDE controller, FMPAC) is read from FlashROM chip
-		1 - BIOS data (boot block, IDE controller, FMPAC) is read from RAM
+                0 - BIOS data (boot menu, IDE controller, FMPAC) is read from FlashROM chip
+		1 - BIOS data (boot menu, IDE controller, FMPAC) is read from RAM
 		Warning! The data must be copied into DAM before setting this bit!
 	0 bit - configuration registers visibility control
 		0 - all configuration registers are visible at addresses 0F80h/4F80h/8F80h/CF80h
@@ -357,7 +358,7 @@ Fourth bank configuration registers
 
 +#22	SndLVL - volume level register
 
-	7,6 bit - not used
+	7,6 bits - 10 = FMPAC mono, 00 = FMPAC stereo
 	5,4,3 - FMPAC audio level
 	2,1,0 - SCC/SCC+ audio level
 
@@ -390,8 +391,37 @@ Fourth bank configuration registers
 +#27	aV_hunt - interceptor's flag for delayed configuration
 
 	0 bit = activation flag for interceptor code on system restart or read from #4000; 1 = enabled
-	1 bit = interceptor code's location; 0 = boot block in FlashRÎM, 1 = first shadow RAM block
+	1 bit = interceptor code's location; 0 = boot menu in FlashRÎM, 1 = first shadow RAM block
 
++#28 SLM_cfg = per-device subslot assignment (master slot)
+    bits 7,6 = FMPAC subslot number
+    bits 5,4 = RAM (Mapper MMM) subslot number
+    bits 3,2 = IDE (CF) subslot number
+    bits 1,0 = FlashROM/SCC subslot number
+
++#29 SCART_cfg = slave slot control register
+    bit 7 = 1 = slave slot enabled
+            0 = slave slot disabled
+    bit 6 = 1 = slave slot's location assigned by user
+            0 = slave slot assigned as subslot of master slot
+    bit 5 = 1 = slave slot expanded (if not used as a subslot of master slot)
+            0 = slave slot non-expanded (if not used as a subslot of master slot)
+    bit 4 = 1 = master slot's location is assigned by user
+            0 = master slot located at the physical slot
+    bit 3 = 1 = not used
+            0 = not used
+
++#2A SCART_SLT = slot/subslot configuration on power-on
+    bits 7,6 = 00 = mini ROM up to 32kb without mapper, 01 = K4 mapper, 10 = K5+SCC mapper, 11 = K5 mapper without SCC
+    bits 5,4 = master slot number
+    bits 3,2 = expanded slave slot number
+    bits 1,0 = slave slot number
+
++#2B SCART_StBl = slave slot's 64kb block assignment in FlashROM
+
++#2C,#2D,#2E FPGA_ver = FPGA firmware version (3 ASCII bytes)
+
++#2F MROM_offs = mini ROM offset in 64kb block (in 8kb steps)
 
 --------------------------------------------------------------------------------
 [Directory Entry Format]
@@ -561,6 +591,11 @@ The address allocation for the data in the configuration EEPROM (93C46) can be f
 [15-16] - PSG/PPI background palette
 
 [17] - Custom settings in use flag (must be #42)
+
+[18] - Double reset on "cold boot" (1=enabled)
+
+[19] - FMPAC mono (1=enabled)
+
 
 --------------------------------------------------------------------------------
 [DEFAULT VALUES]

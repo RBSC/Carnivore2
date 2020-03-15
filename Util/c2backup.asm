@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's FlashROM Backup
-; Copyright (c) 2015-2019 RBSC
-; Version 1.07
+; Copyright (c) 2015-2020 RBSC
+; Version 1.10
 ;
 
 
@@ -491,9 +491,9 @@ rdt989:
 	jp	rdt999
 
 rdt989a:
-        ld      a,(TPASLOT1)
-        ld      h,#40
-        call    ENASLT			; enable RAM for #4000
+	ld      a,(TPASLOT1)
+	ld      h,#40
+	call    ENASLT			; enable RAM for #4000
 
 	di
 	ld	hl,#8000
@@ -972,14 +972,15 @@ PRESB1:	ld	c,_INNOE
 	jr	z,PRESB2
 	cp	"n"
 	jr	z,PRESB3
-	call	SymbOut
 	jr	PRESB1
 	
 PRESB2:
+	call	SymbOut
 	ld	a,1
-	ld	(F_P),a			; preserve boot block
+	ld	(F_P),a			; preserve Boot Menu
 
 PRESB3:
+	call	SymbOut
 	print	OverwrWRN1
 	ld	c,_INNOE
 	call	DOS			; warning 1
@@ -1047,11 +1048,11 @@ DEF10:
 	ld	(EBlock),a		; first 64kb block
 	ld	(AddrFR),a		; first 64kb block
 	ld	a,2
-	ld	(PreBnk),a		; skip 16kb (boot block)
+	ld	(PreBnk),a		; skip 16kb (Boot Menu)
 	ld	a,#40
-	ld	(EBlock0),a		; skip 16kb (boot block)
+	ld	(EBlock0),a		; skip 16kb (Boot Menu)
 
-; read 16kb of file to skip boot block
+; read 16kb of file to skip Boot Menu
 	ld	c,_RBREAD
 	ld	de,FCB
 	ld	hl,1
@@ -2662,7 +2663,7 @@ fkey06:
 	or	a
 	jr	nz,fkey07
 	ld	a,6
-	ld	(F_P),a			; preserve original boot block
+	ld	(F_P),a			; preserve original Boot Menu
 	ret
 
 fkey07:
@@ -2835,7 +2836,7 @@ DL_erd_S:
 F_EXIST_S:
         db      13,10,"File already exists, overwrite? (y/n) $"
 PRES_BB:
-        db      13,10,"Preserve the existing boot block? (y/n) $"
+        db      13,10,"Preserve the existing Boot Menu? (y/n) $"
 OverwrWRN1:
 	db	10,13,"WARNING! This will overwrite all data on the FlashROM chip. Proceed? (y/n) $"
 OverwrWRN2:
@@ -2865,8 +2866,8 @@ OpInterr2:
 	db	10,13,"ABORTED! This will result in an partially written FlashROM...",10,13,"$"
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge FlashROM Backup v1.07",13,10
-	db	"(C) 2015-2019 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 MultiFunctional Cartridge FlashROM Backup v1.10",13,10
+	db	"(C) 2015-2020 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
 Findcrt_S:
@@ -2913,7 +2914,7 @@ H_PAR_S:
 	db	" /v  - verbose mode (show detailed information)",13,10
 	db	" /d  - download FlashROM's contents into a file",10,13
 	db	" /u  - upload file's contents into FlashROM",13,10
-	db	" /p  - preserve the existing boot block on upload",10,13
+	db	" /p  - preserve the existing Boot Menu on upload",10,13
 	db	" /r  - restart computer after up/downloading",10,13
 	db	10,13
 	db	"WARNING!"
@@ -2921,7 +2922,7 @@ H_PAR_S:
 	db	"There will be no overwrite warnings when /u option is used!",10,13,"$"
 
 	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER:2019"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER/GREYWOLF:2020"
 	db	0,0,0
 
 BUFTOP:

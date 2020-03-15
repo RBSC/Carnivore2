@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's ROM->RAM Loader
-; Copyright (c) 2015-2019 RBSC
-; Version 1.31
+; Copyright (c) 2015-2020 RBSC
+; Version 1.32
 ;
 
 
@@ -209,6 +209,16 @@ Stfp08:	inc	a
 	jp	Exit
 
 Stfp30:       	
+        ld      a,(ERMSlt)
+        ld      h,#40
+        call    ENASLT
+	ld	a,#20			; immediate changes enabled
+	ld	(CardMDR),a
+	ld	hl,B2ON
+	ld	de,CardMDR+#0C		; set Bank2
+	ld	bc,6
+	ldir
+
 	ld	a,(p1e)
 	or	a
 	jr	z,MainM			; no file parameter
@@ -2335,6 +2345,13 @@ FrErr:
 	jp	MainM		
 
 Exit:
+	ld      a,(TPASLOT2)
+        ld      h,#80
+        call    ENASLT
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT
+
 	xor	a
 	ld	(CURSF),a
 
@@ -3736,8 +3753,8 @@ TestRDT:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.31",13,10
-	db	"(C) 2015-2019 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.32",13,10
+	db	"(C) 2015-2020 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
 Findcrt_S:
@@ -3785,7 +3802,7 @@ RCPData:
 	ds	30
 
 	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER:2019"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER/GREYWOLF:2020"
 	db	0,0,0
 
 BUFTOP:

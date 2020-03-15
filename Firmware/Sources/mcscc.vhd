@@ -6,11 +6,12 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.std_logic_unsigned.all;
 
+
 entity mcscc is
   port(
 	mCLC		: OUT std_logic;
     pSltClk     : IN std_logic;
-    pSltRst_n   : IN std_logic;
+    pSltRst1_n   : IN std_logic;
     pSltSltsls_n : IN std_logic;
     pSltIorq_n  : IN std_logic;
     pSltRd_n    : IN std_logic;
@@ -23,7 +24,7 @@ entity mcscc is
     pSltCs2     : IN std_logic;
     pSltCs12    : IN std_logic;
     pSltRfsh_n  : IN std_logic;
-    pSltWait_n  : IN std_logic;
+    pSltWait_n  : OUT std_logic;
     pSltInt_n   : IN std_logic;
     pSltM1_n    : IN std_logic;
     pSltMerq_n  : IN std_logic;
@@ -97,7 +98,8 @@ end mcscc;
 
 architecture RTL of mcscc is
 
-  component scc_wave
+
+    component scc_wave
     port(
       pSltClk_n : IN std_logic;
       pSltRst_n : IN std_logic;
@@ -383,6 +385,7 @@ architecture RTL of mcscc is
   signal SDAC		:std_logic;
   signal pSltClk_nt :std_logic; 
 -- Audiomix
+  signal MFM		:std_logic_vector(16 downto 0); 
   signal MFL		:std_logic_vector(15 downto 0); 
   signal MFR		:std_logic_vector(15 downto 0);   
   signal MSL		:std_logic_vector(15 downto 0);   
@@ -427,6 +430,7 @@ architecture RTL of mcscc is
   signal PsgRegWe    : std_logic;
   signal KC    : std_logic;
   signal PsgAmp      : std_logic_vector(9 downto 0);
+
 -- Code injector
   signal V_active : std_logic_vector(1 downto 0);
   signal V_hunt   : std_logic;
@@ -435,8 +439,37 @@ architecture RTL of mcscc is
   signal V_stop   : std_logic;
   signal V_RA	  : std_logic_vector(15 downto 0);
   signal V_AR	  : std_logic_vector(13 downto 0);   
+
 -- Reset Conditions
---  signal pSltRst_n :std_logic := '0' ;
+  signal pSltRst_n :std_logic := '0' ;
+  signal RstEn 	  :std_logic := '0';
+-- Slot simulate register
+  signal A8_save   :std_logic_vector(7 downto 0);
+  signal SLT_0_save :std_logic_vector(7 downto 0);
+  signal SLT_1_save :std_logic_vector(7 downto 0);
+  signal SLT_2_save :std_logic_vector(7 downto 0);  
+  signal SLT_3_save :std_logic_vector(7 downto 0);
+-- second cartrige register
+  signal SCRT_0reg	:std_logic_vector(7 downto 0);
+  signal SCRT_1reg	:std_logic_vector(7 downto 0);
+  signal SCRT_2reg	:std_logic_vector(7 downto 0);
+  signal SCRT_3reg	:std_logic_vector(7 downto 0);
+  signal SCRT_mRr	:std_logic_vector(2 downto 0);
+  signal DecSCARD :std_logic;
+  signal DecMCARD :std_logic;
+-- contrpl SCARD
+  signal SLM_cfg  :std_logic_vector(7 downto 0);
+  signal aSLM_cfg  :std_logic_vector(7 downto 0);
+  signal SCART_cfg  :std_logic_vector(7 downto 0);
+  signal SCART_SLT   :std_logic_vector(7 downto 0);
+  signal SCART_StBl :std_logic_vector(7 downto 0);
+  signal aSCART_cfg  :std_logic_vector(7 downto 0);
+  signal aSCART_SLT   :std_logic_vector(7 downto 0);
+  signal aSCART_StBl :std_logic_vector(7 downto 0);
+  signal Maddrs :std_logic_vector(22 downto 0);
+  signal SccEna :std_logic;
+  
+  
 begin
   ----------------------------------------------------------------
   -- Slot Select Disable trigger key
@@ -458,33 +491,33 @@ begin
   ----------------------------------------------------------------
   ExpSltEna <= '1' when Mconf(7) = '1'
 	               else '0';
-  Sltsl_C_n <= '0' when pSltSltsl_n = '0' and ExpSltEna = '0' and Mconf(0) = '1'
-		  else '0' when pSltSltsl_n = '0' and Mconf(0) = '1' and ( 
-						(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = "00") or
-						(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = "00") or
-						(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = "00") or
-						(pSltAdr(15 downto 14) = "11" and ExpSltReg(7 downto 6) = "00") )
+  Sltsl_C_n <= '0' when DecMCARD = '1' and ExpSltEna = '0' and Mconf(0) = '1'
+		  else '0' when DecMCARD = '1' and Mconf(0) = '1' and ( 
+						(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = SLM_cfg(1 downto 0)) or
+						(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = SLM_cfg(1 downto 0)) or
+						(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = SLM_cfg(1 downto 0)) or
+						(pSltAdr(15 downto 14) = "11" and ExpSltReg(7 downto 6) = SLM_cfg(1 downto 0)) )
                    else '1';
-  Sltsl_D_n <= '0' when pSltSltsl_n = '0' and ExpSltEna = '0' and Mconf(1 downto 0) = "10"
-		  else '0' when	pSltSltsl_n = '0' and Mconf(1) = '1' and  ExpSltEna = '1' and (
-						(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = "01") or
-						(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = "01") or
-						(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = "01") or
-						(pSltAdr(15 downto 14) = "11" and ExpSltReg(7 downto 6) = "01") )
+  Sltsl_D_n <= '0' when DecMCARD = '1' and ExpSltEna = '0' and Mconf(1 downto 0) = "10"
+		  else '0' when	DecMCARD = '1' and Mconf(1) = '1' and  ExpSltEna = '1' and (
+						(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = SLM_cfg(3 downto 2)) or
+						(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = SLM_cfg(3 downto 2)) or
+						(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = SLM_cfg(3 downto 2)) or
+						(pSltAdr(15 downto 14) = "11" and ExpSltReg(7 downto 6) = SLM_cfg(3 downto 2)) )
                    else '1';
-  Sltsl_M_n <= '0' when pSltSltsl_n = '0' and ExpSltEna = '0' and Mconf(2 downto 0) = "100"
-		  else '0' when	pSltSltsl_n = '0' and Mconf(2) = '1' and  ExpSltEna = '1' and (
-						(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = "10") or
-						(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = "10") or
-						(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = "10") or
-						(pSltAdr(15 downto 14) = "11" and ExpSltReg(7 downto 6) = "10") )
+  Sltsl_M_n <= '0' when DecMCARD = '1' and ExpSltEna = '0' and Mconf(2 downto 0) = "100"
+		  else '0' when	DecMCARD = '1' and Mconf(2) = '1' and  ExpSltEna = '1' and (
+						(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = SLM_cfg(5 downto 4)) or
+						(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = SLM_cfg(5 downto 4)) or
+						(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = SLM_cfg(5 downto 4)) or
+						(pSltAdr(15 downto 14) = "11" and ExpSltReg(7 downto 6) = SLM_cfg(5 downto 4)) )
                    else '1';
-  Sltsl_F_n <= '0' when pSltSltsl_n = '0' and ExpSltEna = '0' and Mconf(3 downto 0) = "1000"
-		  else '0' when	pSltSltsl_n = '0' and Mconf(3) = '1' and  ExpSltEna = '1' and (
-						(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = "11") or
-						(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = "11") or
-						(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = "11") or
-						(pSltAdr(15 downto 14) = "11" and ExpSltReg(7 downto 6) = "11") )
+  Sltsl_F_n <= '0' when DecMCARD = '1' and ExpSltEna = '0' and Mconf(3 downto 0) = "1000"
+		  else '0' when	DecMCARD = '1' and Mconf(3) = '1' and  ExpSltEna = '1' and (
+						(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = SLM_cfg(7 downto 6)) or
+						(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = SLM_cfg(7 downto 6)) or
+						(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = SLM_cfg(7 downto 6)) or
+						(pSltAdr(15 downto 14) = "11" and ExpSltReg(7 downto 6) = SLM_cfg(7 downto 6)) )
                    else '1';
   
   process(pSltRst_n, pSltWr_n)
@@ -492,12 +525,20 @@ begin
     if (pSltRst_n = '0') then
       ExpSltReg		<= "00000000";
     elsif (pSltWr_n'event and pSltWr_n = '0') then
-	  if (pSltSltsl_n = '0' and pSltAdr(15 downto 0) = "1111111111111111" and
+	  if (DecMCARD = '1' and pSltAdr(15 downto 0) = "1111111111111111" and
           ExpSltEna = '1') then
         ExpSltReg <= pSltDat;
       end if;
       end if;
   end process;
+  
+  DecMCARD <= '1' when SCART_cfg(4) = '1' and SCART_SLT(5 downto 4) = A8_save(7 downto 6) and pSltAdr(15 downto 14) = "11" and pSltMerq_n = '0'
+         else '1' when SCART_cfg(4) = '1' and SCART_SLT(5 downto 4) = A8_save(5 downto 4) and pSltAdr(15 downto 14) = "10" and pSltMerq_n = '0' 
+         else '1' when SCART_cfg(4) = '1' and SCART_SLT(5 downto 4) = A8_save(3 downto 2) and pSltAdr(15 downto 14) = "01" and pSltMerq_n = '0'   
+         else '1' when SCART_cfg(4) = '1' and SCART_SLT(5 downto 4) = A8_save(1 downto 0) and pSltAdr(15 downto 14) = "00" and pSltMerq_n = '0' 
+         else '1' when SCART_cfg(4) = '0' and pSltSltsl_n = '0'    
+         else '0';
+  
   ----------------------------------------------------------------
   -- Read Data 
   ----------------------------------------------------------------
@@ -505,7 +546,8 @@ begin
   DOutEn_n	<= '0' 	when pFlOE_nt = '0'  -- Cartridge read
 						 or (pSltSltsl_n = '0' and pSltAdr(15 downto 0) = "1111111111111111" and
 							ExpSltEna = '1' and pSltRd_n = '0') -- Expand Slot Register read
-						 or (DecMDR = '1' and CardMDR(0) = '0' and pSltRd_n = '0') -- MDR registers read				 
+						 or (DecMDR = '1' and CardMDR(0) = '0' and pSltRd_n = '0') -- MDR registers read		
+						 or (DecSCARD = '1' and pSltRd_n = '0') -- Second Cartrige		 
 						 or (IDEROMCs_n = '0' and pSltRd_n = '0') -- IDE ROM read
 						 or (IDEReg = '1' and pSltRd_n = '0') -- IDE Register read
 						 or ((DEC_PFC ='1' or  DEC_PFD ='1' or DEC_PFE ='1' or DEC_PFF ='1' or DEC_P3C ='1')
@@ -518,6 +560,8 @@ begin
   -- Expand Slot Register Read 
   DOut		<=     	not ExpSltReg when pSltSltsl_n = '0' and pSltAdr(15 downto 0) = "1111111111111111" and
   							           ExpSltEna = '1' and pSltRd_n = '0'
+  -- Second Cartrige Data
+  				    else pFlDat   when DecSCARD = '1' and pSltRd_n = '0'
   -- IDE Register 
  					else IDEsIN      		 when IDEReg = '1' and pSltAdr(9) = '0' and pSltAdr(0) = '1'
 											      and pSltRd_n = '0'
@@ -600,6 +644,21 @@ begin
 			else V_AR(7 downto 0) when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100101"
 			else pSltAdr(15 downto 14) & V_AR(13 downto 8) when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100110"
 			else "000000" & V_fr & aV_hunt when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100111"
+			else aSLM_cfg when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101000"
+			else aSCART_cfg when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101001"
+			else aSCART_SLT when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101010"
+			else aSCART_StBl when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101011"
+
+			else "00110010" when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101100"
+			else "00110011" when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101101"
+			else "00110000" when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101110"	
+			else "00000"&SCRT_mRr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101111"
+					
+--			else A8_save when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101100"
+--			else SCRT_1reg when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101101"
+--			else SCRT_2reg when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101110"
+--			else SCRT_3reg when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101111"		
+--			else SLT_3_save when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "110000"			
 --	        
             else V_RA(7 downto 0) when V_active = "10"
             else V_RA(15 downto 8) when V_active = "01"  				   					
@@ -618,7 +677,9 @@ begin
 
   pSltBdir_n <= '0' when pSltSltsl_n = '0' and pSltRd_n = '0' 
            else '0' when pSltRd_n = '0' and pSltAdr(7 downto 2) = "111111" and pSltIorq_n = '0' 
-                         and Port3C(5) = '0' and Mconf(6) = '1' and MAPpEn = '1'    
+                         and Port3C(5) = '0' and Mconf(6) = '1' and MAPpEn = '1' 
+           else '0' when pSltRd_n = '0' and DecSCARD = '1' -- Second Cartgige read   
+           else '0' when pSltRd_n = '0' and DecMCARD = '1' -- Primary Cartrige read non standart slot
 		   else '1';
 
   pFlBYTE_n	<= ConfFl(2);
@@ -637,7 +698,8 @@ begin
 
   begin
 
-    if ((pSltIorq_n = '0' or pSltSltsl_n = '0') and (pSltRd_n = '0' or pSltWr_n = '0')) then
+--    if ((pSltIorq_n = '0' or pSltSltsl_n = '0') and (pSltRd_n = '0' or pSltWr_n = '0')) then
+    if ((pSltIorq_n = '0' or pSltMerq_n = '0') and (pSltRd_n = '0' or pSltWr_n = '0')) then
       DevAcs0 := '1';
     else
       DevAcs0 := '0';
@@ -666,13 +728,10 @@ begin
   ----------------------------------------------------------------
 
   Dec1FFE <= '1' when pSltAdr(12 downto 1) = "111111111111" 
-                      and CardMDR(4) = '1' 
                  else '0';
   DecSccA <= '1' when pSltAdr(15 downto 11) = "10011" and SccModeB(5) = '0' and SccBank2(5 downto 0) = "111111"
-                      and CardMDR(4) = '1'
                  else '0';
   DecSccB <= '1' when pSltAdr(15 downto 11) = "10111" and SccModeB(5) = '1' and SccBank3(7) = '1'
-                      and CardMDR(4) = '1'
                  else '0';
   
   DecMDR <= '1'  when Sltsl_C_n = '0' and pSltAdr(13 downto 6) = "00111110" and
@@ -686,7 +745,9 @@ begin
                  else '0';
   -- iFsts	 <= CardMDR(0) when CardMDR(1)  = '1' and Sltsl_C_n = '1' else ('Z');
 
-  
+  SccEna <= '1' when CardMDR(4) = '1' and Sltsl_C_n = '0' and SCART_SLT(7 downto 6) /= "10"
+       else '1' when DecSCARD = '1' and SCART_SLT(7 downto 6) = "10"
+       else '0';
 
   ----------------------------------------------------------------
   -- Conf register 
@@ -742,6 +803,7 @@ begin
          aR3Mult    <= "00000000";
          R4Mult    <= "00000000";
          aR4Mult    <= "00000000";
+         SCRT_mRr  <= "000";
          
  --        REXPSLT	<= "00000000";  -- Extend Slot Register Reset to 0
          aMconf  	<= "11111111";  -- Reset slot configurations
@@ -762,6 +824,11 @@ begin
 		 V_hunt <= '0';
 		 aV_hunt <= '0';
 		 V_fr <= '0';
+--
+		 SLM_cfg <= "11100100"; aSLM_cfg <= "11100100";
+         SCART_cfg <= "00000000"; aSCART_cfg <= "00000000";
+         SCART_SLT <= "00000000"; aSCART_SLT <= "00000000";
+         SCART_StBl <= "00000000"; aSCART_StBl <= "00000000";
        
     elsif (pSltClk_n'event and pSltClk_n = '1') then
 
@@ -811,7 +878,12 @@ begin
         if (pSltAdr(5 downto 0) = "100100") then LVL1    <= pSltDat(7 downto 0); end if;                                                 
         if (pSltAdr(5 downto 0) = "100101") then V_AR(7 downto 0) <= pSltDat ; end if; 
         if (pSltAdr(5 downto 0) = "100110") then V_AR(13 downto 8) <= pSltDat(5 downto 0); end if;    
-        if (pSltAdr(5 downto 0) = "100111") then aV_hunt <= pSltDat(0); V_fr <= pSltDat(1); end if;             
+        if (pSltAdr(5 downto 0) = "100111") then aV_hunt <= pSltDat(0); V_fr <= pSltDat(1); end if;    
+        if (pSltAdr(5 downto 0) = "101000") then aSLM_cfg <= pSltDat; end if;
+        if (pSltAdr(5 downto 0) = "101001") then aSCART_cfg <= pSltDat; end if;
+        if (pSltAdr(5 downto 0) = "101010") then aSCART_SLT <= pSltDat; end if;  
+        if (pSltAdr(5 downto 0) = "101011") then aSCART_StBl <= pSltDat; end if; 
+        if (pSltAdr(5 downto 0) = "101111") then SCRT_mRr <=pSltDat(2 downto 0); end if;             
       end if;
  -- V_hunt off
       if V_active = "11" then
@@ -852,6 +924,11 @@ begin
       Mconf   <= aMconf; 
       NSReg   <= aNSReg;  
       V_hunt <= aV_hunt;
+      SLM_cfg <= aSLM_cfg;
+      SCART_cfg <= aSCART_cfg;
+      SCART_SLT <= aSCART_SLT;
+      SCART_StBl <= aSCART_StBl;
+      
       end if;
     
               -- Mapped I/O port access on R1 Bank resister write
@@ -940,7 +1017,8 @@ begin
 
   -- Flash -ChipSelect
   pFlCS_n <= pFlCS_nt;
-  pFlCS_nt <= '0' when Sltsl_C_n = '0' and ((DecMDR = '1' and pSltAdr(5 downto 0) = "000100")   	-- DatM0  
+  pFlCS_nt <= '0' when DecSCARD = '1' and (pSltAdr(15 downto 14) = "01" or pSltAdr(15 downto 14) = "10") -- Second Cartrige
+		 else '0' when Sltsl_C_n = '0' and ((DecMDR = '1' and pSltAdr(5 downto 0) = "000100")   	-- DatM0  
 					 		             or (MR1A(3) = '0' and R1Mult(5) = '0')
 					 		             or (MR2A(3) = '0' and R2Mult(5) = '0')
 					 		             or (MR3A(3) = '0' and R3Mult(5) = '0')
@@ -985,7 +1063,8 @@ begin
 
   -- Flash/ROM Write
 --pFlW_n  <= not WRh1 when Sltsl_C_n = '0' and ((DecMDR = '1' and pSltAdr(5 downto 0) = "000100")  	-- DatM0
-  pFlW_n  <= Wr_n     when Sltsl_C_n = '0' and ((DecMDR = '1' and pSltAdr(5 downto 0) = "000100")  	-- DatM0					 		                   
+  pFlW_n  <= '1' when DecSCARD = '1'
+     else   Wr_n     when Sltsl_C_n = '0' and ((DecMDR = '1' and pSltAdr(5 downto 0) = "000100")  	-- DatM0					 		                   
 					 		               or (MR1A(3) = '0' and R1Mult(4) = '1' and DecMDR = '0'
 					 		                   and (NSC_SCCP = '0' or -- scc+
 											   SccModeB(4) = '1' or SccModeA(4) = '1' or SccModeB(0) = '1')) 			-- Bank1
@@ -1012,7 +1091,8 @@ begin
 	 
   
   -- Adress Flash/ROM mapping          
-  pFlAdr(22 downto 0) <=  ("000000" & IDEROMADDR(16) + "0000001") & IDEROMADDR(15 downto 0) when Sltsl_D_n = '0' -- IDE ROM Addr 10000h-2FFFFh
+  pFlAdr(22 downto 0) <= (SCART_StBl(6 downto 0) + Maddrs(22 downto 16)) & Maddrs(15 downto 0) when DecSCARD = '1' -- Second Cartrige ROM mapper
+            else   ("000000" & IDEROMADDR(16) + "0000001") & IDEROMADDR(15 downto 0) when Sltsl_D_n = '0' -- IDE ROM Addr 10000h-2FFFFh
 			else   "0000011" & R7FF7 & pSltAdr(13 downto 0) when SltSl_F_n = '0' and CsRAM8k = '0'-- FM Pack ROM 30000h-3FFFFh
 			else   "0001111" & "111" & pSltAdr(12 downto 0) when SltSl_F_n = '0' and CsRAM8k = '1'-- FM Pack RAM8Kb 
 			else   "01" & (AddrMAP(6) or (not MAP_S)) & AddrMAP(5 downto 0) & pSltAdr(13 downto 0) when SltSl_M_n = '0' -- Mapper RAM 
@@ -1027,13 +1107,20 @@ begin
 				MAP_FD when  pSltAdr(15 downto 14) = "01" else	
 				MAP_FE when  pSltAdr(15 downto 14) = "10" else	
 				MAP_FF;
-  		             
+-- Second Cartrige Address
+  Maddrs(12 downto 0) <= pSltAdr(12 downto 0);
+  Maddrs(22 downto 21) <= "00";
+  Maddrs(20 downto 13) <=  ("00"&SCRT_0reg(5 downto 0))+("00000"&SCRT_mRr) when pSltAdr(14 downto 13) = "10" -- 4000h-5FFFh
+                      else ("00"&SCRT_1reg(5 downto 0))+("00000"&SCRT_mRr) when pSltAdr(14 downto 13) = "11" -- 6000h-7FFFh	
+                      else ("00"&SCRT_2reg(5 downto 0))+("00000"&SCRT_mRr) when pSltAdr(14 downto 13) = "00" -- 8000h-9FFFh
+                      else ("00"&SCRT_3reg(5 downto 0))+("00000"&SCRT_mRr) ;								   -- A000h-BFFFh	   
+-- Main Cartrige Address		             
   Maddr(11 downto 0) <=pSltAdr(11 downto 0);
   MR1A <= "0111" when R1Mult(2 downto 0) = "111" and R1Mult(3) = '0' else -- 64k
           "0110" when R1Mult(2 downto 0) = "110" and R1Mult(3) = '0' and B1AdrD(7) = pSltAdr(15) else -- 32k
           "0101" when R1Mult(2 downto 0) = "101" and R1Mult(3) = '0' and B1AdrD(7 downto 6) = pSltAdr(15 downto 14) else -- 16k
           "0100" when R1Mult(2 downto 0) = "100" and R1Mult(3) = '0' and (B1AdrD(7) = pSltAdr(15) or R1Mult(6) = '0') and B1AdrD(6 downto 5) = pSltAdr(14 downto 13) else -- 8k
-          "0011" when R1Mult(2 downto 0) = "011" and R1Mult(3) = '0' and (B1AdrD(7 downto 6) = pSltAdr(15 downto 14) or R1Mult(6) = '0') and B1AdrD(5 downto 4) = pSltAdr(13 downto 12) else -- 4k
+---          "0011" when R1Mult(2 downto 0) = "011" and R1Mult(3) = '0' and (B1AdrD(7 downto 6) = pSltAdr(15 downto 14) or R1Mult(6) = '0') and B1AdrD(5 downto 4) = pSltAdr(13 downto 12) else -- 4k
      --     "0010" when R1Mult(2 downto 0) = "010" and R1Mult(7) = '1' and B1AdrD(7 downto 3) = pSltAdr(15 downto 11)else
      --     "0001" when R1Mult(2 downto 0) = "001" and R1Mult(7) = '1' and B1AdrD(7 downto 2) = pSltAdr(15 downto 10)else
      --     "0000" when R1Mult(2 downto 0) = "000" and R1Mult(7) = '1' and B1AdrD(7 downto 1) = pSltAdr(15 downto 9)else
@@ -1043,7 +1130,7 @@ begin
           "0110" when R2Mult(2 downto 0) = "110" and R2Mult(3) = '0' and B2AdrD(7) = pSltAdr(15) else
           "0101" when R2Mult(2 downto 0) = "101" and R2Mult(3) = '0' and B2AdrD(7 downto 6) = pSltAdr(15 downto 14) else
           "0100" when R2Mult(2 downto 0) = "100" and R2Mult(3) = '0' and (B2AdrD(7) = pSltAdr(15) or R2Mult(6) = '0') and B2AdrD(6 downto 5) = pSltAdr(14 downto 13) else
-          "0011" when R2Mult(2 downto 0) = "011" and R2Mult(3) = '0' and (B2AdrD(7 downto 6) = pSltAdr(15 downto 14) or R2Mult(6) = '0') and B2AdrD(5 downto 4) = pSltAdr(13 downto 12) else
+---          "0011" when R2Mult(2 downto 0) = "011" and R2Mult(3) = '0' and (B2AdrD(7 downto 6) = pSltAdr(15 downto 14) or R2Mult(6) = '0') and B2AdrD(5 downto 4) = pSltAdr(13 downto 12) else
 --          "0010" when R2Mult(2 downto 0) = "010" and R2Mult(7) = '1' and B2AdrD(7 downto 3) = pSltAdr(15 downto 11)else
 --          "0001" when R2Mult(2 downto 0) = "001" and R2Mult(7) = '1' and B2AdrD(7 downto 2) = pSltAdr(15 downto 10)else
 --          "0000" when R2Mult(2 downto 0) = "000" and R2Mult(7) = '1' and B2AdrD(7 downto 1) = pSltAdr(15 downto 9)else
@@ -1053,7 +1140,7 @@ begin
           "0110" when R3Mult(2 downto 0) = "110" and R3Mult(3) = '0' and B3AdrD(0) = pSltAdr(15) else
           "0101" when R3Mult(2 downto 0) = "101" and R3Mult(3) = '0' and B3AdrD(7 downto 6) = pSltAdr(15 downto 14) else
           "0100" when R3Mult(2 downto 0) = "100" and R3Mult(3) = '0' and (B3AdrD(7) = pSltAdr(15) or R3Mult(6) = '0') and B3AdrD(6 downto 5) = pSltAdr(14 downto 13) else
-          "0011" when R3Mult(2 downto 0) = "011" and R3Mult(3) = '0' and (B3AdrD(7 downto 6) = pSltAdr(15 downto 14) or R3Mult(6) = '0') and B3AdrD(5 downto 4) = pSltAdr(13 downto 12) else
+---          "0011" when R3Mult(2 downto 0) = "011" and R3Mult(3) = '0' and (B3AdrD(7 downto 6) = pSltAdr(15 downto 14) or R3Mult(6) = '0') and B3AdrD(5 downto 4) = pSltAdr(13 downto 12) else
 --          "0010" when R3Mult(2 downto 0) = "010" and R3Mult(7) = '1' and B3AdrD(7 downto 3) = pSltAdr(15 downto 11)else
 --          "0001" when R3Mult(2 downto 0) = "001" and R3Mult(7) = '1' and B3AdrD(7 downto 2) = pSltAdr(15 downto 10)else
 --          "0000" when R3Mult(2 downto 0) = "000" and R3Mult(7) = '1' and B3AdrD(7 downto 1) = pSltAdr(15 downto 9)else
@@ -1067,8 +1154,8 @@ begin
           "0101" when R3Mult(2 downto 0) = "101" and R4Mult(3) = '0' and B4AdrD(7 downto 6) = pSltAdr(15 downto 14) and NSC = '1' else
           "0100" when R4Mult(2 downto 0) = "100" and R4Mult(3) = '0' and (B4AdrD(7) = pSltAdr(15) or R4Mult(6) = '0') and B4AdrD(6 downto 5) = pSltAdr(14 downto 13) and NSC = '0' else
           "0100" when R3Mult(2 downto 0) = "100" and R4Mult(3) = '0' and (B4AdrD(7) = pSltAdr(15) or R4Mult(6) = '0') and B4AdrD(6 downto 5) = pSltAdr(14 downto 13) and NSC = '1' else
-          "0011" when R4Mult(2 downto 0) = "011" and R4Mult(3) = '0' and (B4AdrD(7 downto 6) = pSltAdr(15 downto 14) or R4Mult(6) = '0') and B4AdrD(5 downto 4) = pSltAdr(13 downto 12) and NSC = '0' else
-          "0011" when R3Mult(2 downto 0) = "011" and R4Mult(3) = '0' and (B4AdrD(7 downto 6) = pSltAdr(15 downto 14) or R4Mult(6) = '0') and B4AdrD(5 downto 4) = pSltAdr(13 downto 12) and NSC = '1' else
+---          "0011" when R4Mult(2 downto 0) = "011" and R4Mult(3) = '0' and (B4AdrD(7 downto 6) = pSltAdr(15 downto 14) or R4Mult(6) = '0') and B4AdrD(5 downto 4) = pSltAdr(13 downto 12) and NSC = '0' else
+---          "0011" when R3Mult(2 downto 0) = "011" and R4Mult(3) = '0' and (B4AdrD(7 downto 6) = pSltAdr(15 downto 14) or R4Mult(6) = '0') and B4AdrD(5 downto 4) = pSltAdr(13 downto 12) and NSC = '1' else
 --          "0010" when R4Mult(2 downto 0) = "010" and R4Mult(7) = '1' and B4AdrD(7 downto 3) = pSltAdr(15 downto 11)else
 --          "0001" when R4Mult(2 downto 0) = "001" and R4Mult(7) = '1' and B4AdrD(7 downto 2) = pSltAdr(15 downto 10)else
 --          "0000" when R4Mult(2 downto 0) = "000" and R4Mult(7) = '1' and B4AdrD(7 downto 1) = pSltAdr(15 downto 9)else
@@ -1078,6 +1165,7 @@ begin
                         (B1MaskR and R1Reg) & pSltAdr(14 downto 12) when MR1A = "0110" else
                         "0" & (B1MaskR and R1Reg) & pSltAdr(13 downto 12) when MR1A = "0101" else
                         "00" & (B1MaskR and R1Reg) & pSltAdr(12) when MR1A = "0100" else
+---
                         "000" & (B1MaskR and R1Reg) when MR1A = "0011" else
 --                        "0000" & (B1MaskR and R1Reg) & pSltAdr(10 downto 9) when MR1A = "0010" else
 --                        "00000" & (B1MaskR and R1Reg) & pSltAdr(9) when MR1A = "0001" else
@@ -1087,16 +1175,16 @@ begin
                         (B2MaskR and R2Reg) & pSltAdr(14 downto 12) when MR2A = "0110" else
                         "0" & (B2MaskR and R2Reg) & pSltAdr(13 downto 12) when MR2A = "0101" else
                         "00" & (B2MaskR and R2Reg) & pSltAdr(12) when MR2A = "0100" else
-                        "000" & (B2MaskR and R2Reg) when MR2A = "0011" else
+---                        "000" & (B2MaskR and R2Reg) when MR2A = "0011" else
 --                        "0000" & (B2MaskR and R2Reg) & pSltAdr(10 downto 9) when MR2A = "0010" else
---                       "00000" & (B2MaskR and R2Reg) & pSltAdr(9) when MR2A = "0001" else
+--                       "00000" & (B2MaskR and R2Reg) & pSltAdr(9) when MR2A = "0001" else                                                                                     else
 --                        "000000" & (B2MaskR and R2Reg) when MR2A = "0000" else
                         
                         (B3MaskR(6 downto 0) and R3Reg(6 downto 0)) & pSltAdr(15 downto 12) when MR1A = "0111" else
                         (B3MaskR and R3Reg) & pSltAdr(14 downto 12) when MR3A = "0110" else
                         "0" & (B3MaskR and R3Reg) & pSltAdr(13 downto 12) when MR3A = "0101" else
                         "00" & (B3MaskR and R3Reg) & pSltAdr(12) when MR3A = "0100" else
-                        "000" & (B3MaskR and R3Reg) when MR3A = "0011" else
+---                        "000" & (B3MaskR and R3Reg) when MR3A = "0011" else
 --                        "0000" & (B3MaskR and R3Reg) & pSltAdr(10 downto 9) when MR3A = "0010" else
 --                        "00000" & (B3MaskR and R3Reg) & pSltAdr(9) when MR3A = "0001" else
 --                        "000000" & (B3MaskR and R3Reg) when MR3A = "0000" else
@@ -1108,9 +1196,9 @@ begin
                         "0" & (B4MaskR and R4Reg) & pSltAdr(13 downto 12) when MR4A = "0101" and NSC = '0' else
                         "0" & (B3MaskR and R4Reg) & pSltAdr(13 downto 12) when MR4A = "0101" and NSC = '1' else
                         "00" & (B4MaskR and R4Reg) & pSltAdr(12) when MR4A = "0100" and NSC = '0' else
-                        "00" & (B3MaskR and R4Reg) & pSltAdr(12) when MR4A = "0100" and NSC = '1' else
-                        "000" & (B4MaskR and R4Reg) when MR4A = "0011" and NSC = '0' else
-                        "000" & (B3MaskR and R4Reg) when MR4A = "0011" and NSC = '1' -- else
+                        "00" & (B3MaskR and R4Reg) & pSltAdr(12) when MR4A = "0100" and NSC = '1'--- else
+---                        "000" & (B4MaskR and R4Reg) when MR4A = "0011" and NSC = '0' else
+---                        "000" & (B3MaskR and R4Reg) when MR4A = "0011" and NSC = '1' -- else
 --                        "0000" & (B4MaskR and R4Reg) & pSltAdr(10 downto 9) when MR4A = "0010" else
 --                        "00000" & (B4MaskR and R4Reg) & pSltAdr(9) when MR4A = "0001" else
 --                        "000000" & (B4MaskR and R4Reg) when MR4A = "0000" 
@@ -1145,40 +1233,40 @@ begin
     elsif (pSltClk_n'event and pSltClk_n = '1') then
 
           -- Mapped I/O port access on 5000-57FFh ... Bank resister write
-      if (Sltsl_C_n = '0' and pSltWr_n = '0' and pSltAdr(15 downto 11) = "01010" and
+      if (SccEna = '1' and pSltWr_n = '0' and pSltAdr(15 downto 11) = "01010" and
           SccModeA(6) = '0' and SccModeA(4) = '0' and SccModeB(4) = '0') then
         SccBank0 <= pSltDat;
       end if;
       -- Mapped I/O port access on 7000-77FFh ... Bank resister write
-      if (Sltsl_C_n = '0' and pSltWr_n = '0' and pSltAdr(15 downto 11) = "01110" and
+      if (SccEna = '1' and pSltWr_n = '0' and pSltAdr(15 downto 11) = "01110" and
           SccModeA(6) = '0' and SccModeA(4) = '0' and SccModeB(4) = '0') then
         SccBank1 <= pSltDat;
       end if;
       -- Mapped I/O port access on 9000-97FFh ... Bank resister write
-      if (Sltsl_C_n = '0' and pSltWr_n = '0' and pSltAdr(15 downto 11) = "10010" and
+      if (SccEna = '1' and pSltWr_n = '0' and pSltAdr(15 downto 11) = "10010" and
           SccModeB(4) = '0') then
         SccBank2 <= pSltDat;
       end if;
       -- Mapped I/O port access on B000-B7FFh ... Bank resister write
-      if (Sltsl_C_n = '0' and pSltWr_n = '0' and pSltAdr(15 downto 11) = "10110" and
+      if (SccEna = '1' and pSltWr_n = '0' and pSltAdr(15 downto 11) = "10110" and
           SccModeA(6) = '0' and SccModeA(4) = '0' and SccModeB(4) = '0') then
         SccBank3 <= pSltDat;
       end if;
 
       -- Mapped I/O port access on 7FFE-7FFFh ... Resister write
-      if (Sltsl_C_n = '0' and pSltWr_n = '0' and pSltAdr(15 downto 13) = "011" and Dec1FFE = '1' and
+      if (SccEna = '1' and pSltWr_n = '0' and pSltAdr(15 downto 13) = "011" and Dec1FFE = '1' and
           SccModeB(5 downto 4) = "00") then
         SccModeA <= pSltDat;
       end if;
 
       -- Mapped I/O port access on BFFE-BFFFh ... Resister write
-      if (Sltsl_C_n = '0' and pSltWr_n = '0' and pSltAdr(15 downto 13) = "101" and Dec1FFE = '1' and
+      if (SccEna = '1' and pSltWr_n = '0' and pSltAdr(15 downto 13) = "101" and Dec1FFE = '1' and
           SccModeA(6) = '0' and SccModeA(4) = '0') then
         SccModeB <= pSltDat;
       end if;
 
       -- Mapped I/O port access on 9860-987Fh ... Wave memory copy
-      if (Sltsl_C_n = '0' and CardMDR(4) = '1' and pSltWr_n = '0' and pSltAdr(7 downto 5) = "011" and
+      if (SccEna = '1' and pSltWr_n = '0' and pSltAdr(7 downto 5) = "011" and
           DevHit = '1' and SccModeB(4) = '0' and DecSccA = '1') then
         SccWavAdr <= pSltAdr(4 downto 0);
         SccWavDat <= pSltDat;
@@ -1192,30 +1280,30 @@ begin
   end process;
 
   -- Mapped I/O port access on 9800-987Fh / B800-B89Fh ... Wave memory
-  SccWavCe <= '1' when Sltsl_C_n = '0' and CardMDR(4) = '1' and DevHit = '1' and SccModeB(4) = '0' and
+  SccWavCe <= '1' when SccEna = '1' and DevHit = '1' and SccModeB(4) = '0' and
                        (DecSccA = '1' or DecSccB = '1')
                   else '0';
 
   -- Mapped I/O port access on 9800-987Fh / B800-B89Fh ... Wave memory
-  SccWavOe <= '1' when Sltsl_C_n = '0' and CardMDR(4) = '1' and pSltRd_n = '0' and SccModeB(4) = '0' and
+  SccWavOe <= '1' when SccEna = '1' and pSltRd_n = '0' and SccModeB(4) = '0' and
                        ((DecSccA = '1' and pSltAdr(7) = '0') or
                         (DecSccB = '1' and (pSltAdr(7) = '0' or pSltAdr(6 downto 5) = "00")))
                   else '0';
 
   -- Mapped I/O port access on 9800-987Fh / B800-B89Fh ... Wave memory
-  SccWavWe <= '1' when Sltsl_C_n = '0' and CardMDR(4) = '1' and pSltWr_n = '0' and DevHit = '1' and SccModeB(4) = '0' and
+  SccWavWe <= '1' when SccEna = '1' and pSltWr_n = '0' and DevHit = '1' and SccModeB(4) = '0' and
                        ((DecSccA = '1' and pSltAdr(7) = '0') or DecSccB = '1')
                   else '0';
 
   -- Mapped I/O port access on 9880-988Fh / B8A0-B8AF ... Resister write
-  SccRegWe <= '1' when Sltsl_C_n = '0' and CardMDR(4) = '1' and pSltWr_n = '0' and
+  SccRegWe <= '1' when SccEna = '1' and pSltWr_n = '0' and
                        ((DecSccA = '1' and pSltAdr(7 downto 5) = "100") or
                         (DecSccB = '1' and pSltAdr(7 downto 5) = "101")) and
                        DevHit = '1' and SccModeB(4) = '0'
                   else '0';
 
   -- Mapped I/O port access on 98C0-98FFh / B8C0-B8DFh ... Resister write
-  SccModWe <= '1' when Sltsl_C_n = '0' and CardMDR(4) = '1' and pSltWr_n = '0' and pSltAdr(7 downto 6) = "11" and
+  SccModWe <= '1' when SccEna = '1' and pSltWr_n = '0' and pSltAdr(7 downto 6) = "11" and
                        (DecSccA = '1' or (pSltAdr(5) = '0' and DecSccB = '1')) and
                        DevHit = '1' and SccModeB(4) = '0'
                   else '0';
@@ -1659,11 +1747,7 @@ begin
       FDIV <= FDIV + "00000001";
     end if;
   end process;
--- problem detector (test) :)
---  SDOpo <= '0' when SDOp = '1' or Key1_n = '0' else '1';
---  SDOp <= '1' when SDOc /= "0000111111111111"  else '0';
---  SDOpo <='0' when pSltIorq_n = '0' and pSltWr_n = '0'and pSltAdr(7 downto 0) = "10100001" else 'Z'; --#A0
-  SDOpo <= not KC; 
+
 
 -- filter SCC
 
@@ -1712,11 +1796,17 @@ begin
      pSltClk_nt <= pSltClk_n;
    end if; 
  end process;
+ MFM <= (MFL(15)&MFL)+(MFR(15)&MFR);
  process (pSltClk_nt)
  begin
    if pSltClk_nt'event and pSltClk_nt = '0' then
+    if LVL(7) = '0' then
      L_AOUT <= MFL + MSL + MPL + MBL;
      R_AOUT <= MFR + MSL + MPL + MBL; -- MSR;
+    else
+     L_AOUT <= MFM(16 downto 1) + MSL + MPL + MBL;
+     R_AOUT <= MFM(16 downto 1) + MSL + MPL + MBL;
+    end if;
    end if;
  end process;  
 ----------------------------------------------------------------
@@ -1907,11 +1997,127 @@ end process;
 ----------------------------------------------------------------
 -- Reset conditions
 ----------------------------------------------------------------
---process (pSltClk_n,pSltRst_n1)
+  pSltRst_n <= pSltRst1_n when RstEN = '1'
+          else '0';
+
+process (pSltClk_n,pSltRst1_n)
+begin
+  if pSltRst1_n = '0' then RstEN <= '0';
+--  if pSltRst1_n = '0' then pSltRst_n <= '0';
+--  if pSltClk_n'event and pSltClk_n = '1' then 
+--    RstEN <= '1';
+--  pSltRst_n <= pSltRst1_n;
+  elsif pSltSltsls_n = '0' then RstEN <= '1';
+  end if;
+end process;
+    pSltWait_n <= 'Z';
+--  pSltWait_n <= '1';
+--
+-- problem detector (test) :)
+--  SDOpo <= '0' when SDOp = '1' or Key1_n = '0' else '1';
+--  SDOp <= '1' when SDOc /= "0000111111111111"  else '0';
+--  SDOpo <='0' when pSltIorq_n = '0' and pSltWr_n = '0'and pSltAdr(7 downto 0) = "10100001" else 'Z'; --#A0
+  SDOpo <= pSltRst_n; --not KC; 
+  
+-- Second Slot Control slot register 
+process(pSltClk_n, pSltRst_n)
+begin
+  if (pSltRst_n = '0') then
+    A8_save <= "00000000";
+    SLT_0_save <= "00000000";
+    SLT_1_save <= "00000000";
+    SLT_2_save <= "00000000";
+    SLT_3_save <= "00000000";
+      SCRT_0reg <= "00000000";
+      SCRT_1reg <= "00000001";
+      SCRT_2reg <= "00000010";
+      SCRT_3reg <= "00000011";
+  elsif (pSltClk_n'event and pSltClk_n = '1') then
+    if pSltIorq_n = '0' and pSltWr_n = '0' then
+      if pSltAdr(7 downto 0) = "10101000" then A8_save <= pSltDat ; end if;
+    end if;
+    if (pSltMerq_n = '0' and pSltWr_n = '0' and pSltAdr(15 downto 0) = "1111111111111111") then
+      if A8_save(7 downto 0) = "00" then SLT_0_save <= pSltDat ; end if;
+      if A8_save(7 downto 0) = "01" then SLT_1_save <= pSltDat ; end if;
+      if A8_save(7 downto 0) = "10" then SLT_2_save <= pSltDat ; end if;
+      if A8_save(7 downto 0) = "11" then SLT_3_save <= pSltDat ; end if;
+    end if; 
+    if DecSCARD = '1' and pSltWr_n = '0' then
+    
+    if SCART_SLT(7 downto 6) = "01" and pSltAdr(15 downto 13) = "011" then SCRT_1reg <= pSltDat; end if;
+    if SCART_SLT(7 downto 6) = "01" and pSltAdr(15 downto 13) = "100" then SCRT_2reg <= pSltDat; end if;
+    if SCART_SLT(7 downto 6) = "01" and pSltAdr(15 downto 13) = "101" then SCRT_3reg <= pSltDat; end if;
+    
+    if SCART_SLT(7) = '1' and pSltAdr(15 downto 11) = "01010" then SCRT_0reg <= pSltDat; end if;
+    if SCART_SLT(7) = '1' and pSltAdr(15 downto 11) = "01110" then SCRT_1reg <= pSltDat; end if;
+    if SCART_SLT(7) = '1' and pSltAdr(15 downto 11) = "10010" then SCRT_2reg <= pSltDat; end if;
+    if SCART_SLT(7) = '1' and pSltAdr(15 downto 11) = "10110" then SCRT_3reg <= pSltDat; end if;
+    
+--    if SCART_SLT(7 downto 6) = "11" and pSltAdr(15 downto 11) = "01100" then SCRT_0reg <= pSltDat; end if;
+--    if SCART_SLT(7 downto 6) = "11" and pSltAdr(15 downto 11) = "01101" then SCRT_1reg <= pSltDat; end if;
+--    if SCART_SLT(7 downto 6) = "11" and pSltAdr(15 downto 11) = "01110" then SCRT_2reg <= pSltDat; end if;
+--    if SCART_SLT(7 downto 6) = "11" and pSltAdr(15 downto 11) = "01111" then SCRT_3reg <= pSltDat; end if;    
+    
+    end if;
+  end if;
+end process;
+  DecSCARD <= '1' when SCART_cfg(7) = '1' and 
+        ((SCART_cfg(6) = '0' and pSltSltsl_n = '0' and  --- the same slot
+           (
+--			(pSltAdr(15 downto 14) = "00" and ExpSltReg(1 downto 0) = SCART_SLT(3 downto 2)) or
+			(pSltAdr(15 downto 14) = "01" and ExpSltReg(3 downto 2) = SCART_SLT(3 downto 2)) or
+			(pSltAdr(15 downto 14) = "10" and ExpSltReg(5 downto 4) = SCART_SLT(3 downto 2))
+--	 	 or (pSltAdr(15 downto 14) = "11" and ExpSltReg(7 downto 6) = SCART_SLT(3 downto 2)) 
+	 	    )
+		  ) or 
+          (SCART_cfg(6) = '1' and pSltMerq_n = '0' and -- other slot
+           (
+---            (pSltAdr(15 downto 14) = "00" and A8_save(1 downto 0) = SCART_SLT(1 downto 0) and
+---        (SCART_cfg(5) = '0' or (A8_save(1 downto 0)="00" and SLT_0_save(1 downto 0)=SCART_SLT(3 downto 2))
+---                            or (A8_save(1 downto 0)="01" and SLT_1_save(1 downto 0)=SCART_SLT(3 downto 2))                                           
+---                            or (A8_save(1 downto 0)="10" and SLT_2_save(1 downto 0)=SCART_SLT(3 downto 2))
+---                            or (A8_save(1 downto 0)="11" and SLT_3_save(1 downto 0)=SCART_SLT(3 downto 2))
+---        )) or
+        
+   (pSltAdr(15 downto 14) = "01" and A8_save(3 downto 2) = SCART_SLT(1 downto 0) and
+        (SCART_cfg(5) = '0' or (A8_save(3 downto 2)="00" and SLT_0_save(3 downto 2)=SCART_SLT(3 downto 2))
+                            or (A8_save(3 downto 2)="01" and SLT_1_save(3 downto 2)=SCART_SLT(3 downto 2))                                           
+                            or (A8_save(3 downto 2)="10" and SLT_2_save(3 downto 2)=SCART_SLT(3 downto 2))
+                            or (A8_save(3 downto 2)="11" and SLT_3_save(3 downto 2)=SCART_SLT(3 downto 2))
+        )) or
+
+   (pSltAdr(15 downto 14) = "10" and A8_save(5 downto 4) = SCART_SLT(1 downto 0) and
+        (SCART_cfg(5) = '0' or (A8_save(5 downto 4)="00" and SLT_0_save(5 downto 4)=SCART_SLT(3 downto 2))
+                            or (A8_save(5 downto 4)="01" and SLT_1_save(5 downto 4)=SCART_SLT(3 downto 2))                                           
+                            or (A8_save(5 downto 4)="10" and SLT_2_save(5 downto 4)=SCART_SLT(3 downto 2))
+                            or (A8_save(5 downto 4)="11" and SLT_3_save(5 downto 4)=SCART_SLT(3 downto 2))
+        )) 
+--   or(pSltAdr(15 downto 14) = "11" and A8_save(7 downto 6) = SCART_SLT(1 downto 0)  and
+--        (SCART_cfg(5) = '0' or (A8_save(7 downto 6)="00" and SLT_0_save(7 downto 6)=SCART_SLT(3 downto 2))
+--                            or (A8_save(7 downto 6)="01" and SLT_1_save(7 downto 6)=SCART_SLT(3 downto 2))                                           
+--                            or (A8_save(7 downto 6)="10" and SLT_2_save(7 downto 6)=SCART_SLT(3 downto 2))
+--                            or (A8_save(7 downto 6)="11" and SLT_3_save(7 downto 6)=SCART_SLT(3 downto 2))
+--        ))
+          )       
+          ) )  
+        else  '0';
+--- second cartrige Konami 4 register
+--process(pSltClk_n, pSltRst_n)
 --begin
---  if pSltRst_n1 = '0' then pSltRst_n <= '0';
---  elsif pSltClk_n'event and pSltClk_n = '1' then pSltRst_n <= pSltRst_n1;
+--  if (pSltRst_n = '0') then
+----    SLT_0_save <= "00000000";
+--      SLT_1_save <= "00000001";
+--      SLT_2_save <= "00000010";
+--      SLT_3_save <= "00000011";
+--  elsif (pSltClk_n'event and pSltClk_n = '1') then
+--    if DecSCARD = '1' and pSltWr_n = '0' then
+--      if pSltAdr(15 downto 13 ) = "011" then SLT_1_save <= pSltDat; end if;
+--      if pSltAdr(15 downto 13 ) = "100" then SLT_2_save <= pSltDat; end if;
+--      if pSltAdr(15 downto 13 ) = "101" then SLT_3_save <= pSltDat; end if;
+--    end if;
 --  end if;
 --end process;
---
+
 end RTL;
+
+  
