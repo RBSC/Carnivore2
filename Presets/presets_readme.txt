@@ -34,6 +34,7 @@ P-WARS2.RCP	- RCP file for "Penguin Wars 2" game
 GYRUSS.RCP	- RCP file for "Gyruss" game
 BOMBJACK.RCP	- RCP file for "Bomb Jack" game
 QBERT.RCP	- RCP file for "Qbert" game
+CHOPLIFT.RCP	- RCP file for "ChopLifter" game
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
 more information about this file.
