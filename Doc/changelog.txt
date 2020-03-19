@@ -1,7 +1,8 @@
+--------------------------------------------------------------------------------
 Changelog for Carnifore2 MultiFunctional Cartridge
 Copyright (c) 2017-2020 by RBSC
 English verison
---------------------------------------------------
+--------------------------------------------------------------------------------
 
 15.03.2020 (required updates: FPGA firmware, Boot Menu, all utilities, DefConfig entry;
            the "Power-up fix" must be removed if it was implemented on board!)
