@@ -7,8 +7,8 @@ Last updated on 19.03.2020
 
 The technical documentation has been moved into the following PDF files:
 
-Technical Description of Carnivore2 (English).pdf
-Technical Description of Carnivore2 (Russian).pdf
+Carnivore2 Technical Description (English).pdf
+Carnivore2 Technical Description (Russian).pdf
 
 The documentation is also available here:
 

@@ -7,8 +7,8 @@ Copyright (c) 2017-2020 by RBSC
 
 Техническая документация на картридж перенесена в следующие PDF файлы:
 
-Technical Description of Carnivore2 (English).pdf
-Technical Description of Carnivore2 (Russian).pdf
+Carnivore2 Technical Description (English).pdf
+Carnivore2 Technical Description (Russian).pdf
 
 Документация также доступна здесь:
 
