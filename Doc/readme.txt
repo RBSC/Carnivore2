@@ -1,15 +1,23 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge Readme File
 Copyright (c) 2017-2020 RBSC
-Last updated: 19.03.2020
+Last updated: 21.03.2020
 --------------------------------------------------------------------------------
 
 The user guide and technical documentation have been moved into the PDF files:
 
 Carnivore2 User Guide (English).pdf
 Carnivore2 User Guide (Russian).pdf
-Technical Description of Carnivore2 (English).pdf
-Technical Description of Carnivore2 (Russian).pdf
+Carnivore2 Technical Description (English).pdf
+Carnivore2 Technical Description (Russian).pdf
+
+The partslist and changelog have been moved into the PDF files:
+
+Carnivore2 Changelog (English).pdf
+Carnivore2 Changelog (Russian).pdf
+Carnivore2 Partslist (English).pdf
+Carnivore2 Partslist (Russian).pdf
+
 
 The documentation is also available here:
 
@@ -17,6 +25,10 @@ https://sysadminmosaic.ru/msx/carnivore2/carnivore2
 https://sysadminmosaic.ru/msx/carnivore2/carnivore2-en
 https://sysadminmosaic.ru/msx/carnivore2/specification
 https://sysadminmosaic.ru/msx/carnivore2/specification-en
+https://sysadminmosaic.ru/msx/carnivore2/changelog
+https://sysadminmosaic.ru/msx/carnivore2/changelog-en
+https://sysadminmosaic.ru/msx/carnivore2/partslist
+https://sysadminmosaic.ru/msx/carnivore2/partslist-en
 
 
 Last minute notes
