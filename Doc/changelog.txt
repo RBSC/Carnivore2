@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
-Changelog for Carnifore2 MultiFunctional Cartridge
+Changelog for Carnivore2 MultiFunctional Cartridge
 Copyright (c) 2017-2020 by RBSC
 English verison
 --------------------------------------------------------------------------------
