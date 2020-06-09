@@ -2,7 +2,6 @@
 Carnivore2 Technical Details
 Copyright (c) 2017-2020 by RBSC
 English version
-Last updated on 19.03.2020
 --------------------------------------------------------------------------------
 
 The technical documentation has been moved into the following PDF files:
