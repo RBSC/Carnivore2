@@ -16,5 +16,5 @@
 *.rtf	 diff=astextplain
 *.RTF	 diff=astextplain
 
-Gerber/*.bsl linguist-language=Gerber
-Gerber/*.BSL linguist-language=Gerber
+/Gerber/*.bsl linguist-language=Gerber
+/Gerber/*.BSL linguist-language=Gerber
