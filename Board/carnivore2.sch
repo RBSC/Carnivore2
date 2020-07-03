@@ -1,14 +1,14 @@
-ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT010.sch"
+ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT011.sch"
 
 (asciiHeader 
   (asciiVersion 3 0)
-  (timeStamp 2020 6 8 17 2 31)
+  (timeStamp 2020 6 28 9 31 25)
   (program "P-CAD 2006 Schematic" "19.02.9589")
   (copyright "Copyright © 1992-2006 Altium Limited")
   (fileAuthor "")
   (headerString "")
   (fileUnits Mil)
-  (guidString "{C38DAB89-3639-4A5F-9196-22B4CEB8D124}")
+  (guidString "{A6B8D268-01EA-430D-9BB1-2AC7486CF60A}")
 )
 
 (library "Library_1"
@@ -6817,12 +6817,12 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT010.sch"
     (node "C5" "1")
   )
   (net "+AV12"
+    (node "R56" "1")
     (node "C20" "PLUS")
-    (node "R55" "1")
   )
   (net "-AV12"
+    (node "R55" "1")
     (node "C21" "MINUS")
-    (node "R56" "1")
   )
   (net "HD12"
     (node "U1" "203")
@@ -7080,8 +7080,8 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT010.sch"
     (node "R41" "1")
   )
   (net "VCC-12"
+    (node "R55" "2")
     (node "X1" "50")
-    (node "R56" "2")
   )
   (net "VCC5"
     (node "C1" "PLUS")
@@ -7147,9 +7147,9 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT010.sch"
     (node "R206" "1")
   )
   (net "VCC+12"
+    (node "R56" "2")
     (node "X1" "48")
     (node "C19" "2")
-    (node "R55" "2")
     (node "T2" "3")
   )
   (net "SLT_D0"
@@ -9183,12 +9183,12 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT010.sch"
     (wire (line (pt 11500.0 6100.0) (pt 11400.0 6100.0) (width 10.0) (netNameRef "-AV12") )
     )
     (port (pt 11500.0 6100.0) (portType NoOutline_Sgl_Horz) (netNameRef "-AV12") )
-    (text (pt 11500.0 6200.0) "4-pin AU1, AY2" (textStyleRef "(PortStyle)") (extent 11.94435 mm 84.0) )
     (junction (pt 11400.0 6100.0) (netNameRef "-AV12") )
+    (text (pt 11500.0 6200.0) "4-pin AU1, AU2" (textStyleRef "(PortStyle)") (extent 12.13485 mm 84.0) )
     (wire (line (pt 11400.0 7000.0) (pt 11400.0 7100.0) (width 10.0) (netNameRef "GND") )
     )
     (junction (pt 11400.0 7100.0) (netNameRef "GND") )
-    (text (pt 11500.0 7900.0) "8-pin AU1, AY2" (textStyleRef "(PortStyle)") (extent 11.94435 mm 84.0) )
+    (text (pt 11500.0 7900.0) "8-pin AU1, AU2" (textStyleRef "(PortStyle)") (extent 12.13485 mm 84.0) )
     (wire (line (pt 12000.0 10100.0) (pt 12100.0 10100.0) (width 10.0) (netNameRef "GND") )
     )
     (port (pt 12000.0 10100.0) (portType NoOutline_Sgl_Horz) (portPinLength PortPinShort) (netNameRef "GND") (rotation 180.0) )
@@ -9718,13 +9718,13 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT010.sch"
     (wire (line (pt 11500.0 8100.0) (pt 11400.0 8100.0) (width 10.0) (netNameRef "+AV12") )
     )
     (port (pt 11500.0 8100.0) (portType NoOutline_Sgl_Horz) (netNameRef "+AV12") )
-    (symbol (symbolRef "R_0.125_1") (refDesRef "R55") (partNum 1) (pt 11400.0 8100.0) (rotation 180.0) 
-      (attr "RefDes" "" (pt -160.0 -50.0) (rotation 180.0) (isVisible True) (justify LowerCenter) (textStyleRef "(Default)") )
-      (attr "Value" "" (pt -80.0 160.0) (rotation 180.0) (isVisible True) (textStyleRef "(Default)") )
-    )
     (wire (line (pt 11400.0 8100.0) (pt 11400.0 7900.0) (width 10.0) (netNameRef "+AV12") )
     )
     (junction (pt 11400.0 8100.0) (netNameRef "+AV12") )
+    (symbol (symbolRef "R_0.125_1") (refDesRef "R56") (partNum 1) (pt 11400.0 8100.0) (rotation 180.0) 
+      (attr "RefDes" "" (pt -160.0 -50.0) (rotation 180.0) (isVisible True) (justify LowerCenter) (textStyleRef "(Default)") )
+      (attr "Value" "" (pt -80.0 160.0) (rotation 180.0) (isVisible True) (textStyleRef "(Default)") )
+    )
     (wire (line (pt 12000.0 8700.0) (pt 12100.0 8700.0) (width 10.0) (netNameRef "GND") )
     )
     (wire (line (pt 12000.0 9300.0) (pt 12100.0 9300.0) (width 10.0) (netNameRef "VCC1.2") )
@@ -9996,10 +9996,6 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT010.sch"
       (attr "RefDes" "" (pt -90.0 190.0) (rotation 90.0) (isVisible True) (justify LowerCenter) (textStyleRef "(Default)") )
       (attr "Value" "" (pt 200.0 20.0) (rotation 90.0) (isVisible True) (textStyleRef "(Default)") )
     )
-    (symbol (symbolRef "R_0.125_1") (refDesRef "R56") (partNum 1) (pt 11400.0 6100.0) (rotation 180.0) 
-      (attr "RefDes" "" (pt -160.0 -50.0) (rotation 180.0) (isVisible True) (justify LowerCenter) (textStyleRef "(Default)") )
-      (attr "Value" "" (pt -80.0 160.0) (rotation 180.0) (isVisible True) (textStyleRef "(Default)") )
-    )
     (wire (line (pt 11400.0 6100.0) (pt 11400.0 6300.0) (width 10.0) (netNameRef "-AV12") )
     )
     (symbol (symbolRef "DISCRETE_213_N_1") (refDesRef "C20") (partNum 1) (pt 11400.0 7900.0) (rotation 270.0) 
@@ -10007,6 +10003,10 @@ ACCEL_ASCII "C:\Users\pashaz\Documents\My Documents\MSX\MCRTPRT010.sch"
       (attr "Value" "" (pt -104.0 -350.0) (rotation 270.0) (isVisible True) (justify UpperCenter) (textStyleRef "(PartStyle)") )
       (attr "RefDes" "" (pt 96.0 -350.0) (rotation 270.0) (isVisible True) (justify LowerCenter) (textStyleRef "(PartStyle)") )
       (attr "Description" "Radial Polarized Capacitor" (rotation 270.0) (justify LowerRight) (textStyleRef "(Default)") (constraintUnits string) )
+    )
+    (symbol (symbolRef "R_0.125_1") (refDesRef "R55") (partNum 1) (pt 11400.0 6100.0) (rotation 180.0) 
+      (attr "RefDes" "" (pt -160.0 -50.0) (rotation 180.0) (isVisible True) (justify LowerCenter) (textStyleRef "(Default)") )
+      (attr "Value" "" (pt -80.0 160.0) (rotation 180.0) (isVisible True) (textStyleRef "(Default)") )
     )
     (symbol (symbolRef "C_1") (refDesRef "C202") (partNum 1) (pt 11900.0 12000.0) (rotation 90.0) 
       (attr "RefDes" "" (pt -90.0 190.0) (rotation 90.0) (isVisible True) (justify LowerCenter) (textStyleRef "(Default)") )

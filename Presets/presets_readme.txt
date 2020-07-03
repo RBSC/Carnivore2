@@ -1,6 +1,9 @@
+--------------------------------------------------------------------------------
+Carnivore2 MultiFunctional Cartridge version 2.40
+Copyright (c) 2017-2020 RBSC
+--------------------------------------------------------------------------------
+
 Register Configuration Presets
-Carnivore and Carnivore2 Cartridges
-Copyright (C) 2017-2020 by RBSC
 
 The RCP files should be loaded for certain ROM files or for ROM files of certain size.
 Below is the list of currently available RCP files and their descriptions.
@@ -35,6 +38,8 @@ GYRUSS.RCP	- RCP file for "Gyruss" game
 BOMBJACK.RCP	- RCP file for "Bomb Jack" game
 QBERT.RCP	- RCP file for "Qbert" game
 CHOPLIFT.RCP	- RCP file for "ChopLifter" game
+PAINTER.RCP	- RCP file for "Painter" graphics editor
+QURAN.RCP	- RCP file for "Quran" cartridge dump (shared by Wbahnassi)
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
 more information about this file.

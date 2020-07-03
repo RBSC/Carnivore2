@@ -2,7 +2,10 @@
 ; Carnivore/Carnivore2 Cartridge's Boot Menu
 ; Copyright (c) 2015-2020 RBSC
 ; Portions (c) Grauw
-; Version 2.30
+; Portions (c) Spark/SDM
+; Portions (c) Jordon aka KOD/SDM 
+ 
+; Version 2.40
 ;
 
 ; !COMPILATION OPTIONS!
@@ -10,9 +13,13 @@ SPC	equ	0		; 1 = only basic characters are used for UI (for Arabic and Korean co
 				; 0 = all characters are used for UI
 
 ; Variables
+GETPNT	equ	#F3FA
+PUTPNT	equ	#F3F8
 CSRY	equ	#F3DC
 CSRX	equ	#F3DD
 CSRSW	equ	#FCA9
+CSSTYL	equ	#FCAA
+CSSYM	equ	#FBCC
 SL0EXP	equ	#FCC1
 SL1EXP	equ	#FCC2
 SL2EXP	equ	#FCC3
@@ -24,6 +31,7 @@ BDRCLR 	equ	#F3EB
 CHSETA	equ	#F920
 CHSETS	equ	#F91F
 SCR0WID	equ	#F3AE
+LINNUM	equ	#F3B1
 BSLT	equ	#F560
 SLASLTN	equ	#F561
 BFNT	equ	#F562	; 2 bytes!
@@ -31,7 +39,7 @@ DIRCNT	equ	#F564	; 2 bytes!
 DIRPAG	equ	#F566	; 2 bytes!
 CURPAG	equ	#F568	; 2 bytes!
 VDPVER	equ	#F56A
-NOSLEXP	equ	#F56B
+MASSLAV	equ	#F56B
 PALNTSC	equ	#F56C
 MASSLTN	equ	#F56D
 XYPOS	equ	#F56E	; 2 bytes!
@@ -48,18 +56,19 @@ MASSLTS	equ	#F579
 SLASLTS	equ	#F57A
 DUOSLCF	equ	#F57B
 SLOTFAD	equ	#F57C
-DUALRB	equ	#F57D
+SPECRB	equ	#F57D
 ARKOR	equ	#F57E
+LASTU	equ	#F57F
 
 ; Variables for UI setup
-SKIPFD	equ	#F57F	; 1 byte
-SELITEM	equ	#F580	; 1 byte
-SORT	equ	#F581	; 1 byte
-EFF	equ	#F582	; 1 byte
-FMMON	equ	#F583	; 1 byte
-SPD	equ	#F584	; 1 byte
-FREQ	equ	#F585	; 1 byte
-DUALRST	equ	#F586	; 1 byte
+SKIPFD	equ	#F580	; 1 byte
+SELITEM	equ	#F581	; 1 byte
+SORT	equ	#F582	; 1 byte
+EFF	equ	#F583	; 1 byte
+FMMON	equ	#F584	; 1 byte
+SPD	equ	#F585	; 1 byte
+FREQ	equ	#F586	; 1 byte
+DUALRST	equ	#F587	; 1 byte
 
 ; Colors for main menu screen -------------
 ; First value - foreground color
@@ -68,30 +77,41 @@ DUALRST	equ	#F586	; 1 byte
 ; Fourth value - background color palette
 
 C2FCOLM	equ	15
-C2FPALM	equ	#F587	; 2 bytes!
+C2FPALM	equ	#F588	; 2 bytes!
 C2BCOLM	equ	13
-C2BPALM	equ	#F589	; 2 bytes!
+C2BPALM	equ	#F58A	; 2 bytes!
 
 ; Colors for help screen -------------
 C2FCOLH	equ	15
-C2FPALH	equ	#F58B	; 2 bytes!
+C2FPALH	equ	#F58C	; 2 bytes!
 C2BCOLH	equ	4
-C2BPALH	equ	#F58D	; 2 bytes!
+C2BPALH	equ	#F58E	; 2 bytes!
 
 ; Colors for volume screen -------------
 C2FCOLV	equ	15
-C2FPALV	equ	#F58F	; 2 bytes!
+C2FPALV	equ	#F590	; 2 bytes!
 C2BCOLV	equ	12
-C2BPALV	equ	#F591	; 2 bytes!
+C2BPALV	equ	#F592	; 2 bytes!
 
 ; Colors for PSG setup screen -------------
 C2FCOLP	equ	15
-C2FPALP	equ	#F593	; 2 bytes!
+C2FPALP	equ	#F594	; 2 bytes!
 C2BCOLP	equ	6
-C2BPALP	equ	#F595	; 2 bytes!
+C2BPALP	equ	#F596	; 2 bytes!
 
-SETXY	equ	#F597	; 2 bytes!
-SORTBUF	equ	#F599	; will use 64 characters for sorting!
+SETXY	equ	#F598	; 2 bytes!
+MUSSTAT	equ	#F59A
+MYHOOK	equ	#F59B	; 6 bytes!
+ORGHOOK	equ	#F5A0	; 6 bytes!
+DIRPOS	equ	#F5A6	; 2 bytes!
+BLINK	equ	#F5A8
+SCROLL	equ	#F5A9
+SCRTXT	equ	#F5AA	; 2 bytes!
+SCRFDAT	equ	#F5AC	; 2 bytes!
+SPECRBS	equ	#F5AE
+SCRSEM	equ	#F5AF
+SYMSEM	equ	#F5B0
+SORTBUF	equ	#F5B1	; will use 64 characters for sorting!
 
 VDPR10	equ	#FFE8
 KEYBUF	equ	#FBF0
@@ -99,13 +119,21 @@ KEYBUF	equ	#FBF0
 ; Card configuration registers
 CardMDR equ	#4F80
 
-; Delay for fading
-FDelay	equ	#1000
+; Delays for fading and scroll effects
+FDelay	equ	#0800
+EDelay	equ	#0400
+
+; Scroller semaphore value
+SCRSEMV	equ	#4
 
 ; Delay for autostart, title and boot menu skip
 ADelay	equ	3
 TDelay	equ	2
 SDelay	equ	10
+
+; Cursor (2 bytes)
+CURS1	equ	#94
+CURS2	equ	#95
 
 ; Delay for joystick (video frame based: assuming 60Hz for NTSC, 50Hz for PAL)
 NTSC_dl	equ	6
@@ -113,6 +141,11 @@ PAL_dl	equ	5
 
 R_Base	equ	#C010
 L_STR	equ	16
+
+; Variables for music player
+MUSINIT	equ	#C000
+MUSPLAY	equ	#C005
+MUSSTOP	equ	#C008
 
 
 ;------------------------------------------
@@ -126,7 +159,7 @@ L_STR	equ	16
 	db	0,0,0,0,0,0
 Label	db	"CMFCCFRC"
 	db	0
-BBVers	db	"v2.30"  ; Version | also update it in the header!
+BBVers	db	"v2.40"  ; Version | also update it in the header!
 	db	0
 
 
@@ -164,11 +197,10 @@ Boot0:
 	ld	h,#80
 	call	ENASLT		; Set slot 8000-BFFF the same on 4000-3FFF
 
-; set cart, register
 	ld	hl,B2ON
 	ld	de,CardMDR+#0C	; set Bank2
 	ld	bc,6
-	ldir
+	ldir			; set cart, registers
 
 	call	LocDetect	; detect Arabic or Korean MSX
 
@@ -184,7 +216,7 @@ NetHalt:
 	ld	hl,#0309
 	call    POSIT
 	ld	hl,Netmsg
-	call	print		; print halt msg
+	call	print_sp	; print halt msg
 Halt:	jr	Halt
 
 Boot00:
@@ -196,11 +228,6 @@ Boot00:
 
 Title:
 	ld	hl,TitleScr
-	ld	a,(ARKOR)	; Arabic or Korean?
-	or	a
-	jr	z,SPCT0
-	ld	hl,TitleScrS
-SPCT0:
 	ld	b,6
 	ld	de,#0A09
 Titlel1:
@@ -208,13 +235,15 @@ Titlel1:
 	call    POSIT
 	inc	l
 	ex	hl,de
-	call	print		; print title lines
+	call	print_sp	; print title lines
 	djnz	Titlel1
 
 	ld	hl,#180C
 	call    POSIT
 	ld	hl,BBVers
-	call	print		; print boot menu version
+	call	print_sp	; print boot menu version
+
+	call	InitTitle	; initialize title
 
 	ld	hl,CardMDR+#2C
 	ld	de,#190D
@@ -241,8 +270,10 @@ FirmVs:
 	ex	hl,de
 	inc	hl
 	pop	af
-	call	CHPUT		; firmware version digit
+	call	CHPUT_VDP	; firmware version digit
 	djnz	FirmVl
+
+	call	AnimTitle	; animate title
 
 	ld	hl,#0000
 	ld	bc,TDelay*50	; set delay for title
@@ -259,7 +290,7 @@ SltCheck:
 NoSlt:
 	call    POSIT
 	ld	hl,Haltmsg
-	call	print		; print halt msg
+	call	print_sp	; print halt msg
 Halt1:	jr	Halt1
 
 DrCheck:
@@ -280,7 +311,7 @@ Boot1:
 	ld	hl,#0309
 	call    POSIT
 	ld	hl,AltKormsg
-	call	print		; print incorrect Boot Menu message
+	call	print_sp	; print incorrect Boot Menu message
 	call	KILBUF
 	ld	hl,#0000
 	ld	bc,SDelay*50	; set delay for boot menu skip
@@ -300,19 +331,35 @@ Boot2:
 	ld	a,#FF
 	ld	(MASSLTS),a	; nothing selected for master slot
 	ld	(SLASLTS),a	; nothing selected for slave slot
-	ld	a,1
-	ld	(NOSLEXP),a	; simple values enabled by default
+	ld	(MASSLAV),a	; slave slot not used as master's subslot
 	xor	a
 	ld	(MASSEXP),a	; master slot not expanded by default
 	ld	(SLASEXP),a	; slave slot not expanded by default
-	ld	(DUALRB),a	; reset special reboot
+	ld	(MUSSTAT),a	; music not playing
+	ld	(LASTU),a	; last used entry
+	ld	(SPECRB),a	; special reboot cfg
+	ld	(SPECRBS),a	; special reboot subslot cfg
+	ld	(SCROLL),a	; no scroller
+	ld	(SCRSEM),a	; scroller semaphore
+	ld	(SYMSEM),a	; symbol semaphore
 	ld	a,%00010001
-	ld	(DUOSLCF),a	; default master/slave slots configuration
+	ld	(DUOSLCF),a	; default master/slave slots configuration (subslots 32103210, first 4 bits - master)
 	ld	a,(CardMDR+#29)
 	and	%01111111	; disable second cartridge
 	ld	(CardMDR+#29),a
 	call	SlotFilter	; identify usable slots
+	ld	a,(SLASLTN)
+	cp	#FF		; slave slot usable?
+	jr	nz,Boot3
+	xor	a
+	ld	(MASSLAV),a	; enable slave slot emulation if no real slave slots are usable
+	ld	a,#FF
+	ld	(MASSEXP),a	; expand master slot by default
+	ld	a,(DUOSLCF)
+	or	%11110000	; enable all devices of master slot
+	ld	(DUOSLCF),a
 
+Boot3:
 ; Load data (FMPAC/SCC/SCC+/PSG audio volume and other settings) from small EEPROM
 	ld	a,1
 	call	EERD		; read volume setting from EEPROM
@@ -446,7 +493,7 @@ DirCnt:
 	ld	(DIRPAG),a	; one page by default
 	ld	(CURPAG),a	; 1st page to output first
 DirC0:
-	call 	c_dir		; calc dir entry point
+	call 	CalcDirPos	; calc dir entry point
 	jr	nz,DirC1	; normal entry?
 	inc	d
 	ld	a,d
@@ -473,46 +520,20 @@ DirC3:
 	sub	L_STR		; more dir pages?
 	jr	DirC3
 
-DSort:	call	DirSort		; sort directory
+DSort:
+	call	DirSort		; sort directory
 
-
-; Check for autostart
-	xor	a
+Check_AS:
+	ld	a,#FF
 	ld	(AUTOST),a	; no autostart
-
-	ld	d,#FF
-	ld	a,2
-	ld	(CardMDR+#0E),a ; set 2nd bank to autostart map
-	ld	a,(SORT)
-	or	a
-	jr	z,TA_02
-	ld	hl,B2ON+#03
-	ld	a,(hl)
-	ld	(CardMDR+#0F),a	; show flash instead of RAM for autostart
-
-TA_02:
-	ld	hl,#8000
-TA_00:	ld	a,(hl)
-	or	a
-	jr	z,TA_01
-	inc	hl
-	ld	a,(hl)
+	ld	a,#1C
+	call	EERD		; check for autostart
+	ld	(AUTOST),a	; save entry
 	ld	d,a
 	cp	#FF
 	jr	z,Menu		; deselected autostart
 
-; Autostart entry found!
-	ld	a,1
-	ld	(CardMDR+#0E),a ; set 2nd bank to directory map		
-	ld	a,(SORT)
-	or	a
-	jr	z,TA_06
-	ld	hl,RAM_SORT+#03
-	ld	a,(hl)
-	ld	(CardMDR+#0F),a	; show RAM instead of flash for directory
-
-TA_06:
-	call 	c_dir
+	call 	CalcDirPos
 	jr	z,Menu		; empty record, go to menu
 
 	ld	a,(#FBEC)
@@ -520,47 +541,57 @@ TA_06:
 	cp	%00001101
 	jr	nz,Menu
 
-	ld	a,#FF
-	ld	(AUTOST),a	; autostart found
-
 	call	CLS
-	ld	hl,#030B
+	ld	hl,#030A
 	call    POSIT
 	ld	hl,AutoMSG
-	call	print		; print autostart message
+	call	print_sp	; print autostart message
 
 	call	KILBUF
 	ld	hl,#0000
-	ld	bc,ADelay*60	; set delay for autostart in NTSC
+	ld	a,(ADelay)
+	ld	b,a
+	ld	c,"3"
+AutoWA2:
+	ld	de,60		; set delay for autostart in NTSC
 	ld	a,(PALNTSC)
 	bit	1,a
-	jr	z,AutoWA2
-	ld	bc,ADelay*50	; set delay for autostart for PAL
-AutoWA2:
+	jr	z,AutoWA21
+	ld	de,50	; set delay for autostart for PAL
+AutoWA21:
+	push	hl
+	push	de
+	push	bc
+	push	de
+	pop	bc
 	call	AutoWait	; wait a few seconds
 	jr	nz,AutoWA3
+	ld	hl,#150A
+	call    POSIT
+	pop	bc
+	dec	c
+	ld	a,c
+	push	bc
+	call	CHPUT_VDP	; output ASCII8 mapper symbol	
+	pop	bc
+	pop	de
+	pop	hl
+	djnz	AutoWA2
 
 	call	CLS
 
 	jp	RUN_CT		; not empty record, do autostart
 
 AutoWA3:
-	xor	a
+	pop	bc
+	pop	de
+	pop	hl
+	ld	a,#FF
 	ld	(AUTOST),a	; no autostart
-	jr	Menu
-
-TA_01:	inc	hl		; next auto
-	inc	hl
-	ld	a,h
-	cp	#A0		; 8kb limit?
-	jp	c,TA_00		; next entry
-
 
 ; Main Menu
 ; Search records (64b) max - 256
 Menu:
-	ld	c,d
-	exx
 	ld	a,1
 	ld	(CardMDR+#0E),a ; set 2nd bank to directory map
 	ld	a,(SORT)
@@ -573,9 +604,8 @@ Menu:
 	pop	hl
 
 TA_07:
-	exx
-	ld	d,0
-	exx
+	ld	de,#0000
+	ld	(DIRPOS),de	; positions (d=entry number, e=position on page)
 
 ; Set screen for menu
 Menu1:
@@ -591,7 +621,6 @@ Menu1:
 	ld	(BAKCLR),a
 	ld	(BDRCLR),a
 	call	CHCOLOR		; set screen colors (foreground=background)
-	push	de
 	ld	de,#1701
 	ld	hl,#7707
 	ld	b,C2FCOLM
@@ -613,12 +642,24 @@ Menu1:
 	ld	b,C2BCOLM
 	ld	c,#0D
 	call	FadeIn		; fade in background
-	pop	de
 	ld	a,C2FCOLM
 	ld	hl,(C2BPALM)
 	call	PALETTE
+	ld	hl,#0707
+	ld	(XYPOS),hl	; default position for cursor
 
-Pagep:	
+MusicScroll:	
+	push	hl
+	pop	ix		; fix for music player
+	call	MusicInit	; init music
+	call	ScrollInit	; initialize data for scroller
+	call	HookOn		; set hook and start music
+
+	ld	a,#1B
+	call	EERD		; read music status
+	ld	(MUSSTAT),a
+
+Pagep:
 	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
 	or	a
 	jr	nz,Pagep0
@@ -638,14 +679,14 @@ Pagep0:
 
   if SPC=1
 	ld	a,#20
-	ld	(#F3B1),a
+	ld	(LINNUM),a
 	ld	hl,MainScr	; print main screen messages
-	call	print	
+	call	print_sp
 	ld	a,#18
-	ld	(#F3B1),a
+	ld	(LINNUM),a
   else
 	ld	hl,MainScr	; print main screen messages
-	call	print	
+	call	print_sp
   endif
 
 	call	PrintInf	; print page number
@@ -653,12 +694,23 @@ Pagep0:
 	call	PrintVol	; print volumes
         call    PrintTur        ; print turbo/r800/z80 mode
 
+	ld	a,#1D
+	call	EERD		; read scroller status
+	or	a
+	jr	z,Pagep0a
+	ld	hl,#0104
+	call    POSIT
+	ld	hl,DynamicS
+	call	print_sp	; print scroller placeholder
+	ld	a,1
+
 ; Print autostarted entry
+Pagep0a:
+	ld	(SCROLL),a
 	ld	hl,#1005
 	call    POSIT
-	exx
-	ld	a,c
-	exx
+	ld	a,#1C
+	call	EERD		; get autostart entry
 	cp	#FF		; skip printing #FF
 	jr	z,Pagep000
 	call	hexout		; print autostart entry number
@@ -691,14 +743,12 @@ Pagep00:
 	call	hexout		; print selection
 
 Pagep1:
+	ld	de,(DIRPOS)	; positions (d=entry number, e=position on page)
 	ld	e,0		; set first string
-	exx
-	ld	a,d	
-	exx
-	ld	d,a
+	ld	(DIRPOS),de	; save new position
 
 ; print page ( 16 record )
-sPrr1:	call 	c_dir		; calc dir entry point
+sPrr1:	call 	CalcDirPos	; calc dir entry point
 	jr	nz,prStr	; valid dir entry?
 
 nRec:	inc	d
@@ -724,10 +774,6 @@ prStr:
 ; record number
 	ld	a,d
 	call	hexout		; print entry number in hex
-  if SPC=1
-	ld	a,' '
-	call	CHPUT		; print space
-  endif
 
 ; set hl-point
 	push 	ix
@@ -738,93 +784,73 @@ prStr:
 	inc	hl
 
 ; mapper symbols
-  if SPC=0
 	ld	a,(hl)
 	cp	'K'
 	jr	nz,sMap1
 	ld	a,#B8
-	call	CHPUT		; output Konami5 mapper symbol
+	call	CHPUT_VDP	; output Konami5 mapper symbol
 	ld	a,#BE
 	jr	sCur
 sMap1:
 	cp	'k'
 	jr	nz,sMap2
 	ld	a,#B8
-	call	CHPUT		; output Konami4 mapper symbol
+	call	CHPUT_VDP	; output Konami4 mapper symbol
 	ld	a,#B3
 	jr	sCur
 sMap2:
 	cp	'A'
 	jr	nz,sMap3
 	ld	a,#B4
-	call	CHPUT		; output ASCII16 mapper symbol
+	call	CHPUT_VDP	; output ASCII16 mapper symbol
 	ld	a,#BA
 	jr	sCur
 sMap3:
 	cp	'a'
 	jr	nz,sMap4
 	ld	a,#BB
-	call	CHPUT		; output ASCII8 mapper symbol
+	call	CHPUT_VDP	; output ASCII8 mapper symbol
 	ld	a,#B9
 	jr	sCur
 sMap4:
 	cp	'C'
 	jr	nz,sMap5
 	ld	a,#BC
-	call	CHPUT		; output configuration symbol
+	call	CHPUT_VDP	; output configuration symbol
 	ld	a,#BD
 	jr	sCur
 sMap5:
 	cp	'U'
 	jr	nz,sMap6
 	ld	a,#BF
-	call	CHPUT		; output unknown mapper symbol
+	call	CHPUT_VDP	; output unknown mapper symbol
 	ld	a,#B7
 	jr	sCur
 sMap6:
 	cp	'M'
 	jr	nz,sMap7
 	ld	a,#B5
-	call	CHPUT		; output multirom mapper symbol
+	call	CHPUT_VDP	; output multirom mapper symbol
 	ld	a,#B6
 	jr	sCur
 sMap7:
 	ld	a,#B1
-	call	CHPUT		; output unknown entry symbol
+	call	CHPUT_VDP	; output unknown entry symbol
 	ld	a,#B2
-  else
-	ld	a,(hl)
-	cp	'K'
-	jr	z,sCur
-	cp	'k'
-	jr	z,sCur
-	cp	'A'
-	jr	z,sCur
-	cp	'a'
-	jr	z,sCur
-	cp	'C'
-	jr	z,sCur
-	cp	'U'
-	jr	z,sCur
-	cp	'M'
-	jr	z,sCur
-	ld	a,'-'
-  endif
-
 sCur:
-	call	CHPUT
+	call	CHPUT_VDP
 	inc	hl
 
 ; clear cursor area
 	ld	a,' '
-	call	CHPUT		; output space for cursor
+	call	CHPUT_VDP	; output space for cursor
 	ld	a,' '
-	call	CHPUT		; output space for cursor
+	call	CHPUT_VDP	; output space for cursor
 
 ; print record name
 	ld	b,30
 sPr:	ld	a,(hl)
-	call	CHPUT		; output record name
+	call	CHPUT_VDP	; output record name
 	inc	hl
 	djnz	sPr
 
@@ -846,17 +872,13 @@ sPr1:
 	jp	c,sPrr1
 
 dRec:
+	ld	de,(DIRPOS)	; positions (d=entry number, e=position on page)
 	ld	e,0		; cursor at 0
-	exx	
-	ld	a,d
-	exx
-	ld	d,a		; restore dir entries to top page
-
+	ld	(DIRPOS),de	; save new position
 	push	af
 	ld	a,(SKIPFD)
 	or	a		; skip fade on page flip?
 	jr	nz,dRec1
-
 	push	de
 	ld	hl,(C2FPALM)
 	ex	de,hl
@@ -873,17 +895,19 @@ dRec1:
 
 ; set cursor pos on first entry
 CH00:
-	call	c_dir
-	ld	h,7
-	ld	a,e
-	add	a,7
-	ld	l,a
-	ld	(XYPOS),hl
+	ld	a,(LASTU)	; last used entry
+	ld	d,a
+	call	CalcDirPos
+	ld	hl,(XYPOS)	; cursor position
+	ld	a,l
+	sub	7
+	ld	e,a		; actual position
+
 	call	POSIT
 	ld	a,CURS1		; print cursor symbol 1
-	call	CHPUT
+	call	CHPUT_VDP
 	ld	a,CURS2		; print cursor symbol 2
-	call	CHPUT
+	call	CHPUT_VDP
 	ld	hl,#2705
 	call	POSIT		; move cursor to edge of screen
 
@@ -905,6 +929,7 @@ Wait0:
 	jr	Wait0
 
 GetKey:
+	call	CHFKEY
 	call	CHGET
 GetKey1:
 	cp	27		; ESC
@@ -971,6 +996,18 @@ GetKey1:
 	jp	z,SetCart1	; Select entry for master slot
 	cp	"2"
 	jp	z,SetCart2	; Select entry for slave slot
+        cp      "L"
+        jp      z,LastUsed	; last used entry
+        cp      "l"
+        jp      z,LastUsed	; last used entry
+        cp      "M"
+        jp      z,Aurora	; toggle music
+        cp      "m"
+        jp      z,Aurora	; toggle music
+        cp      "S"
+        jp      z,Scroller	; toggle scroller
+        cp      "s"
+        jp      z,Scroller	; toggle scroller
 	jp	CH01
 
 
@@ -982,16 +1019,23 @@ C_UP:
 	ld	hl,(XYPOS)
 	call	POSIT
 	ld	a,' '
-	call	CHPUT		; clear cursor
+	call	CHPUT_VDP	; clear cursor
 	ld	a,' '
-	call	CHPUT		; clear cursor
-C_U00:	dec	e
+	call	CHPUT_VDP	; clear cursor
+C_U00:	dec	e                           
 C_U01:	dec	d
 	ld	a,#FF
 	cp	d
 	jp	z,C_D00
-	call	c_dir
+	call	CalcDirPos
 	jr	z,C_U01
+	ld	hl,(XYPOS)
+	ld	a,e
+	add	7
+	ld	l,a
+	ld	(XYPOS),hl
+	ld	a,d
+	ld	(LASTU),a	; last used entry
 	jp	CH00
 
 
@@ -1003,16 +1047,23 @@ C_DOWN:
 	ld	hl,(XYPOS)
 	call	POSIT
 	ld	a,' '	
-	call	CHPUT		; clear cursor
+	call	CHPUT_VDP	; clear cursor
 	ld	a,' '
-	call	CHPUT		; clear cursor
+	call	CHPUT_VDP	; clear cursor
 C_D00:	inc	e
 C_D01:	inc	d
 	ld	a,#FF
 	cp	d
 	jp	z,C_U00
-	call	c_dir
+	call	CalcDirPos
 	jr	z,C_D01
+	ld	hl,(XYPOS)
+	ld	a,e
+	add	7
+	ld	l,a
+	ld	(XYPOS),hl
+	ld	a,d
+	ld	(LASTU),a	; last used entry
 	jp	CH00
 
 
@@ -1042,28 +1093,21 @@ P_F:
 	pop	de
 
 PF00:
-	exx
-	ld	a,d
-	exx
-	ld	d,a		; extract 1st page
-
-; next N str
+	ld	de,(DIRPOS)	; positions (d=entry number, e=position on page)
 	ld	e,L_STR
 PF01:	inc	d
 	ld	a,#FF
 	cp	d
 	jp	z,Pagep		; out of dir?
-	call	c_dir
+	call	CalcDirPos
 	jr	z,PF01		; empty/deleted?
 	dec	e
 	jr	nz,PF01
-
-; save new start d
+	ld	(DIRPOS),de	; save new position
 	ld	a,d
-	exx
-	ld	d,a
-	exx
-
+	ld	(LASTU),a	; last used entry
+	ld	hl,#0707
+	ld	(XYPOS),hl
 	ld	hl,CURPAG
 	inc	(hl)		; increment page number
 
@@ -1103,28 +1147,22 @@ P_B:
 	pop	de
 
 PB00:
-	exx
-	ld	a,d
-	exx
-	ld	d,a		; extract 1st page
-
-; previos N str
+	ld	de,(DIRPOS)	; positions (d=entry number, e=position on page)
 	ld	e,L_STR
 PB01:	dec	d
 	ld	a,#FF
 	cp	d
 	jr	z,PB02		; out of dir?
-	call	c_dir
+	call	CalcDirPos
 	jr	z,PB01
 	dec	e
 	jr	nz,PB01
-
-; save new start d
-PB03:	ld	a,d
-	exx
-	ld	d,a
-	exx
-
+PB03:
+	ld	(DIRPOS),de	; positions (d=entry number, e=position on page)
+	ld	a,d
+	ld	(LASTU),a	; last used entry
+	ld	hl,#0707
+	ld	(XYPOS),hl
 	ld	hl,CURPAG
 	dec	(hl)		; increment page number
 
@@ -1155,9 +1193,32 @@ RUN_CT:
 
 	ld	a,(AUTOST)	; autostart found?
 	cp	#FF
-	jr	z,RUN_CT2	; skip effects
+	jr	nz,RUN_CT2	; skip effects
 
 RUN_CT1:
+	push	hl
+	push	de
+	push	bc
+	push	ix
+;	push	iy
+	ld	ix,#0707
+	call	MUSSTOP		; stop music
+	call	HookOff		; disable hook
+;	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	xor	a
+	ld      (MUSSTAT),a	; stop music
+
+	ld	a,%01100000	; write enable
+	call	EEWEN
+	ld	a,(ix)
+	ld	e,a             ; data
+	ld	a,#1A		; address
+	call	EEWR		; save last used entry to EEPROM
+
 	ld	hl,(C2FPALM)
 	push	hl
 	ld	hl,(C2BPALM)
@@ -1180,7 +1241,8 @@ RUN_CT1:
 
 RUN_CT2:
 	ld	a,%00101100
-	ld	(CardMDR),a
+	ld	(CardMDR),a	; set delayed configuration triggered by JP #4000
+
 	ld	a,(ix+#02)
 	ld	(CardMDR+#05),a	; set start block
 	push	ix
@@ -1205,10 +1267,33 @@ RUN_CT2:
 RUN_CR:
 	ld	a,(AUTOST)	; autostart found?
 	cp	#FF
-	jr	z,RUN_CR2	; skip effects
+	jr	nz,RUN_CR2	; skip effects
 
 ; Effects
 RUN_CR1:
+	push	hl
+	push	de
+	push	bc
+	push	ix
+;	push	iy
+	ld	ix,#0707
+	call	MUSSTOP		; stop music
+	call	HookOff		; disable hook
+;	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	xor	a
+	ld      (MUSSTAT),a	; stop music
+
+	ld	a,%01100000	; write enable
+	call	EEWEN
+	ld	a,(ix)
+	ld	e,a             ; data
+	ld	a,#1A		; address
+	call	EEWR		; save last used entry to EEPROM
+
 	ld	hl,(C2FPALM)
 	push	hl
 	ld	hl,(C2BPALM)
@@ -1232,10 +1317,12 @@ RUN_CR1:
 ; Configure cart register and restart
 ; ix - directory entry pointer
 RUN_CR2:
+	ld	a,(SPECRB)	; special reboot?
+	or	a
+	jp	nz,RUN_CR22
 	ld	a,(VDPVER)
 	or	a
 	jp	z,RUN_CR22	; no frequency switch for v9918 and v9928, just reset
-
 	ld	a,(ix+#04)	; entry type
 	or	%00100000
 	cp	'c'       
@@ -1256,12 +1343,11 @@ RUN_CR2a:
 	jp	z,RUN_CR22	; skip pre-started code
 
 MakePCode:
-	ld	a,#20
+	ld	a,#20		; %00100000
 	ld	(CardMDR),a	; set immediate configuration change flag, registers at #4F80
 
 	ld	a,(ix+#02)	; start block for rom
 	ld	(CardMDR+#03),a	; set AddrM2 address
-
 	ld	a,(ix+#3D)	; size and position in block
 	ld	b,a
 	and	%00001000
@@ -1270,7 +1356,6 @@ MakePCode:
 	ld	a,#40
 	ld	(CardMDR+#02),a	; offset in block AddrM1 for 48kb ROM
 	jr	SetOffs1
-
 ChkRomS:
 	ld	a,b
 	and	%01110000
@@ -1300,7 +1385,6 @@ ChkRomS:
 	cp	%00000101	; 16kb?
 	jr	z,FindOffs
 	ld	d,#80
-
 FindOffs:
 	ld	b,c
 	ld	a,d
@@ -1308,10 +1392,8 @@ FindOffs:
 FindOffC:
 	add	d
 	djnz	FindOffC
-
 	ld	(CardMDR+#02),a	; offset in block AddrM1
 	jr	SetOffs1
-
 SetOffs:
 	xor	a
 	ld	(CardMDR+#02),a	; offset in block AddrM1
@@ -1328,7 +1410,6 @@ RCopy:
 	inc 	hl
 	inc	c
 	djnz	RCopy
-
 	ld	a,(ix+#3C)
 	ld	(#C200),a	; save CardMDR register for ROM
 	ld	a,(ix+#3D)
@@ -1343,19 +1424,17 @@ RCopy1:
 	ld	(#C203),a	; same rom's start method
 	ld	a,(ix+#04)
 	ld	(#C204),a 	; save entry/mapper type
-
+	ld	a,%00101000
+	ld	(CardMDR),a	; set delayed configuration triggered by JP #0000
 	ld	de,#C300
 	jr	RUN_CR23
 
-
 RUN_CR22:
-	ld	a,%00101000
-	ld	(CardMDR),a	; set delayed configuration triggered by JP #0000
+	ld	a,%00111000
+	ld	(CardMDR),a	; set delayed configuration triggered by JP #0000 + SCC
 	ld	de,CardMDR+#06
-
 	ld	a,(ix+#02)	; start block
 	ld	(CardMDR+#05),a	; set start block
-
 RUN_CR23:
 	push	ix
 	pop	hl
@@ -1363,16 +1442,16 @@ RUN_CR23:
 	add	hl,bc		; config data for registers
 	ld	bc,25
 	ldir
-
-	ld	a,(DUALRB)	; special reboot?
+	ld	a,(SPECRB)	; special reboot?
 	or	a
-	jr	z,RUN_CR24
-	ld	(CardMDR+#1E),a	; rom's configuration register for reboot
-RUN_CR24:
-	ld	a,(hl)
-	and	%11111011
-	ld	(de),a		; set reconfig after JP #0000
-
+	jr	z,Reset11
+	dec	de
+	ld	(de),a		; update device configuration for special reboot
+	inc	de
+Reset11:
+	ld	a,(hl)		; CardMDR+#1F - copy
+	and	%11111011	; set reconfig after JP #0000
+	ld	(de),a		; save CardMDR copy
 
 ; Disable "warm" start
 RUN_CR4:
@@ -1383,26 +1462,24 @@ RUN_CR4:
 Reset:
 	call	CLS
 	ld	hl,ResetCMSG	; print rebooting message
-
 	ld	a,(ix+#04)	; entry type
 	or	%00100000
 	cp	'c'       
 	jp	z,Reset1	; configuration entry?
-
 	ld	hl,ResetMSG	; print rebooting message with configuration
-
 Reset1:
 	call	print
 
+	ld	a,(SPECRB)	; special reboot?
+	or	a
+	jp	nz,#0000
 	ld	a,(VDPVER)
 	or	a
 	jp	z,#0000		; just reset if no need to set frequency after reboot
-
 	ld	a,(ix+#04)	; entry type
 	or	%00100000
 	cp	'c'
 	jp	z,#0000		; just reset if no need to set frequency after reboot
-
 	ld	a,(ORGVR10)	; original value of VDP frequency
 	ld	b,a
 	ld	a,(PALNTSC)	; read current VDP frequency
@@ -1411,8 +1488,10 @@ Reset1:
 	ld	a,(TURBOM)	; Turbo/R800 mode enabled?
 	or	a
 	jp	z,#0000		; just reset if no need to set Turbo/R800 after reboot
-
 Reset2:
+	ld	a,%00100000
+	ld	(CardMDR),a	; set immediate configuration changes
+
 	ld	a,#08
 	ld	(CardMDR+#0F),a	; disable second bank
 	ld	(CardMDR+#15),a	; disable third bank
@@ -1495,15 +1574,9 @@ hdfill:
 	ld	bc,6
 	ldir			; set forth bank to map empty RAM at #0000:#4000
 
-	ld	a,(DUALRB)	; special reboot?
-	or	a
-	jr	z,Reset3
-	ld	(CardMDR+#1E),a	; rom's configuration register for reboot
-	jr	Reset4
-Reset3:
 	ld	a,(#8F1A)
 	ld	(CardMDR+#1E),a	; rom's configuration register for reboot
-Reset4:
+
 	ld	a,#08
 	ld	(CardMDR+#09),a	; disable first bank
 
@@ -1514,14 +1587,37 @@ Reset4:
 RUN_CJ:
 	ld	a,(AUTOST)	; autostart found?
 	cp	#FF
-	jr	z,RUN_CJ2	; skip effects
+	jr	nz,RUN_CJ2	; skip effects
 
 RUN_CJ1:
+	push	hl
+	push	de
+	push	bc
+	push	ix
+;	push	iy
+	ld	ix,#0707
+	call	MUSSTOP		; stop music
+	call	HookOff		; disable hook
+;	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	xor	a
+	ld      (MUSSTAT),a	; stop music
+
 	ld	a,(ix+#04)	; mapper type
 	cp	'C'
 	jp	z,CH01		; ignore direct start for configuration entries
 	cp	'c'
 	jp	z,CH01		; ignore direct start for configuration entries
+
+	ld	a,%01100000	; write enable
+	call	EEWEN
+	ld	a,(ix)
+	ld	e,a             ; data
+	ld	a,#1A		; address
+	call	EEWR		; save last used entry to EEPROM
 
 	ld	hl,(C2FPALM)
 	push	hl
@@ -1548,7 +1644,8 @@ RUN_CJ1:
 ; ix - directory entry pointer
 RUN_CJ2:
 	ld	a,%00101100
-	ld	(CardMDR),a
+	ld	(CardMDR),a	; set delayed configuration triggered by JP #4000
+
 	ld	a,(ix+#02)
 	ld	(CardMDR+#05),a	; set start block
 	push	ix
@@ -1587,26 +1684,19 @@ RJP:
 	jp	(hl)
 RJPE:	nop
 
-;	ld	a,(ix+#3E)
-;	bit	2,a
-;	jp	z,R_Base
-;	ld	a,#80
-;	ld	(R_Base+5),a
-;	jp	R_Base
-;
-;RJP:
-;	ld	a,(#4000)
-;	ld	hl,(#4002)
-;	jp	(hl)
-;RJPE:	nop
-
-
 
 ; Disable autostart and selections
 DAUTO_R:
 	ld	a,#FF
 	ld	(MASSLTS),a	; nothing selected for master slot
 	ld	(SLASLTS),a	; nothing selected for slave slot
+	ld	(AUTOST),a	; no autostart
+
+	ld	a,%01100000	; write enable
+	call	EEWEN
+	ld	e,#FF		; no autostart
+	ld	a,#1C		; address
+	call	EEWR		; save autostart
 
 	ld	hl,#2105
 	call	POSIT
@@ -1616,223 +1706,39 @@ DAUTO_R:
 	call	POSIT
 	ld	hl,Spaces	; clear selection area
 	call	print	
-
-	ld	a,2
-	ld	(CardMDR+#0E),a	; set 2nd bank to autostart map
-	ld	a,(SORT)
-	or	a
-	jr	z,DSA_00
-	ld	hl,B2ON+#03
-	ld	a,(hl)
-	ld	(CardMDR+#0F),a	; show flash instead of RAM for autostart
-
-DSA_00:
-; seek to active autostart
-	ld	hl,#8000
-DSA_01:	ld	a,(hl)
-	cp	#FF
-	jr	nz,DSA_02	; next entry?
- 	inc	hl
-	ld	a,(hl)	
-	cp	#FF		; deselected?
-	jp	z,ATR_04	; do nothing
-
-; deactivate autostart entry
-	dec	hl
-	call	ATR_B_Erase
-	ld	a,#FF
-	jp	ATR_04	
-DSA_02:
-	inc	hl
-	inc	hl
-	ld	a,h
-	cp	#A0		; out of range ?
-	jp	c,DSA_01
-
-; erase autostart map
-	call	ATR_M_Erase
-	ld	hl,#8000
-	ld	a,#FF
-	jp	ATR_04	
-
-
-; Set current recod (d) for autostart
-AUTO_R:
-	ld	a,2
-	ld	(CardMDR+#0E),a	; set 2nd bank to autostart map
-	ld	a,(SORT)
-	or	a
-	jr	z,ATR_000
-	ld	hl,B2ON+#03
-	ld	a,(hl)
-	ld	(CardMDR+#0F),a	; show flash instead of RAM for autostart
-
-ATR_000:
-; seek to active autostart
-	ld	hl,#8000
-ATR_01:	ld	a,(hl)
-	cp	#FF
-	jr	nz,ATR_02	; next
- 	inc	hl
-	ld	a,(hl)	
-	cp	d		; the same record ?
-	jp	z,ATR_05	; do nothing
-	cp	#FF		; not autostart record?
-	jr	z,ATR_00	; save autostart record
-
-; deactivate record
-	dec	hl
-	call	ATR_B_Erase
-
-; save new autostart record
-	inc	hl
-	inc	hl
-	inc	hl
-ATR_00:	call	ATR_B_Prog
-ATR_05:	ld	a,d
-ATR_04:
-	exx
-	ld	c,a
-	exx
-	ld	a,1
-	ld	(CardMDR+#0E),a	; set 2nd bank to directory map
-	ld	a,(SORT)
-	or	a
-	jr	z,ATR_06
-	ld	hl,RAM_SORT+#03
-	ld	a,(hl)
-	ld	(CardMDR+#0F),a	; show RAM instead of flash for directory
-
-ATR_06:
 	ld	hl,#1005
 	call	POSIT
-	exx
-	ld	a,c
-	exx
-	cp	#FF
-	jr	nz,ATR_03
-
 	ld	hl,Spaces	; clear autostart record area
 	call	print	
 	jp	CH00
 
-ATR_03:
-	call	hexout		; print new autostart record number
-	jp	CH00
-ATR_02:
-	inc	hl
-	inc	hl
-	ld	a,h
-	cp	#A0		; out of range?
-	jp	c,ATR_01	
 
-; erase autostart map
-	call	ATR_M_Erase
-	ld	hl,#8001
-	jp	ATR_05
+; Set current record (d) for autostart
+AUTO_R:
+	ld	(DIRPOS),de	; save position
+	call 	CalcDirPos
+	jp	z,CH00		; empty record, go to menu
 
-
-ATR_B_Erase:
-	di
-	push	de
-	push	hl
-	ld	hl,RABE
-	ld	de,R_Base
-	ld	bc,RABEE-RABE
-	ldir
-	pop	hl
-	pop	de
-	jp	R_Base
-RABE:
-	ld	a,#AA
-	ld	(#8AAA),a
-	ld	a,#55
-	ld	(#8555),a
-	ld	a,#A0
-	ld	(#8AAA),a
-	xor	a
-	ld	(hl),a
-	ld	b,a
-RABE2:	ld	a,(hl)
-	xor	b
-	bit	7,a
-	jr	z,RABE1
-	xor	b
-	and	#20
-	jr	z,RABE2
-RABE1:	ret
-RABEE
-
-	
-ATR_B_Prog:
-	di
-	push	de
-	push	hl
-	ld	hl,RABT
-	ld	de,R_Base
-	ld	bc,RABTE-RABT
-	ldir
-	pop	hl
-	pop	de
-	jp	R_Base
-RABT:
-	ld	a,#AA
-	ld	(#8AAA),a
-	ld	a,#55
-	ld	(#8555),a
-	ld	a,#A0
-	ld	(#8AAA),a
+	ld	a,%01100000	; write enable
+	call	EEWEN
 	ld	a,d
-	ld	(hl),a
-	ld	b,a
-RABT2:	ld	a,(hl)
-	xor	b
-	bit	7,a
-	jr	z,RABT1
-	xor	b
-	and	#20
-	jr	z,RABT2
-RABT1:	ret
-RABTE
+	ld	e,a
+	ld	a,#1C		; address
+	call	EEWR		; save autostart
 
-
-ATR_M_Erase:
-	di
-	push	de
-	push	hl
-	ld	hl,RAME
-	ld	de,R_Base
-	ld	bc,RAMEE-RAME
-	ldir
-	pop	hl
-	pop	de
-	jp	R_Base
-RAME:
-	ld	a,#AA
-	ld	(#8AAA),a
-	ld	a,#55
-	ld	(#8555),a
-	ld	a,#80
-	ld	(#8AAA),a
-	ld	a,#AA
-	ld	(#8AAA),a
-	ld	a,#55
-	ld	(#8555),a
-	ld	a,#30
-	ld	(#8000),a
-RAME2:	ld	a,(#8000)
-	xor	#FF
-	bit	7,a
-	jr	z,RAME1
-	xor	#FF
-	and	#20
-	jr	z,RAME2
-RAME1:	ret
-RAMEE
+	ld	hl,#1005
+	call	POSIT
+	ld	de,(DIRPOS)	; positions (d=entry number, e=position on page)
+	ld	a,d
+	call	hexout		; print autostart record number
+	jp	CH00
 
 
 ; Print help information page
 Help:
+	xor	a
+	ld	(SCROLL),a	; temporarily disable scroller
+	ld	(SCRSEM),a	; reset counter
 	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
 	or	a
 	jr	nz,Help1
@@ -1875,32 +1781,16 @@ Help1:
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
-	ld 	a,(CardMDR+#0E)
-	push	af
-	ld	a,3
-	ld	(CardMDR+#0E),a	; set 2nd bank to screen data
-	ld 	a,(CardMDR+#0F)
-	push	af
-	and	%11011111
-	ld	(CardMDR+#0F),a	; set Flash instead of RAM
-
   if SPC=1
 	ld	a,#20
-	ld	(#F3B1),a
+	ld	(LINNUM),a
 	ld	hl,HelpScr1	; print help screen
-	call	print	
+	call	print_sp
 	ld	a,#18
-	ld	(#F3B1),a
+	ld	(LINNUM),a
   else
 	ld	hl,HelpScr1	; print help screen
-	call	print
-  endif
-
-  if SPC=1
-	ld	hl,#0118
-	call    POSIT
-	ld	hl,helpll
-	call	print		; print additional line
+	call	print_sp
   endif
 
 	ld	hl,(C2FPALH)
@@ -1925,6 +1815,7 @@ Wait1:
 	jr	nz,Wait1b	; action not detected?
 	jr	Wait1
 Wait1a:
+	call	CHFKEY
 	call	CHGET		; wait for a key
 Wait1b:
 	ld	hl,(C2BPALH)
@@ -1944,27 +1835,15 @@ Help2:
 
   if SPC=1
 	ld	a,#20
-	ld	(#F3B1),a
+	ld	(LINNUM),a
 	ld	hl,HelpScr2	; print help screen
-	call	print	
+	call	print_sp
 	ld	a,#18
-	ld	(#F3B1),a
+	ld	(LINNUM),a
   else
 	ld	hl,HelpScr2	; print help screen
-	call	print
+	call	print_sp
   endif
-
-  if SPC=1
-	ld	hl,#0118
-	call    POSIT
-	ld	hl,helplll
-	call	print		; print additional line
-  endif
-
-	pop	af
-	ld	(CardMDR+#0F),a	; restore value
-	pop	af
-	ld	(CardMDR+#0E),a	; restore value
 
 	ld	hl,(C2FPALH)
 	ex	de,hl
@@ -1988,6 +1867,7 @@ Wait11:
 	jr	nz,Wait11b	; action not detected?
 	jr	Wait11
 Wait11a:
+	call	CHFKEY
 	call	CHGET		; wait for a key
 Wait11b:
 	ld	hl,(C2BPALH)
@@ -2021,6 +1901,12 @@ Wait11b:
 
 ; Exit from boot menu
 Exit:
+	ld	ix,#0707
+	call	MUSSTOP		; stop music
+	call	HookOff		; disable hook
+	xor	a
+	ld      (MUSSTAT),a	; stop music
+
 	ld	hl,(C2BPALM)
 	ex	de,hl
 	ld	hl,(C2FPALM)
@@ -2039,87 +1925,6 @@ Exit:
 	xor	a
 	call	RestEnv		; restore environment (font, colors, screen)
 
-	ret
-
-
-; Fade-in effect
-; In: de (target palette)
-; In: hl (current palette)
-; In: bc (foreground/background colors)
-FadeIn:
-	ld	a,(EFF)
-	or	a
-	jr	nz,FadeL
-	ld	a,b
-	push	de
-	pop	hl
-	call	PALETTE		; set target palette without fade effect
-	ret
-FadeL:
-	ld	a,b
-	call	PALETTE		; initial palette set for color
-
-FadeL0:
-	push	bc
-	ld	bc,FDelay
-	call	Delay
-	pop	bc
-	
-	ld	a,l
-	cp	e
-	jr	z,FadeL1
-	jr	c,FadeL0a
-	dec	l
-	jr	FadeL1
-FadeL0a:
-	inc	l
-FadeL1:
-	ld	a,h
-	and	#0F
-	push	de
-	push	af
-	ld	a,d
-	and	#0F
-	ld	d,a
-	pop	af
-	cp	d
-	jr	z,FadeL2
-	jr	c,FadeL1a
-	dec	h
-	jr	FadeL2
-FadeL1a:
-	inc	h
-FadeL2:
-	pop	de
-	ld	a,h
-	and	#F0
-	push	de
-	push	af
-	ld	a,d
-	and	#F0
-	ld	d,a
-	pop	af
-	cp	d
-	jr	z,FadeL3
-	jr	c,FadeL2a
-	ld	a,h
-	sub	#10
-	ld	h,a
-	jr	FadeL3
-FadeL2a:
-	ld	a,h
-	add	#10
-	ld	h,a
-FadeL3:	
-	pop	de
-	ld	a,b
-	call	PALETTE		; set modified palette for foreground color
-	ld	a,h
-	cp	d
-	jr	nz,FadeL0
-	ld	a,l
-	cp	e
-	jr	nz,FadeL0
 	ret
 
 
@@ -2207,6 +2012,25 @@ FadeL7:
 ; Print	string
 ; Inp reg hl - point start string
 ; (hl) = 0 -> end
+print_sp:
+	ld	a,h
+	cp	#80
+	jr	c,print
+	ld 	a,(CardMDR+#0E)
+	push	af
+	ld	a,3
+	ld	(CardMDR+#0E),a	; set 2nd bank to screen data
+	ld 	a,(CardMDR+#0F)
+	push	af
+	and	%11011111
+	ld	(CardMDR+#0F),a	; set Flash instead of RAM
+	call	print
+	pop	af
+	ld	(CardMDR+#0F),a	; restore value
+	pop	af
+	ld	(CardMDR+#0E),a	; restore value
+	ret
+
 print:
 	ld	a,(hl)
 	inc	hl
@@ -2216,25 +2040,41 @@ print:
 	di
 	cp	#A7		; inverse start
 	jr	z,prinverse
-	cp	#7F		; same characters (double byte)?
-	jr	z,prdouble
 	cp	#FF		; same characters (single byte)?
 	jr	z,prsingle
+print0:
+	cp	10
+	jr	nz,print1
+	inc	hl
+	ld	a,(CSRY)
+	inc	a		; next line
+	ld	(CSRY),a
+	ld	a,1
+	ld	(CSRX),a	; start of the line
+	ld	a,(hl)
+	inc	hl
+	jr	print0
+print1:
+	cp	1
+	jr	nz,printch
+	ld	a,(hl)
+	inc	hl
+	sub	#40
 printch:
-	call	CHPUT
+	call	CHPUT_VDP
 	jr	print
 
 prinverse:
 	di
-	call	CHPUT
+	call	CHPUT_VDP
 	ld	a,(hl)
 	inc	hl
 	or	a
 	ei
 	ret	z
-	cp	#FE		; inverse stop
+	cp	#0F		; inverse stop
 	jr	nz,prinver0
-	call	CHPUT
+	call	CHPUT_VDP
 	jr	print
 prinver0:
 	cp	' '
@@ -2243,7 +2083,6 @@ prinver0:
 	jr	c,prinverp
 	cp	'6'
 	jr	nc,prinverp
-
 	add	#AA		; for numbers 1-5
 	jr	prinverse
 
@@ -2264,30 +2103,12 @@ prsingle:
 	inc	hl
 	ld	a,(hl)		; get value
 printl:
-	call	CHPUT
+	or	a
+	jr	z,print
+	call	CHPUT_VDP
 	djnz 	printl
 	pop	bc
 	inc	hl
-	ei
-	jr	print
-
-prdouble:
-	di
-	push	bc
-	ld	a,(hl)		; get counter
-	ld	b,a
-	inc	hl
-	ld	a,(hl)		; get value
-printdl:
-	push	af
-	ld	a,1
-	call	CHPUT		; output special symbol
-	pop	af
-	call	CHPUT
-	djnz 	printdl
-	pop	bc
-	inc	hl
-	ei
 	jr	print
 
 
@@ -2444,13 +2265,903 @@ EERWce:
         ret
 
 
+; Output character using the direct VDP access
+;
+CHPUT_VDP:
+	di
+	push	af
+	push	hl
+	push	de
+	push	bc
+	push	af
+	ld	hl,#0000
+	ld	de,40		; screen width
+	ld	a,(CSRY)
+	dec	a
+	or	a
+	jr	z,CHVDP_1
+	ld	b,a
+CHVDP_Loop:
+	add	hl,de
+	djnz	CHVDP_Loop
+CHVDP_1:
+	ld	a,(CSRX)
+	dec	a
+	ld	e,a
+	add	hl,de		; address in VRAM
+	ld	a,l
+	out	(#99),a	        
+	ld	a,h
+	or	#40
+	nop
+	nop
+	out	(#99),a	
+	nop
+	nop
+	pop	af
+	out	(#98),a		; print character
+	ld	a,(CSRX)
+	inc	a		; next character
+	ld	(CSRX),a
+	cp	41
+	jr	c,CHVDP_E
+	ld	a,1
+	ld	(CSRX),a
+	ld	a,(CSRY)
+	inc	a		; next line
+	ld	(CSRY),a
+CHVDP_E:
+	pop	bc
+	pop	de
+	pop	hl
+	pop	af
+	ei
+	ret
+
+
+; Enable hook for interrupt routine
+HookOn:
+	di
+	push	hl
+	push	de
+	push	bc
+	ld	hl,#FD9F
+	ld	de,ORGHOOK
+	ld	bc,5
+	ldir			; copy original hook
+	ld	a,#F7
+	ld	(MYHOOK),a	; RST #30
+	ld	a,(ERMSLT)
+	ld	(MYHOOK+1),a	; slot
+	ld	hl,IntCode
+	ld	(MYHOOK+2),hl	; address
+	ld	a,#C9
+	ld	(MYHOOK+4),a	; return
+	ld	hl,MYHOOK
+	ld	de,#FD9F
+	ld	bc,5
+	ldir			; set my hook
+	pop	bc
+	pop	de
+	pop	hl
+	ei
+	ret
+
+
+HookOff:
+	di
+	push	hl
+	push	de
+	push	bc
+	ld	hl,ORGHOOK
+	ld	a,(hl)
+	cp	#C9		; safe empty handler
+	jr	z,HookOE
+	cp	#F7		; valid handler
+	jr	z,HookOE
+	ld	a,#C9
+	ld	(ORGHOOK),a	; set safe handler
+HookOE:
+	ld	de,#FD9F
+	ld	bc,5
+	ldir			; restore original hook
+	pop	bc
+	pop	de
+	pop	hl
+	ei
+	ret
+
+
+; Interrupt handler (works on timer interrupt!)
+IntCode:
+	push	af
+	di
+;	in	a,(#99)		; read status port to sync
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	call	ORGHOOK		; call original hook code (if any)
+	di
+	ld	a,(SCROLL)
+	or	a		; scroller enabled?
+	call	nz,DoScroll	; do scroller
+	ld      a,(MUSSTAT)
+	or	a
+	ld	ix,#0707
+	call	nz,MUSPLAY	; play music
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	ei
+	pop	af
+	ret
+
+
+; Play sound with PSG
+; hl - data to play
+; bc - size
+PlaySnd:
+	push	hl
+	push	bc
+	ld	a,13
+	push	af
+SndLoop:
+	pop	af
+	di
+	out	(#A0),a
+	push	af
+	ld	a,(hl)
+	out	(#A1),a	
+	ei
+	pop	af
+	sub	1
+	push	af
+	inc	hl
+	dec	bc
+	ld	a,b
+	or	c
+	jr	nz,SndLoop
+	pop	af
+	pop	bc
+	pop	hl
+	ret
+
+
+; 24 bytes of DefConfig to compare (must be in first 8kb!)
+DefCfg
+	db	#F8,#50,#00,#85,#3F,#40
+	db	#F8,#70,#01,#8C,#3F,#60		
+	db      #F8,#90,#02,#8C,#3F,#80		
+	db	#F8,#B0,#03,#8C,#3F,#A0	
+
+
+;------------------------------------------------------------
+;
+; CARTRIDGE REGISTERS AREA, DON'T USE!
+;	
+
+	org	#4F80
+
+REGS:	ds	128
+
+;------------------------------------------------------------
+
+
+;
+; EXTRA CODE AND DATA AREA
+; The extra code and data area must start above the control registers (#4F80-#4FFF)!
+;	
+
+	org	#5000
+
+
+; Fade-in effect
+; In: de (target palette)
+; In: hl (current palette)
+; In: bc (foreground/background colors)
+FadeIn:
+	ld	a,(EFF)
+	or	a
+	jr	nz,FadeL
+	ld	a,b
+	push	de
+	pop	hl
+	call	PALETTE		; set target palette without fade effect
+	ret
+FadeL:
+	ld	a,b
+	call	PALETTE		; initial palette set for color
+
+FadeL0:
+	push	bc
+	ld	bc,FDelay
+	call	Delay
+	pop	bc
+	
+	ld	a,l
+	cp	e
+	jr	z,FadeL1
+	jr	c,FadeL0a
+	dec	l
+	jr	FadeL1
+FadeL0a:
+	inc	l
+FadeL1:
+	ld	a,h
+	and	#0F
+	push	de
+	push	af
+	ld	a,d
+	and	#0F
+	ld	d,a
+	pop	af
+	cp	d
+	jr	z,FadeL2
+	jr	c,FadeL1a
+	dec	h
+	jr	FadeL2
+FadeL1a:
+	inc	h
+FadeL2:
+	pop	de
+	ld	a,h
+	and	#F0
+	push	de
+	push	af
+	ld	a,d
+	and	#F0
+	ld	d,a
+	pop	af
+	cp	d
+	jr	z,FadeL3
+	jr	c,FadeL2a
+	ld	a,h
+	sub	#10
+	ld	h,a
+	jr	FadeL3
+FadeL2a:
+	ld	a,h
+	add	#10
+	ld	h,a
+FadeL3:	
+	pop	de
+	ld	a,b
+	call	PALETTE		; set modified palette for foreground color
+	ld	a,h
+	cp	d
+	jr	nz,FadeL0
+	ld	a,l
+	cp	e
+	jr	nz,FadeL0
+	ret
+
+
+; Initialize title for scroller
+InitTitle:
+	ld	hl,#0800+#97*8	; point to inverted space
+	ld	de,SORTBUF
+	ld	bc,8
+	call	LDIRMV		; copy data for 8 symbols from VRAM
+
+	ld	de,#0800+#E0*8
+	ld	b,11
+InitTitleL:	
+	ld	hl,SORTBUF	; point to space
+	push	de
+	push	bc
+	ld	bc,8
+	call	LDIRVM		; redefine scroller symbols
+	pop	bc
+	pop	hl
+	ld	de,8
+	add	hl,de
+	ex	hl,de
+	djnz	InitTitleL
+
+	ld	hl,#0F0A
+	call    POSIT
+	ld	hl,TitleRepl
+	call	print_sp	; print scroller placeholder
+	ret
+
+
+; Animate title default and special
+AnimTitle:
+	ld 	a,(CardMDR+#0E)
+	push	af
+	ld	a,3
+	ld	(CardMDR+#0E),a	; set 2nd bank to screen data
+	ld 	a,(CardMDR+#0F)
+	push	af
+	and	%11011111
+	ld	(CardMDR+#0F),a	; set Flash instead of RAM
+	ld	bc,EDelay*2
+	call	Delay		; delay
+  if SPC=0
+	ld	hl,TitleScrl
+	ld	de,SORTBUF
+	ld	b,10
+	exx
+	ld	hl,SORTBUF+7
+	ld	de,#0800+#E0*8	; point to symbols E0
+	ld	b,8
+	exx
+AnimLoop:
+	ld	a,(hl)		; symbol from scroller text
+	push	bc
+	push	hl
+	push	de
+	ld	h,0
+	ld	l,a
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl		; a * 8
+	ld	de,#0800
+	add	hl,de		; address of symbol's data in VRAM
+	pop	de
+	ld	bc,7
+	call	LDIRMV		; copy data for 8 symbols from VRAM
+	ld	hl,InvSpace
+	ld	de,SORTBUF+7
+	ld	bc,7
+	ldir			; create empty inverted space character
+	exx
+AnimLoop1:
+	push	bc
+	push	hl
+	push	de
+	ld	bc,7
+	call	LDIRVM		; redefine scroller symbol
+	ld	bc,EDelay
+	call	Delay		; delay
+	pop	de
+	pop	hl
+	dec	hl
+	pop	bc
+	djnz	AnimLoop1
+	ld	hl,8
+	add	hl,de
+	ex	hl,de
+	ld	hl,SORTBUF+7
+	ld	b,8
+	exx
+	ld	de,SORTBUF
+	pop	hl
+	inc	hl
+	pop	bc
+	djnz	AnimLoop
+  else
+	ld	hl,TitleScrl
+	ld	de,SORTBUF+8
+	ld	b,10
+	exx
+	ld	hl,SORTBUF
+	ld	de,#0800+#E0*8	; point to symbols E0
+	ld	b,8
+	exx
+AnimLoop:
+	push	hl
+	push	bc
+	ld	hl,InvSpace
+	ld	de,SORTBUF
+	ld	bc,7
+	ldir			; create empty inverted space character
+	pop	bc
+	pop	hl
+	ld	a,(hl)		; symbol from scroller text
+	push	bc
+	push	hl
+	push	de
+	ld	h,0
+	ld	l,a
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl		; a * 8
+	ld	de,#0800
+	add	hl,de		; address of symbol's data in VRAM
+	pop	de
+	ld	bc,7
+	call	LDIRMV		; copy data for 8 symbols from VRAM
+	exx
+AnimLoop1:
+	push	bc
+	push	hl
+	push	de
+	ld	bc,7
+	call	LDIRVM		; redefine scroller symbol
+	ld	bc,EDelay
+	call	Delay		; delay
+	pop	de
+	pop	hl
+	inc	hl
+	pop	bc
+	djnz	AnimLoop1
+	ld	hl,8
+	add	hl,de
+	ex	hl,de
+	ld	hl,SORTBUF
+	ld	b,8
+	exx
+	ld	de,SORTBUF
+	pop	hl
+	inc	hl
+	pop	bc
+	djnz	AnimLoop
+  endif
+	pop	af
+	ld	(CardMDR+#0F),a	; restore value
+	pop	af
+	ld	(CardMDR+#0E),a	; restore value
+	ret
+
+
+; Scroller routine (works on timer interrupt!)
+DoScroll:
+	ld	a,(SCRSEM)	; counter for calling scroll
+	inc	a
+	ld	(SCRSEM),a
+	cp	SCRSEMV
+	ret	c
+	xor	a
+	ld	(SCRSEM),a	; reset counter
+	ld	hl,(SCRFDAT)	; address of the symbol for scroller
+	push	hl
+	push	hl
+	pop	de
+	dec	de
+	dec	de
+	dec	de
+	dec	de
+	dec	de
+	dec	de
+	dec	de
+	dec	de		; de = hl-8
+	ld	b,31*8
+DoScrLoop:
+	sla	(hl)		; shift left with carry
+	jr	nc,DoScrL1
+	ex	hl,de
+	set	2,(hl)		; move bit to previous character
+	ex	hl,de
+DoScrL1:
+	inc	hl
+	inc	de
+	djnz	DoScrLoop
+	pop	hl
+	ld	de,#0800+#E0*8	; point to symbols E0
+	ld	b,30*8
+	ld	c,#98
+	ld	a,e
+	out	(#99),a	        
+	ld	a,d
+	or	#40		; write
+	nop
+	nop
+	out	(#99),a	
+	nop
+	nop
+;	otir			; output 240 bytes to VRAM
+OutiVRAM:
+	outi			; output byte to VRAM
+	jr	nz,OutiVRAM
+
+	ld	a,(SYMSEM)
+	inc	a		; next line (8 max)
+	ld	(SYMSEM),a
+	cp	6		; time to change symbol?
+	ret	c
+	xor	a
+	ld	(SYMSEM),a	; reset symbol semaphore
+	ld	hl,(SCRTXT)	; address of the text for scroller
+	ld	a,(hl)
+	inc	hl
+	or	a		; end of scroller?
+	jr	nz,DoScroll1
+	ld	de,ScrollerE-ScrollerS-9
+	sbc	hl,de		; start of the scroller text	
+	ld	a,(hl)
+DoScroll1:
+	ld	(SCRTXT),hl	; next character's address
+	ld	h,0
+	ld	l,a
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl		; a * 8
+	ld	de,#0800
+	add	hl,de		; address of symbol's data in VRAM
+	push	hl
+	ld	hl,(SCRFDAT)	; address of the symbol for scroller
+	ld	de,30*8
+	add	hl,de		; hl=address of hidden symbol
+	pop	de
+	ld	b,8
+	ld	c,#98
+	ld	a,e
+	out	(#99),a	        
+	ld	a,d
+	nop
+	nop
+	out	(#99),a	
+	nop
+	nop
+;	inir			; read 8 bytes from VRAM
+ReadVRAM:
+	ini			; read byte from VRAM
+	jr	nz,ReadVRAM
+	ret
+
+
+; Toggle scroller
+Scroller:
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	ld	a,(SCROLL)
+	or	a
+	jr	z,Scrol1
+
+	ld	a,%01100000	; write enable
+	call	EEWEN
+	xor	a
+	ld	(SCROLL),a	; disable scroller
+	ld	(SYMSEM),a	; reset symbol semaphore
+	ld	e,a             ; data
+	ld	a,#1D		; address
+	call	EEWR		; save scroller status
+
+	ld	hl,#0104
+	call    POSIT
+	ld	hl,StaticS
+	call	print_sp	; print default help screen line
+
+	ld	hl,fontdat+#E0*8
+	ld	de,#0800+#E0*8	; point to symbols E0
+	ld	bc,31*8
+	call	LDIRVM		; restore scroller symbols
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	jp	CH01
+Scrol1:
+	ld	a,%01100000	; write enable
+	call	EEWEN
+	ld	e,1		; data = enabled
+	ld	a,#1D		; address
+	call	EEWR		; save scroller status
+
+	xor	a
+	ld	(SYMSEM),a	; reset symbol semaphore
+	ld	hl,#0800+#E0*8	; point to symbols E0
+	ld	bc,31*8
+	call	FILVRM		; clear the scroller symbols
+
+	ld	hl,#0104
+	call    POSIT
+	ld	hl,DynamicS
+	call	print_sp	; print scroller placeholder
+	call	ScrollInit	; initialize data for scroller
+	ld	a,1
+	ld	(SCROLL),a	; enable scroller
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	jp	CH01
+
+
+; Create font data for scroller
+ScrollInit:
+	ld	de,#C000
+	ld	hl,MusicDataEnd-MusicData	; size of music
+	add	hl,de
+	ld	a,h
+	cp	#E8		; must be below #E800
+	jr	c,ScrollI1
+	xor	a
+	ld	(SCROLL),a	; disable scroller
+	ld	(SYMSEM),a	; reset symbol semaphore
+	ret
+ScrollI1:
+	ld 	a,(CardMDR+#0E)
+	push	af
+	ld	a,3
+	ld	(CardMDR+#0E),a	; set 2nd bank to screen data
+	ld 	a,(CardMDR+#0F)
+	push	af
+	and	%11011111
+	ld	(CardMDR+#0F),a	; set Flash instead of RAM
+
+	push	hl
+	ld	de,31
+	add	hl,de
+	ld	(SCRTXT),hl	; address of the text for scroller + 31 symbol
+	pop	hl
+	ld	de,ScrollerS
+	ex	hl,de
+	ld	bc,ScrollerE-ScrollerS
+	ldir			; copy scroller text to RAM
+	ld	hl,ScrollerS
+	ld	(SCRFDAT),de	; address of the symbol for scroller
+	ld	bc,31
+ScrollLoop:
+	ld	a,(hl)		; symbol from scroller text
+	push	bc
+	push	hl
+	push	de
+	push	de
+	ld	h,0
+	ld	l,a
+	add	hl,hl
+	add	hl,hl
+	add	hl,hl		; a * 8
+	ld	de,#0800
+	add	hl,de		; address of symbol's data in VRAM
+	pop	de
+	ld	bc,8
+	call	LDIRMV		; copy data for 8 symbols from VRAM
+	pop	de
+	ld	hl,8
+	ex	hl,de
+	add	hl,de		; next symbol's address
+	ex	hl,de
+	pop	hl
+	inc	hl
+	pop	bc
+	dec	bc
+	ld	a,b
+	or	c
+	jr	nz,ScrollLoop
+	xor	a
+	ld	b,9
+ScrollLoop1:
+	ld	(de),a		; fill with zeroes
+	inc	de
+	djnz	ScrollLoop1
+	pop	af
+	ld	(CardMDR+#0F),a	; restore value
+	pop	af
+	ld	(CardMDR+#0E),a	; restore value
+	ret
+
+
+; Toggle music
+Aurora:
+	push	hl
+	push	de
+	push	bc
+	push	ix
+;	push	iy
+	ld	a,%01100000	; write enable
+	call	EEWEN
+	ld      a,(MUSSTAT)
+	cp	1
+	jr	z,Aurora1
+	ld	a,1
+	ld      (MUSSTAT),a	; play music
+	jr	Aurora2
+Aurora1:
+	ld	ix,#0707
+	call	MUSSTOP		; stop music
+	xor	a
+	ld      (MUSSTAT),a	; stop music
+Aurora2:
+	ld	e,a             ; data
+	ld	a,#1B		; address
+	call	EEWR		; save music status
+;	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	jp	CH01
+
+
+; Initialize music module
+;
+MusicInit:
+	ld 	a,(CardMDR+#0E)
+	push	af
+	ld	a,3
+	ld	(CardMDR+#0E),a	; set 2nd bank to music data
+	ld 	a,(CardMDR+#0F)
+	push	af
+	and	%11011111
+	ld	(CardMDR+#0F),a	; set Flash instead of RAM
+
+	di 
+	ld	hl,MusicData
+	ld	de,#C000
+	ld	bc,7418
+	ldir			; move music player + data
+	ld	hl,PatchPlr
+	ld	de,#C849
+	ld	bc,107
+	ldir 			; patch player for PSG
+
+	call	MUSINIT		; init music module
+
+	pop	af
+	ld	(CardMDR+#0F),a	; restore value
+	pop	af
+	ld	(CardMDR+#0E),a	; restore value
+	ret
+
+PatchPlr:
+	ld	de,#A0A1	; changes to PSG ports
+	ld	bc,#FFA0	; changes to PSG ports
+	ld	hl,#C300
+	out	(c),l
+	ld	c,e
+	outi
+	ld	c,d
+	out	(c),l
+	ld	c,e
+	outi
+ 	ld	c,d
+	out	(c),l
+ 	ld	c,e
+	outi
+ 	ld	c,d
+	out	(c),l
+ 	ld	c,e
+	outi
+ 	ld	c,d
+	out	(c),l
+	ld	c,e
+	outi
+	ld	c,d
+	out	(c),l
+ 	ld	c,e
+	outi
+ 	ld	c,d
+	out	(c),l
+	db	#DD,#7C		; ld   a,xh (UNDOCUMENTED!)
+   	ld	(#C4D5),a
+	add	a,00
+ 	ld	c,e
+	out	(c),a
+	inc	l
+ 	ld	c,d
+	out	(c),l
+	db	#DD,#7D		; ld   a,xl (UNDOCUMENTED!)
+ 	ld	c,e
+	out	(c),a
+	inc	l
+ 	ld	c,d
+	out	(c),l
+ 	ld	c,e
+	outi
+	ld	c,d
+	out	(c),l
+	ld	c,e
+	outi
+	ld	c,d
+	out	(c),l
+	ld	c,e
+	outi
+	ld	c,d
+	out	(c),l
+	ld	c,e
+	outi
+ 	ld	c,d
+	out	(c),l
+ 	ld	c,e
+	outi
+	ld	a,00
+	or	a
+ 	db	#28,#0A		;jr   z,#C8B9
+ 	ld	c,d
+	out	(c),l
+	ld	c,e
+	out	(c),a
+	nop
+	nop
+	nop			; slack
+
+
+; Jump to the last used entry
+;
+LastUsed:
+	ld	a,#1A
+	call	EERD		; read last used entry
+	cp	#FF
+	jp	z,CH01
+	push	af
+	ld	a,(EFF)
+	or	a		; effects enabled?
+	jr	z,LastU00
+	push	de
+	ld	hl,(C2FPALM)
+	push	hl
+	ld	hl,(C2BPALM)
+	ex	de,hl
+	pop	hl
+	ld	b,C2FCOLM
+	ld	c,#0D
+	call	FadeOut		; fade out text
+	pop	de
+LastU00:
+	pop	af
+	or	a
+	jr	nz,LastU1
+LastU0:
+	ld	de,(DIRPOS)	; positions (d=entry number, e=position on page)
+	ld	d,0
+	ld	a,1
+	ld	(CURPAG),a	; set 1 page
+	ld	hl,#0707
+	ld	(XYPOS),hl	; default position for cursor
+	xor	a
+	ld	(LASTU),a	; last used entry
+	jp	LastUE
+LastU1:
+	ld	e,a		; save last used entry
+	ld	hl,#0001	; dircount+page
+	ld	d,0		; first entry
+	ld	b,0		; page's first entry
+LastU2:
+	push	bc
+	call 	CalcDirPos	; calc dir entry point
+	pop	bc
+	jr	nz,LastU3	; normal entry?
+	inc	d
+	ld	a,d
+	or	a		; 255+1 limit
+	jr	z,LastU0
+	jr	LastU2
+LastU3:
+	ld	a,(ix)
+	cp	e		; last used entry
+	jr	z,LastU4
+	inc	d
+	ld	a,d
+	or	a		; 255+1 limit
+	jr	z,LastU0
+	inc	h		; number of entries
+	ld	a,h
+	cp	L_STR		; number of strings on page
+	jr	c,LastU2
+	ld	h,0
+	inc	l		; next page
+	ld	b,d		; first entry on the page
+	jr	LastU2
+LastU4:
+	ld	a,d
+	ld	(LASTU),a	; last used entry
+	ld	a,l		; page of the last entry
+	ld	(CURPAG),a	; set page
+	ld	a,b
+	ld	d,a		; first entry on page
+	ld	(DIRPOS),de	; positions (d=entry number, e=position on page)
+	ld	a,h		; line number on the page
+	ld	hl,#0707	; default coordinates
+	add	l
+	ld	l,a
+	ld	(XYPOS),hl	; new position for cursor
+LastUE:
+	ld	a,(EFF)
+	or	a		; effects enabled?
+	jp	nz,Pagep
+	ld	a,#FF
+	ld	(SKIPFD),a	; skip fade enabled
+	call	PrintInf	; print page number
+	jp	Pagep1
+
+
 ; Sort directory
+;
 DirSort:
 	ld	a,(SORT)
 	or	a
 	ret	z
 
-	ld	a,#20
+	ld	a,#20		; %00100000
 	ld	(CardMDR),a	; set immediate configuration change flag, registers at #4F80
 
 	ld	hl,B2ON1
@@ -2563,32 +3274,28 @@ DSortE1:
 	ret
 
 
-; 24 bytes of DefConfig to compare (must be in first 8kb!)
-DefCfg
-	db	#F8,#50,#00,#85,#3F,#40
-	db	#F8,#70,#01,#8C,#3F,#60		
-	db      #F8,#90,#02,#8C,#3F,#80		
-	db	#F8,#B0,#03,#8C,#3F,#A0	
-
-
-;------------------------------------------------------------
+; Check for functional keys input and kill it
 ;
-; CARTRIDGE REGISTERS AREA, DON'T USE!
-;	
+CHFKEY:
+	push	af
+	push	bc
+	ld	a,(GETPNT)
+	ld	b,a
+	ld	a,(PUTPNT)
+	sub	b
+	cp	2
+	jr	c,CHFKEY_E
+	call	KILBUF
+	ld	bc,(GETPNT)
+	ld	a,'/'		; this character will not be used anywhere
+	ld	(bc),a
+	inc	bc
+	ld	(PUTPNT),bc
+CHFKEY_E:
+	pop	bc
+	pop	af
+	ret
 
-	org	#4F80
-
-REGS:	ds	128
-
-;------------------------------------------------------------
-
-
-;
-; EXTRA CODE AND DATA AREA
-; The extra code and data area must start above the control registers (#4F80-#4FFF)!
-;	
-
-	org	#5000
 
 ; Wait until the joystick keys are released
 ;
@@ -2799,7 +3506,7 @@ SetEnv:	push	af
 Delay:
 	dec	bc
 	ld	a,b
-	or	a
+	or	c
 	jr	nz,Delay
 	ret
 
@@ -2899,6 +3606,7 @@ LocDetectA:
 	ld	a,c
 	or	a		; All 16 bytes match?
 	jr	nz,LocDetectA
+	ld	a,1		; Arabic
 	jr	LocDetectE
 
 LocDetectB:	
@@ -2915,9 +3623,9 @@ LocDetectC:
 	ld	a,c
 	or	a		; All 16 bytes match?
 	jr	nz,LocDetectC
+	ld	a,2		; Korean
 
 LocDetectE:
-	ld	a,1
 	ld	(ARKOR),a	; special case for fonts set
 	ret
 
@@ -3053,15 +3761,16 @@ sldet1:	ld	c,a
 	ld	a,b
 	out	(#A8),a
 	ld	a,c
+	ei
 	ret
 
 
-; Find position of the entry in the directory
-c_dir:
+; Find position of the entry in the directory (unsorted)
 ; input d - dir index num
 ; outut	ix - dir entry pointer
 ; output Z - last/empty/deleted entry
-
+;
+CalcDirPos:
  	ld	b,0
 	or	a 
 	ld	a,d
@@ -3080,11 +3789,9 @@ c_dir:
 	ld	c,a
 	ld	ix,#8000
 	add	ix,bc		; 8000h + b*64
-
 	ld	a,(ix)
 	cp	#FF		; last record?
 	ret	z
-
 	ld	a,(ix+1)
 	or	a		; deleted/empty record?
 	ret
@@ -3093,7 +3800,7 @@ c_dir:
 ; Select entries for slots configuration screen
 ;
 SetCart1:
-	ld	a,(MASSEXP)	; master slot number
+	ld	a,(MASSLTN)	; master slot number
 	cp	#FF		; usable?
 	jp	z,CH00
 	ld	a,(ix+#04)
@@ -3117,7 +3824,7 @@ SetCart11:
 	jp	CH00
 
 SetCart2:
-	ld	a,(SLASEXP)	; slave slot number
+	ld	a,(MASSLTN)	; master slot number
 	cp	#FF		; usable?
 	jp	z,CH00
 	ld	a,(ix+#04)
@@ -3222,16 +3929,17 @@ hexout:	push	af
 	cp	58
 	jr	c,he1
 	add	a,7
-he1:	call	CHPUT
+he1:	call	CHPUT_VDP
 	pop	af
 	and 	#0F
 	add	a,48
 	cp	58
 	jr	c,he2
 	add	a,7
-he2:	call	CHPUT
+he2:	call	CHPUT_VDP
 	ret
 
+; Clear screen
 CLS:	push	af
 	push	de
 	push	bc
@@ -3247,6 +3955,11 @@ PrintTur:
 	push	hl
 	push	de
 	push	bc
+
+  if SPC=1
+	ld	a,#20
+	ld	(LINNUM),a
+  endif
 
 	ld	hl,#0818
 	call    POSIT
@@ -3280,6 +3993,12 @@ PrintT2:
 
 PrintTE:
 	call	print
+
+  if SPC=1
+	ld	a,#18
+	ld	(LINNUM),a
+  endif
+
 	pop	bc
 	pop	de
 	pop	hl
@@ -3295,7 +4014,7 @@ PrintER:
 	ld	b,36
 PrintERC:
 	ld	a,' '
-	call	CHPUT		; output empty record
+	call	CHPUT_VDP	; output empty record
 	djnz	PrintERC
 	pop	de
 	ret
@@ -3306,6 +4025,11 @@ PrintInf:
 	push	hl
 	push	de
 	push	bc
+
+  if SPC=1
+	ld	a,#20
+	ld	(LINNUM),a
+  endif
 
 	ld	hl,#2118
 	call    POSIT
@@ -3324,6 +4048,11 @@ PrintInf:
 	ld	a,(hl)
 	call	hexout		; print max directory pages
 
+  if SPC=1
+	ld	a,#18
+	ld	(LINNUM),a
+  endif
+
 	pop	bc
 	pop	de
 	pop	hl
@@ -3335,6 +4064,12 @@ PrintFrq:
 	push	hl
 	push	de
 	push	bc
+
+  if SPC=1
+	ld	a,#20
+	ld	(LINNUM),a
+  endif
+
 	ld	hl,#218
 	call    POSIT
 	ld	hl,PALmsg	; print PAL
@@ -3344,6 +4079,12 @@ PrintFrq:
 	ld	hl,NTSCmsg	; print NTSC
 PrintHZ:
 	call	print		; print current mode
+
+  if SPC=1
+	ld	a,#18
+	ld	(LINNUM),a
+  endif
+
 	pop	bc
 	pop	de
 	pop	hl
@@ -3355,6 +4096,11 @@ PrintVol:
 	push	hl
 	push	de
 	push	bc
+
+  if SPC=1
+	ld	a,#20
+	ld	(LINNUM),a
+  endif
 
 	ld	hl,#0D18
 	call    POSIT
@@ -3370,7 +4116,7 @@ PrintVol:
 	and	7
 	inc	a
 	add	#30
-	call	CHPUT		; print fmpac volume
+	call	CHPUT_VDP	; print fmpac volume
 
 	ld	hl,#1818
 	call    POSIT
@@ -3378,7 +4124,7 @@ PrintVol:
 	and	7
 	inc	a
 	add	#30
-	call	CHPUT		; print scc volume
+	call	CHPUT_VDP	; print scc volume
 
 	ld	hl,#1E18
 	call    POSIT
@@ -3389,7 +4135,12 @@ PrintVol:
 	and	7
 	inc	a
 	add	#30
-	call	CHPUT		; print PSG volume
+	call	CHPUT_VDP	; print PSG volume
+
+  if SPC=1
+	ld	a,#18
+	ld	(LINNUM),a
+  endif
 
 	pop	bc
 	pop	de
@@ -3520,7 +4271,7 @@ SlotSet0:
 	call	CheckSlot
 	jr	nz,SlotSet2
 	ld	a,#FF
-	ld	(SLASEXP),a	; slave slot not usable
+	ld	(SLASLTN),a	; slave slot not usable
 	jr	SlotSet2
 SlotSet1:
 	cp	2
@@ -3535,7 +4286,7 @@ SlotSet1:
 	call	CheckSlot
 	jr	nz,SlotSet2
 	ld	a,#FF
-	ld	(SLASEXP),a	; slave slot not usable
+	ld	(SLASLTN),a	; slave slot not usable
 SlotSet2:
 	ret
 
@@ -3544,10 +4295,11 @@ SlotSet2:
 ;
 SlotSetup:
 	xor	a
-	ld	(DUALRB),a	; no special reboot
+	ld	(SPECRB),a	; special reboot cfg
+	ld	(SPECRBS),a	; special reboot subslot cfg
+	ld	(SCROLL),a	; temporarily disable scroller
 
 	call	SlotFilter	; identify usable slots
-
 	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
 	or	a
 	jr	nz,SSetup1
@@ -3563,7 +4315,6 @@ SSetup1:
 
 SSetup2:
 	call	CLS
-
 	ld	de,#0000
 	ld	hl,(C2BPALM)
 	ld	b,C2BCOLM
@@ -3591,41 +4342,20 @@ SSetup2:
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
-	ld 	a,(CardMDR+#0E)
-	push	af
-	ld	a,3
-	ld	(CardMDR+#0E),a	; set 2nd bank to screen data
-	ld 	a,(CardMDR+#0F)
-	push	af
-	and	%11011111
-	ld	(CardMDR+#0F),a	; set Flash instead of RAM
-
   if SPC=1
 	ld	a,#20
-	ld	(#F3B1),a
+	ld	(LINNUM),a
 	ld	hl,SlotScr	; print setup screen
-	call	print	
+	call	print_sp
 	ld	a,#18
-	ld	(#F3B1),a
+	ld	(LINNUM),a
   else
 	ld	hl,SlotScr	; print setup screen
-	call	print
+	call	print_sp
   endif
 
-  if SPC=1
-	ld	hl,#0118
-	call    POSIT
-	ld	hl,Slotll
-	call	print		; print additional line
-  endif
-
-	pop	af
-	ld	(CardMDR+#0F),a	; restore value
-	pop	af
-	ld	(CardMDR+#0E),a	; restore value
-
-	ld	a,#38
-	ld	(CardMDR),a	; set delayed config
+	ld	a,#38		; %00111000
+	ld	(CardMDR),a	; set delayed config with SCC enabled
 	xor	a
 	ld	(CardMDR+#05),a	; no entry for master slot
 	ld	(CardMDR+#29),a	; no second slot registers
@@ -3633,32 +4363,80 @@ SSetup2:
 	ld	(CardMDR+#2B),a	; no entry for slave slot
 	ld	(CardMDR+#2F),a	; no second slot registers
 
-	ld	hl,#030C
-	call    POSIT
-	ld	a,(MASSLTN)	; master slot number
-	add	'0'
-	call	CHPUT		; print master slot number
-	ld	hl,#0312
-	call    POSIT
-	ld	a,(SLASEXP)	; slave slot number
-	cp	#FF		; disabled?
-	jr	z,SSetup21
-	ld	a,(SLASLTN)
-	add	'0'
-	call	CHPUT		; print slave slot number
-
-SSetup21:
 	xor	a
 	ld	(SLOTFAD),a	; slot setup screen redraw
 	ld	a,1
 	ld	(SELITEM),a	; set default selected value
+	ld	hl,#130B
+	ld	(SETXY),hl
 
 SSetupPr:
 	call	HideCur
+
+	ld	hl,#030C
+	call    POSIT
+	ld	a,(MASSLTN)	; master slot number
+	add	'0'
+	call	CHPUT_VDP	; print master slot number
+	ld	hl,#0311
+	call    POSIT
+	ld	a,#20
+	call	CHPUT_VDP	; clear values for slave slot
+	ld	hl,#0312
+	call    POSIT
+	ld	a,#20
+	call	CHPUT_VDP	; clear values for slave slot
+	ld	hl,#0313
+	call    POSIT
+	ld	a,#20
+	call	CHPUT_VDP	; clear values for slave slot
+	ld	a,(MASSLAV)
+	cp	#FF		; slave slot as master's subslot allowed?
+	jr	z,SSetup201
+	ld	a,4
+	ld	(SLASLTN),a	; slave slot enabled in subslot mode
+	ld	hl,#0311
+	call    POSIT
+	ld	a,(MASSLTN)	; master slot number
+	add	'0'
+	call	CHPUT_VDP	; print master slot number for slave slot
+	ld	hl,#0312
+	call    POSIT
+	ld	a,#1A
+	call	CHPUT_VDP	; print dot
+	ld	a,(MASSLAV)
+	or	a
+	jr	nz,SSetup200
+	ld	hl,#0313
+	call    POSIT
+	ld	a,#19
+	call	CHPUT_VDP	; print undefined slot number (empty square)
+	jr	SSetup21
+SSetup200:
+	ld	hl,#0313
+	call    POSIT
+	ld	a,(MASSLAV)
+	cp	4
+	jr	nz,SSetup200a
+	dec	a
+SSetup200a:
+	add	'0'
+	call	CHPUT_VDP	; print slave subslot number
+	jr	SSetup21
+SSetup201:
+	ld	hl,#0312
+	call    POSIT
+	ld	a,(SLASLTN)	; slave slot number
+	cp	#FF		; disabled?
+	jr	z,SSetup21
+	ld	a,(SLASLTN)
+	add	'0'
+	call	CHPUT_VDP	; print slave slot number
+
+SSetup21:
 	ld	a,(MASSEXP)
 	or	a		; master slot expanded?
-	jp	nz,SSLoop00
-
+	jr	nz,SSLoop00
 	ld	hl,#060B
 	call    POSIT
 	ld	hl,Prislot
@@ -3678,17 +4456,15 @@ SSLoop00:
 	ld	hl,#250A
 	call    POSIT
 	ld	a,'N'
-	call	CHPUT		; non-expanded flag for master slot
+	call	CHPUT_VDP	; non-expanded flag for master slot
 
 	ld	a,(MASSEXP)
 	or	a		; master slot expanded?
 	jp	z,SSetup3
-	cp	#FF		; master slot expansion disabled
-	jp	z,SSetup3
 	ld	hl,#250A
 	call    POSIT
 	ld	a,'Y'
-	call	CHPUT		; expanded flag for master slot
+	call	CHPUT_VDP	; expanded flag for master slot
 
 	ld	b,4
 	ld	de,#060B
@@ -3713,12 +4489,7 @@ SSLoop1:
 	pop	af
 	and	%00000011
 	add	'0'
-	call	CHPUT		; print slot number for SCC
-
-;	ld	hl,#130B
-;	call    POSIT
-;	ld      hl,Select1
-;	call	print		; print SCC device name
+	call	CHPUT_VDP	; print slot number for SCC
 
 	ld	hl,#0F0C
 	call    POSIT
@@ -3727,15 +4498,22 @@ SSLoop1:
 	rra
 	and	%00000011
 	add	'0'
-	call	CHPUT		; print slot number for IDE
+	call	CHPUT_VDP	; print slot number for IDE
 	ld	hl,#130C
 	call    POSIT
         ld      hl,Select2
 	ld	a,(DUOSLCF)
-	bit	5,a		; enabled?
+	bit	5,a		; IDE enabled?
 	jr	nz,SSetupPr1
         ld      hl,Select0
 SSetupPr1:
+	ld	a,(MASSLAV)
+	cp	#FF		; subslot for slave slot enabled?
+	jr	z,SSetupPr11
+	bit	0,a		; subslot assignment enabled?
+	jr	z,SSetupPr11
+        ld      hl,Select5
+SSetupPr11:
 	call	print		; print IDE device name
 
 	ld	hl,#0F0D
@@ -3747,15 +4525,22 @@ SSetupPr1:
 	rra
 	and	%00000011
 	add	'0'
-	call	CHPUT		; print slot number for RAM
+	call	CHPUT_VDP	; print slot number for RAM
 	ld	hl,#130D
 	call    POSIT
         ld      hl,Select3
 	ld	a,(DUOSLCF)
-	bit	6,a		; enabled?
+	bit	6,a		; RAM enabled?
 	jr	nz,SSetupPr2
         ld      hl,Select0
 SSetupPr2:
+	ld	a,(MASSLAV)
+	cp	#FF		; subslot for slave slot enabled?
+	jr	z,SSetupPr22
+	bit	1,a		; subslot assignment enabled?
+	jr	z,SSetupPr22
+        ld      hl,Select5
+SSetupPr22:
 	call	print		; print RAM device name
 
 	ld	hl,#0F0E
@@ -3769,15 +4554,22 @@ SSetupPr2:
 	rra
 	and	%00000011
 	add	'0'
-	call	CHPUT		; print slot number for FMPAC
+	call	CHPUT_VDP	; print slot number for FMPAC
 	ld	hl,#130E
 	call    POSIT
         ld      hl,Select4
 	ld	a,(DUOSLCF)
-	bit	7,a		; enabled?
+	bit	7,a		; FMPAC enabled?
 	jr	nz,SSetupPr3
         ld      hl,Select0
 SSetupPr3:
+	ld	a,(MASSLAV)
+	cp	#FF		; subslot for slave slot enabled?
+	jr	z,SSetupPr33
+	bit	2,a		; subslot assignment enabled?
+	jr	z,SSetupPr33
+        ld      hl,Select5
+SSetupPr33:
 	call	print		; print FMPAC device name
 
 SSetup3:
@@ -3788,13 +4580,14 @@ SSetup3:
 	call    POSIT
         ld      hl,Select0
 	call	print		; print empty for SCC device name
-SSetup31:
-	ld	a,(SLASEXP)
-	cp	#FF		; slave slot expansion disabled?
-	jr	z,SSetup4
-	or	a
-	jr	nz,SSLoop33
 
+SSetup31:
+	ld	a,(SLASLTN)
+	cp	#FF		; slave slot usable?
+	jr	z,SSetup4
+	ld	a,(SLASEXP)
+	or	a		; slave slot expansion disabled?
+	jr	nz,SSLoop33
 	ld	hl,#0611
 	call    POSIT
 	ld	hl,Prislot
@@ -3811,9 +4604,8 @@ SSLoop3:
 	call	print		; print empty lines of slave slot
 	djnz	SSLoop3
 
-
 	ld	a,(SLASLTS)	; record for slave slot
-	cp	#FF
+	cp	#FF		; empty?
 	jr	nz,SSLoop33
 	ld	hl,#1311
 	call    POSIT
@@ -3824,7 +4616,7 @@ SSLoop33:
 	ld	hl,#2510
 	call    POSIT
 	ld	a,'N'
-	call	CHPUT		; non-expanded flag for slave slot
+	call	CHPUT_VDP	; non-expanded flag for slave slot
 
 	ld	a,(SLASEXP)
 	or	a		; slave slot expanded?
@@ -3832,7 +4624,7 @@ SSLoop33:
 	ld	hl,#2510
 	call    POSIT
 	ld	a,'Y'
-	call	CHPUT		; print expanded flag for slave slot
+	call	CHPUT_VDP	; print expanded flag for slave slot
 
 	ld	bc,#0430
 	ld	de,#0611
@@ -3848,26 +4640,33 @@ SSLoop2:
 	inc	l
 	ex	hl,de
 	ld	a,c
-	call	CHPUT
+	call	CHPUT_VDP
 	inc	c
 	ld	d,#06
 	djnz	SSLoop2
 
 SSetup4:
-	ld	hl,#1B16
+	ld	hl,#2316
 	call    POSIT
 	ld	a,'N'
-	call	CHPUT		; no slot expansion
-	ld	a,(NOSLEXP)	; simple values enabled?
-	or	a
+	call	CHPUT_VDP	; slave slot not used as master's subslot
+	ld	a,#9D
+	call	CHPUT_VDP
+	ld	hl,#FFFF
+	ld	(CSRY),hl
+	ld	a,(MASSLAV)
+	cp	#FF		; slave slot as master's subslot enabled?
 	jr	z,SSetup5
-	ld	hl,#1B16
+	ld	hl,#2316
 	call    POSIT
 	ld	a,'Y'
-	call	CHPUT		; slot expansion
+	call	CHPUT_VDP	; slave used as master's subslot
+	ld	a,#9D
+	call	CHPUT_VDP
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 
 SSetup5:
-	call	HideCur
 	ld	a,(MASSLTS)	; selection for master slot
 	or	a		; scc+?
 	jr	nz,SSetup51
@@ -3875,10 +4674,12 @@ SSetup5:
 	call    POSIT		; put cursor on first device
 	ld	hl,Select1
 	call	print		; print device name
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	jr	SSetup7
 SSetup51:
 	ld	d,a
-	call 	c_dir
+	call 	CalcDirPos
 	jr	z,SSetup7	; empty record?
 	push	ix
 	pop	hl
@@ -3896,10 +4697,11 @@ SSetup51:
 	call    POSIT		; put cursor on first <-empty->
 	ld	hl,SORTBUF
 	call	print		; copy record name
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 
 SSetup7:
-	call	HideCur
-	ld	a,(SLASEXP)
+	ld	a,(SLASLTN)
 	cp	#FF		; slave slot disabled?
 	jr	z,SSetup8
 	ld	a,(SLASLTS)	; record for slave slot
@@ -3909,10 +4711,12 @@ SSetup7:
 	call    POSIT		; put cursor on second <-empty->
 	ld	hl,Select0
 	call	print		; print device name
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	jr	SSetup8
 SSetup75:
 	ld	d,a
-	call 	c_dir
+	call 	CalcDirPos
 	jr	z,SSetup8	; empty record?
 	push	ix
 	pop	hl
@@ -3930,11 +4734,12 @@ SSetup75:
 	call    POSIT		; put cursor on first <-empty->
 	ld	hl,SORTBUF
 	call	print		; copy record name
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 
 SSetup8:
 	call	ShowCur
-	ld	hl,(SETXY)
-	call    POSIT		; set cursor to the next position
+
 	ld	a,(SLOTFAD)
 	or	a
 	jr	nz,SltLoop
@@ -3953,7 +4758,12 @@ SSetup8:
 
 	call	ENADISP		; enable display
 
+	call	ShowCur
+	
 SltLoop:
+  if SPC=1
+	call	BlinkSym
+  endif
 	call	KILBUF
 	call	KILJOY
 	call	KeyJoyDelay	; delay for interface
@@ -3965,8 +4775,14 @@ SltLoop:
 	jr	nz,SltL3	; action detected?
 	jr	SltLoop
 SltL2:
+	call	CHFKEY
 	call	CHGET		; wait for a key
 SltL3:
+  if SPC=1
+	push	af
+	call	StopBlink
+	pop	af
+  endif
 	cp	27		; ESC
 	jp	z,SltEnd
 	cp	30		; UP
@@ -3988,18 +4804,27 @@ Slt_Val:
 	or	a
 	jr	nz,Slt_Val1
 	ld	a,(MASSEXP)
-	cp	#FF		; expansion disabled?
-	jr	z,SltLoop
-	ld	a,(NOSLEXP)	; slot expansion?
-	or	a
-	jr	nz,SltLoop
-	ld	a,(MASSEXP)
 	or	a		; master slot expanded?
 	jr	z,Slt_Val01
-	ld	a,#FF
-Slt_Val01:
-	inc	a		; invert selection
+	xor	a		; not expanded
 	ld	(MASSEXP),a
+	ld	a,(DUOSLCF)
+	and	%00001111
+	or	%00010000
+	ld	(DUOSLCF),a	; save slots configuration
+	jp	Slt_Val40
+Slt_Val01:
+	ld	a,#FF		; expanded
+	ld	(MASSEXP),a
+	ld	a,(DUOSLCF)
+	and	%00001111
+	or	%11110000	
+	ld	(DUOSLCF),a	; slots configuration
+	ld	a,(MASSLAV)
+	cp	#FF
+	jp	z,SSetupPr
+	xor	a
+	ld	(MASSLAV),a	; enable slave slot as master's subslot
 	jp	SSetupPr
 
 Slt_Val1:
@@ -4007,9 +4832,6 @@ Slt_Val1:
 	jp	nc,Slt_Val2
 	cp	1
 	jp	nz,Slt_Val100
-	ld	a,(MASSEXP)
-	cp	#FF		; master slot disabled?
-	jp	z,SltLoop
 	ld	a,(MASSLTS)	; master slot assigment
 	cp	#FF		; empty
 	jr	z,Slt_Val0F
@@ -4020,7 +4842,7 @@ Slt_Val1:
 	jr	Slt_Val031
 Slt_Val030:
 	ld	d,a
-	call 	c_dir		; calc dir entry point
+	call 	CalcDirPos	; calc dir entry point
 Slt_Val031:
 	push	ix
 	pop	hl
@@ -4051,6 +4873,7 @@ Slt_Val0N:
 Slt_Val032:
 	ld	a,d		; record number
 	ld	(MASSLTS),a	; master slot save
+	call	HideCur
 	jp	SSetup5
 Slt_Val0F:
 	xor	a
@@ -4060,6 +4883,8 @@ Slt_Val0F:
 	call    POSIT
         ld      hl,Select1
 	call	print		; print SCC+ device name
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	jp	SSetup5
 Slt_Val0E:
 	ld	a,#FF
@@ -4069,73 +4894,138 @@ Slt_Val0E:
 	call    POSIT
         ld      hl,Select0
 	call	print		; print select for slave slot
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	jp	SSetup5
 
 Slt_Val100:
 	cp	2
 	jr	nz,Slt_Val11
+	call	HideCur
 	ld	hl,#130C
 	call    POSIT
+        ld      hl,Select0
 	ld	a,(DUOSLCF)
 	bit	5,a		; IDE enabled?
-	jr	z,Slt_Val10
+	jr	z,Slt_Val102
 	push	af
-	call	HideCur
-        ld      hl,Select0
+	ld	a,(MASSLAV)
+	cp	#FF		; slave slot used as subslot of master?
+	jr	z,Slt_Val101
+        ld      hl,Select5	; enable slot substitution
+	bit	0,a		; assignment enabled?
+	jr	nz,Slt_Val1001
+	ld	a,%00000001	; enable slot substitution for IDE
+	ld	(MASSLAV),a
+	call	print		; print substitution
+	pop	af
+	ld	hl,#FFFF
+	ld	(CSRY),hl
+	jp	SSetupPr
+Slt_Val1001:
+	and	%11111110	; disable slot substitution
+	ld	(MASSLAV),a
+Slt_Val101:
 	call	print		; erase the device
 	pop	af
 	res	5,a		; disable IDE
 	ld	(DUOSLCF),a
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	jp	SSetupPr
-Slt_Val10:
+Slt_Val102:
 	push	af
 	call	HideCur
         ld      hl,Select2
 	call	print		; erase the device
 	pop	af
-	set	5,a		; disable IDE
+	set	5,a		; enable IDE
 	ld	(DUOSLCF),a
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	jp	SSetupPr
+
 Slt_Val11:
 	cp	3
 	jr	nz,Slt_Val13
+	call	HideCur
 	ld	hl,#130D
 	call    POSIT
-	ld	a,(DUOSLCF)
-	bit	6,a		; IDE enabled?
-	jr	z,Slt_Val12
-	push	af
-	call	HideCur
         ld      hl,Select0
+	ld	a,(DUOSLCF)
+	bit	6,a		; RAM enabled?
+	jr	z,Slt_Val112
+	push	af
+	ld	a,(MASSLAV)
+	cp	#FF		; slave slot used as subslot of master?
+	jr	z,Slt_Val111
+        ld      hl,Select5	; enable slot substitution
+	bit	1,a		; assignment enabled?
+	jr	nz,Slt_Val110
+	ld	a,%00000010	; enable slot substitution for RAM
+	ld	(MASSLAV),a
+	call	print		; print substitution
+	pop	af
+	ld	hl,#FFFF
+	ld	(CSRY),hl
+	jp	SSetupPr
+Slt_Val110:
+	and	%11111101	; disable slot substitution
+	ld	(MASSLAV),a
+Slt_Val111:
 	call	print		; erase the device
 	pop	af
-	res	6,a		; disable IDE
+	res	6,a		; disable RAM
 	ld	(DUOSLCF),a
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	jp	SSetupPr
-Slt_Val12:
+Slt_Val112:
 	push	af
 	call	HideCur
         ld      hl,Select3
 	call	print		; erase the device
 	pop	af
-	set	6,a		; disable RAM
+	set	6,a		; enable RAM
 	ld	(DUOSLCF),a
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	jp	SSetupPr
+
 Slt_Val13:
 	cp	4
 	jr	nz,Slt_Val2
+	call	HideCur
 	ld	hl,#130E
 	call    POSIT
+        ld      hl,Select0
 	ld	a,(DUOSLCF)
-	bit	7,a		; RAM enabled?
+	bit	7,a		; FMPAC enabled?
 	jr	z,Slt_Val14
 	push	af
-	call	HideCur
-        ld      hl,Select0
+	ld	a,(MASSLAV)
+	cp	#FF		; slave slot used as subslot of master?
+	jr	z,Slt_Val131
+        ld      hl,Select5	; enable slot substitution
+	bit	2,a		; assignment enabled?
+	jr	nz,Slt_Val130
+	ld	a,%00000100	; enable slot substitution for FMPAC
+	ld	(MASSLAV),a
+	call	print		; print substitution
+	pop	af
+	ld	hl,#FFFF
+	ld	(CSRY),hl
+	jp	SSetupPr
+Slt_Val130:
+	and	%11111011	; disable slot substitution
+	ld	(MASSLAV),a
+Slt_Val131:
 	call	print		; erase the device
 	pop	af
 	res	7,a		; disable FMPAC
 	ld	(DUOSLCF),a
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	jp	SSetupPr
 Slt_Val14:
 	push	af
@@ -4143,25 +5033,26 @@ Slt_Val14:
         ld      hl,Select4
 	call	print		; erase the device
 	pop	af
-	set	7,a		; disable FMPAC
+	set	7,a		; enable FMPAC
 	ld	(DUOSLCF),a
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	jp	SSetupPr
 
 Slt_Val2:
 	cp	5
 	jr	nz,Slt_Val3
-	ld	a,(SLASEXP)
-	cp	#FF		; slave slot disabled?
-	jp	z,SltLoop
-	ld	a,(NOSLEXP)	; slot expansion?
-	or	a
-	jp	nz,SltLoop
+	ld	a,(MASSLAV)
+	cp	#FF		; slave slot used as subslot of master?
+	jp	nz,SSetupPr
 	ld	a,(SLASEXP)
 	or	a		; slave slot expanded?
 	jr	z,Slt_Val21
-	ld	a,#FF
+	xor	a		; not expanded
+	ld	(SLASEXP),a
+	jp	SSetupPr
 Slt_Val21:
-	inc	a		; invert selection
+	ld	a,#FF		; expanded
 	ld	(SLASEXP),a
 	jp	SSetupPr
 
@@ -4170,7 +5061,7 @@ Slt_Val3:
 	jr	nc,Slt_Val4
 	cp	6
 	jp	nz,SltLoop
-	ld	a,(SLASEXP)
+	ld	a,(SLASLTN)
 	cp	#FF		; slave slot disabled?
 	jp	z,SltLoop
 	ld	a,(SLASLTS)	; slave slot assigment
@@ -4181,7 +5072,7 @@ Slt_Val3:
 	jr	Slt_Val31
 Slt_Val30:
 	ld	d,a
-	call 	c_dir		; calc dir entry point
+	call 	CalcDirPos	; calc dir entry point
 Slt_Val31:
 	push	ix
 	pop	hl
@@ -4214,6 +5105,7 @@ Slt_ValN:
 Slt_Val32:
 	ld	a,d		; record number
 	ld	(SLASLTS),a	; slave slot empty
+	call	HideCur
 	jp	SSetup7
 Slt_ValE:
 	ld	a,#FF
@@ -4223,6 +5115,8 @@ Slt_ValE:
 	call    POSIT
         ld      hl,Select0
 	call	print		; print select for slave slot
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	jp	SSetup7
 
 ; move to a different slot (new feature?)
@@ -4230,51 +5124,42 @@ Slt_ValE:
 Slt_Val4:
 	cp	10
 	jp	nz,SltLoop
-	ld	a,(NOSLEXP)
-	or	a
-	jr	z,Slt_Val42
+	ld	a,(MASSLAV)
+	cp	#FF		; slave slot enabled as master's subslot?
+	jr	nz,Slt_Val40
 	xor	a
-	ld	(NOSLEXP),a	; simple values disabled
-	ld	a,(SLASEXP)
-	cp	#FF		; slave slot disabled
-	jr	z,SltVal40
-	ld	a,1
-	ld	(SLASEXP),a	; slave slot expanded
-SltVal40:
-	ld	a,(MASSEXP)
-	cp	#FF		; master slot not expandable?
-	jr	nz,SltVal41
-	ld	a,%00010001
-	ld	(DUOSLCF),a	; slots configuration
+	ld	(MASSLAV),a	; slave as master's subslot allowed, but empty
+	ld	(SLASEXP),a	; slave slot expansion disabled
+	ld	a,4
+	ld	(SLASLTN),a	; slave slot enabled in subslot mode
+	ld	a,#FF
+	ld	(MASSEXP),a	; master slot expansion enabled
+	ld	a,(DUOSLCF)
+	or	%11110000	; enable all devices of master slot
+	ld	(DUOSLCF),a
 	jp	SSetupPr
-SltVal41:
-	ld	a,1
-	ld	(MASSEXP),a	; master slot expanded
-	ld	a,%11110001
-	ld	(DUOSLCF),a	; slots configuration
-	jp	SSetupPr
-Slt_Val42:
-	ld	a,1
-	ld	(NOSLEXP),a	; simple values enabled
-	ld	a,(SLASEXP)
-	cp	#FF		; slave slot not expandable?
-	jr	z,SltVal43
+Slt_Val40:
+	ld	a,#FF
+	ld	(MASSLAV),a	; slave as master's subslot not allowed
 	xor	a
-	ld	(SLASEXP),a	; slave slot not expanded
-SltVal43:
-	ld	a,%00010001	
-	ld	(DUOSLCF),a	; slots configuration
-	ld	a,(MASSEXP)
-	cp	#FF		; master slot not expandable?
-	jr	z,SltVal44
-	xor	a
-	ld	(MASSEXP),a	; master slot not expanded
+	ld	(SLASEXP),a	; slave slot expansion disabled
+	call	SlotFilter	; identify usable slots to check if secondary slot is found
+	call	HideCur
+	ld	b,4
+	ld	de,#0611
+SSLoop4:
+	ex	hl,de
+	call    POSIT
+	inc	l
+	ex	hl,de
+	ld	hl,Subempt
+	call	print		; print empty lines of slave slot
+	djnz	SSLoop4
+	ld	hl,#2510
+	call    POSIT
+	ld	a,' '
+	call	CHPUT_VDP	; clear expanded flag for slave slot
 	jp	SSetupPr
-SltVal44:
-	ld	a,%11110001	
-	ld	(DUOSLCF),a	; slots configuration
-	jp	SSetupPr
-
 
 SltPrevItem:
 	ld	hl,(SETXY)
@@ -4295,8 +5180,8 @@ SltPrev11:
 	jr	nz,SltPrev13
 	ld	h,#13
 	ld	a,(MASSEXP)
-	cp	1
-	jr	nz,SltPrev12
+	or	a
+	jr	z,SltPrev12
 	ld	a,b
 	dec	l
 	jr	SltPrevE
@@ -4315,7 +5200,7 @@ SltPrev14:
 	cp	10		; slave slot expansion flag?
 	jp	nz,SltLoop
 	ld	h,#13
-	ld	a,(SLASEXP)
+	ld	a,(SLASLTN)
 	cp	#FF		; slave slot disabled?
 	jr	z,SltPrev15
 	ld	a,(SLASEXP)
@@ -4330,8 +5215,8 @@ SltPrev145:
 	jr	SltPrevE
 SltPrev15:
 	ld	a,(MASSEXP)
-	cp	1
-	jr	z,SltPrev16
+	or	a
+	jr	nz,SltPrev16
 	ld	a,2		; point to unexpanded master slot first selection device
 	ld	l,#0B
 	jr	SltPrevE
@@ -4362,11 +5247,14 @@ SltNext2:
 	cp	5
 	jr	nc,SltNext5
 	ld	a,(MASSEXP)
-	cp	1		; master slot expanded?
-	jr	z,SltNext3
+	or	a		; master slot expanded?
+	jr	nz,SltNext3
 	ld	a,(SLASEXP)
+	or	a		; slave slot disabled?
+	jr	nz,SltNext35
+	ld	a,(SLASLTN)
 	cp	#FF		; slave slot disabled?
-	jr	z,SltNext35
+	jr	z,SltNext7
 	ld	hl,#2510	; point to expanded flag of slave slot
 	ld	a,4
 	jr	SltNextE
@@ -4374,11 +5262,11 @@ SltNext3:
 	ld	a,b
 	cp	4		; last device in master slot?
 	jr	nz,SltNextE
-	ld	a,(SLASEXP)
+	ld	a,(SLASLTN)
 	cp	#FF		; slave slot disabled?
 	jr	nz,SltNext4
 SltNext35:
-	ld	hl,#1B16	; point to global expansion config
+	ld	hl,#2316	; point to slave slot as master's subslot
 	ld	a,9
 	jr	SltNextE
 SltNext4:
@@ -4401,7 +5289,7 @@ SltNext6:
 	cp	9		; last device on slave slot
 	jr	nz,SltNextE
 SltNext7:
-	ld	hl,#1B16	; point to global expansion config
+	ld	hl,#2316	; point to slave slot as master's subslot
 	ld	a,9
 SltNextE:
 	inc	a		; next item
@@ -4411,7 +5299,7 @@ SltNextE:
 	jp	SltLoop
 
 SltReset:
-	ld	a,(SLASEXP)	; secondary slot usable?
+	ld	a,(SLASLTN)	; secondary slot usable?
 	cp	#FF
 	jr	nz,SltReset00
 	ld	a,(MASSLTS)	; master slot selection
@@ -4425,6 +5313,13 @@ SltReset00:
 	cp	#FF
 	jp	z,SltLoop
 SltReset0:
+	ld	a,(MASSLAV)	; slave as master's subslot
+	or	a		; undefined selection?
+	jp	z,SltLoop
+
+	ld	a,%00111000
+	ld	(CardMDR),a	; set delayed configuration triggered by JP #0000 + SCC enabled
+
 	call	HideCur
 	xor	a
 	ld	b,a
@@ -4436,7 +5331,7 @@ SltReset0:
 	and	%00110000
 	or	b
 	ld	b,a
-	ld	a,(SLASEXP)	; secondary slot enabled?
+	ld	a,(SLASLTN)	; secondary slot enabled?
 	cp	#FF
 	jp	z,SltReset6
 	ld	a,(SLASLTN)	; slave slot number
@@ -4446,9 +5341,14 @@ SltReset0:
 	or	a
 	jr	z,SltReset1
 	ld	a,(DUOSLCF)	; device configuration
-	rla
-	rla
-	and	%00001100	; apply second slot extension number
+	and	%00001111	; remove master slot data
+	bit	0,a
+	jr	z,SltReset01
+	and	%00000000	; zero subslot set
+SltReset01:
+
+; Correct subslot number in next version!	
+
 	or	b
 	ld	b,a		; b = slots configuration
 SltReset1:
@@ -4459,7 +5359,7 @@ SltReset1:
 	jr	z,SltReset6
 	ld	d,a		; d = slave slot assignment
 	push	bc
-	call	c_dir		; locate directory record
+	call	CalcDirPos	; locate directory record
 	pop	bc
 	jp	z,SltEnd
 	ld	a,(ix+#02)	; starting block
@@ -4516,8 +5416,8 @@ SltReset44:
 	ld	(CardMDR+#2F),a	; shift for mini-ROM in the 64kb block (8kb step)
 	xor	a
 SltReset5:
-	or	b
-	ld	b,a
+	or	b		; merge slot configuration to slave mapper
+	ld	b,a		; b = slot configuration + slave mapper
 SltReset6:
 	ld	a,b
 	ld	(CardMDR+#2A),a	; set SCART_SLT for the devices on boot
@@ -4530,23 +5430,22 @@ SltReset6:
 	and	%00001111	; set configuration devices
 	ld	b,a
 	ld	a,(MASSEXP)
-	rra
-	rra
 	and	%10000000
 	or	b		; set master expansion slot
 	bit	2,a
 	jr	z,SltReset7
-	set	6,a		; enable RAM
+	set	6,a		; enable MMM mapper reading with RAM
+	set	4,a		; enable port 3C
 SltReset7:
 	bit	3,a
 	jr	z,SltReset8
-	set	5,a		; enable FMPAC
+	set	5,a		; enable YM2413 with FMPAC
 SltReset8:
 	ld	(CardMDR+#1E),a	; set MCONF for the devices
 
 	xor	a
 	ld	b,a
-	ld	a,(SLASEXP)	; secondary slot enabled?
+	ld	a,(SLASLTN)	; secondary slot enabled?
 	cp	#FF
 	jr	z,SltReset9
 	ld	a,(SLASLTS)	; selection for slave slot
@@ -4554,25 +5453,88 @@ SltReset8:
 	jr	z,SltReset9
 	set	7,b		; enable second cartridge
 	set	6,b		; second cartidge in arbitrary slot
-	ld	a,(SLASEXP)	; secondary slot enabled?
+	ld	a,(SLASEXP)	; secondary slot expanded?
 	or	a
 	jr	z,SltReset9
 	set	5,b		; second slot expanded
+	set	2,b		; allow to read from #FFFF
 SltReset9:
 	ld	a,b
 	res	4,a		; main cartridge slot untouched!
-	ld	(CardMDR+#29),a	; set MCONF for the devices
+	ld	(CardMDR+#29),a	; set dual slot config
 
+	ld	a,(SLASLTN)	; secondary slot enabled?
+	cp	#FF
+	jr	z,SltReset90
+	ld	a,(MASSLAV)
+	cp	#FF		; slave slot used as subslot of master?
+	jr	z,SltReset90
+	or	a		; no subslot selected?
+	jr	z,SltReset90
+	ld	b,a
+	ld	c,a
+	ld	a,(CardMDR+#29)
+	res	6,a		; slave used as subslot of master
+	res	5,a		; slave not expanded
+	ld	(CardMDR+#29),a
 	ld	a,(CardMDR+#2A)
-	and	%11000000
-	or	a		; mini ROM?
-	jr	z,SltReset91
-	cp	%01000000	; K4?
-	jr	z,SltReset91
-	ld	a,(CardMDR+#2A)
-	or	%11000000	; set SCC in master slot
-	ld	(CardMDR+#2A),a	; set SCART_SLT for the devices on boot
-SltReset91:
+	and	%11110000	; clear bits for slave slot and subslot
+	push	af
+	ld	a,b
+	and	%00000111
+	cp	4		; %00000100=4 for FMPAC?
+	jr	nz,SltReset9z
+	dec	a		; subslot 3
+SltReset9z:
+	rla			; a = substituted slot
+	rla
+	ld	b,a		; slave subslot in bits 2,3
+	pop	af
+	or	b		; adjust subslot number (bits 2,3 = slave subslot in master's slot)
+	push	af
+	ld	a,(MASSLTN)
+	and	%00000011
+	ld	b,a		; master slot in bits 0,1
+	pop	af
+	and	%11111100
+	or	b		; set slave slot the same as master
+	ld	(CardMDR+#2A),a
+	ld	a,c
+	bit	2,a		; slave instead of FMPAC enabled?
+	jr	z,SltReset9a
+	ld	a,(CardMDR+#1E)
+	res	3,a
+	res	5,a		; disable FMPAC
+	ld	(CardMDR+#1E),a	; set MCONF for the devices
+	jr	SltReset90
+SltReset9a:
+	bit	1,a		; slave instead of RAM enabled?
+	jr	z,SltReset9b
+	ld	a,(CardMDR+#1E)
+	res	2,a		; disable RAM
+	res	4,a		; disable RAM port 3C
+	res	6,a		; disable RAM ports
+	ld	(CardMDR+#1E),a	; set MCONF for the devices
+	jr	SltReset90
+SltReset9b:
+	bit	0,a		; slave instead of IDE enabled?
+	jr	z,SltReset90
+	ld	a,(CardMDR+#1E)
+	res	1,a		; disable IDE
+	ld	(CardMDR+#1E),a	; set MCONF for the devices
+
+SltReset90:
+;	ld	a,(CardMDR+#2A)
+;	and	%11000000
+;	or	a		; mini ROM?
+;	jr	z,SltReset91
+;	cp	%01000000	; K4?
+;	jr	z,SltReset91
+;	ld	a,(CardMDR+#2A)
+;	or	%11000000
+;	and	%10111111	; set K4/K5 no SCC in slave slot by default (remains in master slot)
+;	ld	(CardMDR+#2A),a	; set SCART_SLT for the devices on boot
+;SltReset91:
 	ld	a,(MASSLTS)	; selection for master slot
 	cp	#FF		; empty?
 	jr	z,SltReset10
@@ -4580,37 +5542,48 @@ SltReset91:
 	cp	#FF		; empty?
 	jr	z,SltReset10
 	ld	d,a
-	call	c_dir		; locate directory record for slave slot
+	call	CalcDirPos	; locate directory record for master slot
 	jr	z,SltReset94
 	ld	a,(ix+#04)	; mapper
 	cp	"K"		; K5?
 	jr	nz,SltReset94
 	ld	a,(CardMDR+#2A)
-	and	%10111111	; set K5 with SCC in slave slot
+	or	%11000000	; set K5 with SCC in slave slot
 	ld	(CardMDR+#2A),a	; set SCART_SLT for the devices on boot
 SltReset94:
 	ld	a,(MASSLTS)	; selection for master slot
 	or	a		; SCC+?
 	jr	nz,SltReset95
-	ld	a,(CardMDR+#2A)
-	and	%11000000
-	or	a		; mini ROM?
-	jr	z,SltReset95
-	cp	%01000000	; K4?
-	jr	z,SltReset95
-	ld	a,(CardMDR+#2A)
-	and	%10111111	; set K5 with SCC in slave slot
-	ld	(CardMDR+#2A),a	; set SCART_SLT for the devices on boot
+;	ld	a,(CardMDR+#2A)
+;	and	%11000000
+;	or	a		; mini ROM?
+;	jr	z,SltReset945
+;	cp	%01000000	; K4?
+;	jr	z,SltReset945
+;	ld	a,(CardMDR+#2A)
+;	or	%11000000
+;	and	%10111111	; set no SCC in slave slot by default (remains in master slot)
+;	ld	(CardMDR+#2A),a	; set SCART_SLT for the devices on boot
+;SltReset945:
 	ld	hl,SCCplus	; point to SCC Plus configuration entry
 	push	hl
 	pop	ix
 	ld	a,1
 	ld	(CardMDR+#1E),a	; save configuration for SCC+
+	ld	a,(SLASLTN)	; secondary slot usable?
+	cp	#FF
+	jr	z,SltReset10
+	ld	a,(MASSLAV)
+	cp	#FF		; slave slot used as subslot of master?
+	jr	z,SltReset10
+	ld	a,(CardMDR+#29)
+	and	%01111111	; deactivate slave slot if used as subslot of master when SCC+ is set
+	ld	(CardMDR+#29),a
 	jr	SltReset10
 
 SltReset95:
 	ld	d,a
-	call	c_dir		; locate directory record
+	call	CalcDirPos	; locate directory record
 	jr	z,SltEnd
 	ld	a,(ix+#02)	; starting block
 	ld	(CardMDR+#05),a	; set AddrFr for the master slot
@@ -4626,10 +5599,30 @@ SltReset10:
 	call	CLS
 
 	ld	a,1
-	call	RestEnv		; restore environment (font, colors, screen) except font
+	call	RestEnv		; restore environment (colors, screen) except font
 
-	ld	a,(CardMDR+#1E)	; save configuration
-	ld	(DUALRB),a	; special reboot
+	ld	a,(CardMDR+#1E)	; device configuration
+	ld	(SPECRB),a	; special reboot
+	ld	a,(CardMDR+#29)	; subslot configuration
+	ld	(SPECRBS),a	; special reboot
+
+	push	af
+	push	hl
+	push	de
+	push	bc
+	push	ix
+;	push	iy
+	ld	ix,#0707
+	call	MUSSTOP		; stop music
+	call	HookOff		; disable hook
+;	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	pop	af
+	xor	a
+	ld      (MUSSTAT),a	; stop music
 
 	jp	RUN_CR2		; run game from main slot
 
@@ -4678,36 +5671,115 @@ SltEnd:
 	and	%01111111	; disable second cartridge
 	ld	(CardMDR+#29),a
 
-	ld	a,#20
+	ld	a,#20		; %00100000
 	ld	(CardMDR),a	; set default config
 
 	jp	Pagep
 
 
-; Show or hide cursor
+; Show cursor for non-Arabic/non-Korean MSXs
 ;
 ShowCur:
-	ld	hl,#FFFF
-	ld	(CSRY),hl
+  if SPC=0
 	ld	a,1
 	ld	(CSRSW),a	; display cursor
 	ld	hl,(SETXY)
 	call	POSIT		; set cursor to new position
+  endif
 	ret
 
+
 HideCur:
-	ld	hl,#FFFF
-	ld	(CSRY),hl
 	xor	a
 	ld	(CSRSW),a	; hide cursor
 	ld	hl,(SETXY)
-	call	POSIT		; remove cursor from previoys position
+	call	POSIT		; set cursor to new position
 	ret
+
+
+; Stop blinking for Arabic and Korean MSXs
+;
+StopBlink:
+  if SPC=1
+	push	hl
+	push	de
+	push	bc
+	ld	hl,#0000
+	ld	de,40		; screen width
+	ld	a,(SETXY)
+	dec	a
+	or	a
+	jr	z,StopBlink0
+	ld	b,a
+SB_Loop:
+	add	hl,de
+	djnz	SB_Loop
+StopBlink0:
+	ld	a,(SETXY+1)
+	dec	a
+	ld	e,a
+	add	hl,de		; address in VRAM
+	ld	a,(CSSYM)	; get symbol under cursor
+	call	WRTVRM
+	pop	bc	
+	pop	de
+	pop	hl
+	ret
+  endif
+
+
+; Blink symbol under cursor on Arabic and Korean MSXs
+;
+BlinkSym:
+  if SPC=1
+	push	hl
+	push	de
+	push	bc
+	ld	hl,#0000
+	ld	de,40		; screen width
+	ld	a,(SETXY)
+	dec	a
+	or	a
+	jr	z,BlinkSym0
+	ld	b,a
+BS_Loop:
+	add	hl,de
+	djnz	BS_Loop
+BlinkSym0:
+	ld	a,(SETXY+1)
+	dec	a
+	ld	e,a
+	add	hl,de		; address in VRAM
+	call	RDVRM
+	cp	'_'
+	jr	z,BlinkSym1
+	ld	(CSSYM),a	; save symbol under cursor
+BlinkSym1:
+	ld	a,(BLINK)
+	ld	b,a
+	ld	a,(CSSYM)
+	cp 	b
+	jr	z,BlinkSym2
+	ld	(BLINK),a
+	call	WRTVRM
+	jr	BlinkSym3
+BlinkSym2:	
+	ld	a,'_'
+	ld	(BLINK),a
+	call	WRTVRM
+BlinkSym3:
+	pop	bc	
+	pop	de
+	pop	hl
+	ret
+  endif
 
 
 ; UI setup screen
 ;
 UISetup:
+	xor	a
+	ld	(SCROLL),a	; temporarily disable scroller
 	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
 	or	a
 	jr	nz,UISetup1
@@ -4721,7 +5793,6 @@ UISetup1:
 	ld	c,#0D
 	call	FadeOut		; fade out text
 
-UISetup2:
 	call	CLS
 
 	ld	de,#0000
@@ -4730,6 +5801,10 @@ UISetup2:
 	ld	c,#0D
 	call	FadeOut		; fade out background
 
+UISetup2:
+	ld	hl,#0101
+	ld	(SETXY),hl
+	call	HideCur
 	ld	a,C2BCOLS
 	ld	hl,#0000
 	call	PALETTE
@@ -4751,111 +5826,86 @@ UISetup2:
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
-	ld 	a,(CardMDR+#0E)
-	push	af
-	ld	a,3
-	ld	(CardMDR+#0E),a	; set 2nd bank to screen data
-	ld 	a,(CardMDR+#0F)
-	push	af
-	and	%11011111
-	ld	(CardMDR+#0F),a	; set Flash instead of RAM
-
   if SPC=1
 	ld	a,#20
-	ld	(#F3B1),a
+	ld	(LINNUM),a
 	ld	hl,SetupScr	; print setup screen
-	call	print	
+	call	print_sp
 	ld	a,#18
-	ld	(#F3B1),a
+	ld	(LINNUM),a
   else
 	ld	hl,SetupScr	; print setup screen
-	call	print
+	call	print_sp
   endif
-
-  if SPC=1
-	ld	hl,#0118
-	call    POSIT
-	ld	hl,Setupll
-	call	print		; print additional line
-  endif
-
-	pop	af
-	ld	(CardMDR+#0F),a	; restore value
-	pop	af
-	ld	(CardMDR+#0E),a	; restore value
 
         xor	a
-	ld	(SELITEM),a	
-	ld	hl,#0409
-	call    POSIT
-	ld	a,OnSym
-	call	CHPUT		; selected item indicator
+	ld	(SELITEM),a
 
 	ld	hl,#2509
 	call    POSIT
 	ld	a,(DUALRST)
 	cp	1
 	jr	nz,Set0
-	ld	a,'Y'
+	ld	a,"Y"
 	jr	Set00
 Set0:
-	ld	a,'N'
+	ld	a,"N"
 Set00:
-	call	CHPUT		; dual-reset Y/N
+	call	CHPUT_VDP	; dual-reset Y/N
 
-	ld	hl,#250a
+	ld	hl,#250A
 	call    POSIT
 	ld	a,(SORT)
 	or	a
 	jr	z,Set1
-	ld	a,'Y'
+	ld	a,"Y"
 	jr	Set2
 Set1:
-	ld	a,'N'
+	ld	a,"N"
 Set2:
-	call	CHPUT		; sorting Y/N
+	call	CHPUT_VDP	; sorting Y/N
 
-	ld	hl,#250b
+	ld	hl,#250B
 	call    POSIT
 	ld	a,(EFF)
 	or	a
 	jr	z,Set3
-	ld	a,'Y'
+	ld	a,"Y"
 	jr	Set4
 Set3:
-	ld	a,'N'
+	ld	a,"N"
 Set4:
-	call	CHPUT		; fmpac mono
+	call	CHPUT_VDP	; fmpac mono
 
-	ld	hl,#250c
+	ld	hl,#250C
 	call    POSIT
 	ld	a,(FMMON)
 	cp	1
 	jr	z,Set3a
-	ld	a,'N'
+	ld	a,"N"
 	jr	Set3aa
 Set3a:
-	ld	a,'Y'
+	ld	a,"Y"
 Set3aa:
-	call	CHPUT		; effects Y/N
+	call	CHPUT_VDP	; effects Y/N
 
-	ld	hl,#250d
+	ld	hl,#250D
 	call    POSIT
 	ld	a,(SPD)
 	add	'0'
-	call	CHPUT		; speed value
+	call	CHPUT_VDP	; speed value
 
-	ld	hl,#250e
+	ld	hl,#250E
 	call    POSIT
 	ld	a,'0'
-	call	CHPUT		; zero of frequency value
-	ld	hl,#240e
+	call	CHPUT_VDP	; zero of frequency value
+	ld	hl,#240E
 	call    POSIT
 	ld	a,(FREQ)
 	cp	#FF		; ignore?
 	jr	nz,Set3aaa
 	ld	a,'-'
-	call	CHPUT		; frequency value
+	call	CHPUT_VDP	; frequency value
 	ld	a,'-'
 	jr	Set4b
 Set3aaa:
@@ -4866,7 +5916,7 @@ Set3aaa:
 Set4a:
 	ld	a,'5'
 Set4b:
-	call	CHPUT		; frequency value
+	call	CHPUT_VDP	; frequency value
 
 	ld	hl,#1b0f
 	call    POSIT
@@ -4877,18 +5927,18 @@ Set4b:
 	rra
 	rra
 	add	'0'
-	call	CHPUT		; R value
+	call	CHPUT_VDP	; R value
 	ld	hl,#200f
 	call    POSIT
 	ld	a,(C2FPALM)
 	add	'0'
-	call	CHPUT		; G value
+	call	CHPUT_VDP	; G value
 	ld	hl,#250f
 	call    POSIT
 	ld	a,(C2FPALM+1)
 	and	%00000111
 	add	'0'
-	call	CHPUT		; B value
+	call	CHPUT_VDP	; B value
 
 	ld	hl,#1b10
 	call    POSIT
@@ -4899,18 +5949,18 @@ Set4b:
 	rra
 	rra
 	add	'0'
-	call	CHPUT		; R value
+	call	CHPUT_VDP	; R value
 	ld	hl,#2010
 	call    POSIT
 	ld	a,(C2BPALM)
 	add	'0'
-	call	CHPUT		; G value
+	call	CHPUT_VDP	; G value
 	ld	hl,#2510
 	call    POSIT
 	ld	a,(C2BPALM+1)
 	and	%00000111
 	add	'0'
-	call	CHPUT		; B value
+	call	CHPUT_VDP	; B value
 
 	ld	hl,#1b11
 	call    POSIT
@@ -4921,18 +5971,18 @@ Set4b:
 	rra
 	rra
 	add	'0'
-	call	CHPUT		; R value
+	call	CHPUT_VDP	; R value
 	ld	hl,#2011
 	call    POSIT
 	ld	a,(C2FPALH)
 	add	'0'
-	call	CHPUT		; G value
+	call	CHPUT_VDP	; G value
 	ld	hl,#2511
 	call    POSIT
 	ld	a,(C2FPALH+1)
 	and	%00000111
 	add	'0'
-	call	CHPUT		; B value
+	call	CHPUT_VDP	; B value
 
 	ld	hl,#1b12
 	call    POSIT
@@ -4943,18 +5993,18 @@ Set4b:
 	rra
 	rra
 	add	'0'
-	call	CHPUT		; R value
+	call	CHPUT_VDP	; R value
 	ld	hl,#2012
 	call    POSIT
 	ld	a,(C2BPALH)
 	add	'0'
-	call	CHPUT		; G value
+	call	CHPUT_VDP	; G value
 	ld	hl,#2512
 	call    POSIT
 	ld	a,(C2BPALH+1)
 	and	%00000111
 	add	'0'
-	call	CHPUT		; B value
+	call	CHPUT_VDP	; B value
 
 	ld	hl,#1b13
 	call    POSIT
@@ -4965,18 +6015,18 @@ Set4b:
 	rra
 	rra
 	add	'0'
-	call	CHPUT		; R value
+	call	CHPUT_VDP	; R value
 	ld	hl,#2013
 	call    POSIT
 	ld	a,(C2FPALV)
 	add	'0'
-	call	CHPUT		; G value
+	call	CHPUT_VDP	; G value
 	ld	hl,#2513
 	call    POSIT
 	ld	a,(C2FPALV+1)
 	and	%00000111
 	add	'0'
-	call	CHPUT		; B value
+	call	CHPUT_VDP	; B value
 
 	ld	hl,#1b14
 	call    POSIT
@@ -4987,18 +6037,18 @@ Set4b:
 	rra
 	rra
 	add	'0'
-	call	CHPUT		; R value
+	call	CHPUT_VDP	; R value
 	ld	hl,#2014
 	call    POSIT
 	ld	a,(C2BPALV)
 	add	'0'
-	call	CHPUT		; G value
+	call	CHPUT_VDP	; G value
 	ld	hl,#2514
 	call    POSIT
 	ld	a,(C2BPALV+1)
 	and	%00000111
 	add	'0'
-	call	CHPUT		; B value
+	call	CHPUT_VDP	; B value
 
 	ld	hl,#1b15
 	call    POSIT
@@ -5009,18 +6059,18 @@ Set4b:
 	rra
 	rra
 	add	'0'
-	call	CHPUT		; R value
+	call	CHPUT_VDP	; R value
 	ld	hl,#2015
 	call    POSIT
 	ld	a,(C2FPALP)
 	add	'0'
-	call	CHPUT		; G value
+	call	CHPUT_VDP	; G value
 	ld	hl,#2515
 	call    POSIT
 	ld	a,(C2FPALP+1)
 	and	%00000111
 	add	'0'
-	call	CHPUT		; B value
+	call	CHPUT_VDP	; B value
 
 	ld	hl,#1b16
 	call    POSIT
@@ -5031,21 +6081,28 @@ Set4b:
 	rra
 	rra
 	add	'0'
-	call	CHPUT		; R value
+	call	CHPUT_VDP	; R value
 	ld	hl,#2016
 	call    POSIT
 	ld	a,(C2BPALP)
 	add	'0'
-	call	CHPUT		; G value
+	call	CHPUT_VDP	; G value
 	ld	hl,#2516
 	call    POSIT
 	ld	a,(C2BPALP+1)
 	and	%00000111
 	add	'0'
-	call	CHPUT		; B value
+	call	CHPUT_VDP	; B value
+	ld	a,#9D
+	call	CHPUT_VDP
+	ld	hl,#FFFF
+	ld	(CSRY),hl
+
+	call	ShowCur
 
 	ld	hl,#2509
 	ld	(SETXY),hl	; cursor coordinates
+	call    POSIT
 
 	ld	hl,(C2FPALS)
 	ex	de,hl
@@ -5054,10 +6111,10 @@ Set4b:
 	ld	c,#0D
 	call	FadeIn		; fade in text
 
-	call	ShowCur
-
 SetLoop:
 	call	ENADISP		; enable display
+
+	call	ShowCur
 
 	ld	hl,(SETXY)
 	ld	h,#25
@@ -5141,6 +6198,8 @@ SetLoop1:
 	ld	(SETXY),hl
 	call    POSIT
 
+	call	ShowCur
+
 	ld	a,C2FCOLS
 	ld	hl,(C2FPALS)
 	call	PALETTE		; set default UI setup palette
@@ -5155,6 +6214,9 @@ SetLoop1:
 	call	CHCOLOR		; set default UI setup color
 
 SetLoop2:
+  if SPC=1
+	call	BlinkSym
+  endif
 	call	KILBUF
 	call	KILJOY
 	call	KeyJoyDelay	; delay for interface
@@ -5166,8 +6228,14 @@ SetLoop2:
 	jr	nz,CfgL2	; action detected?
 	jr	SetLoop2
 CfgL1:
+	call	CHFKEY
 	call	CHGET		; wait for a key
 CfgL2:
+  if SPC=1
+	push	af
+	call	StopBlink
+	pop	af
+  endif
 	cp	27		; ESC
 	jp	z,SetEnd
 	cp	30		; UP
@@ -5185,8 +6253,6 @@ CfgL2:
 	jp	SetLoop2
 
 Set_Val:
-	call	HideCur
-
 	ld	a,(SELITEM)
 	or	a
 	jr	z,Set_V00
@@ -5207,13 +6273,13 @@ Set_V00:
 	cp	1
 	jr	nz,Set_V001
 	xor	a
-	ld	(DUALRST),a
-	ld	a,'N'
+	ld	(DUALRST),a	; no dual reset
+	ld	a,"N"
 	jp	Set_VE
 Set_V001:
 	ld	a,1	
-	ld	(DUALRST),a
-	ld	a,'Y'
+	ld	(DUALRST),a	; dual reset
+	ld	a,"Y"
 	jp	Set_VE
 
 Set_V0:
@@ -5221,13 +6287,13 @@ Set_V0:
 	or	a
 	jr	z,Set_V01
 	xor	a
-	ld	(SORT),a
-	ld	a,'N'
+	ld	(SORT),a	; no sorting
+	ld	a,"N"
 	jp	Set_VE
 Set_V01:
 	ld	a,1	
-	ld	(SORT),a
-	ld	a,'Y'
+	ld	(SORT),a	; sorting on
+	ld	a,"Y"
 	jp	Set_VE
 
 Set_V1:
@@ -5236,12 +6302,12 @@ Set_V1:
 	jr	z,Set_V11
 	xor	a
 	ld	(EFF),a		; no effects
-	ld	a,'N'
+	ld	a,"N"
 	jp	Set_VE
 Set_V11:
 	ld	a,1	
-	ld	(EFF),a
-	ld	a,'Y'		; with effects
+	ld	(EFF),a		; with effects
+	ld	a,"Y"
 	jp	Set_VE
 
 Set_V15:
@@ -5250,12 +6316,12 @@ Set_V15:
 	jr	z,Set_V115
 	ld	a,1
 	ld	(FMMON),a	; fmpac mono
-	ld	a,'Y'
+	ld	a,"Y"
 	jp	Set_VE
 Set_V115:
 	xor	a
-	ld	(FMMON),a
-	ld	a,'N'		; fmpac stereo
+	ld	(FMMON),a	; fmpac stereo
+	ld	a,"N"
 	jp	Set_VE
 
 Set_V2:
@@ -5281,7 +6347,9 @@ Set_V3:
 	ld	hl,#250e
 	call    POSIT
 	ld	a,'0'
-	call	CHPUT		; zero of frequency value
+	call	CHPUT_VDP	; zero of frequency value
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	ld	a,'5'
 	jr	Set_V30E
 Set_V31:
@@ -5292,7 +6360,9 @@ Set_V31:
 	ld	hl,#250e
 	call    POSIT
 	ld	a,'-'
-	call	CHPUT		; zero of frequency value
+	call	CHPUT_VDP	; zero of frequency value
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	ld	a,'-'
 	jr	Set_V30E
 Set_V30:
@@ -5302,25 +6372,21 @@ Set_V30:
 	ld	hl,#250e
 	call    POSIT
 	ld	a,'0'
-	call	CHPUT		; zero of frequency value
+	call	CHPUT_VDP	; zero of frequency value
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	ld	a,'6'
 Set_V30E:
 	push	af
 	ld	hl,(SETXY)
 	dec	h
 	call    POSIT
-	ld	a,' '
-	call	CHPUT		; erase setting
-	ld	hl,(SETXY)
-	dec	h
-	call    POSIT
 	pop	af
-	call	CHPUT		; put new setting
+	call	CHPUT_VDP	; put new setting
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	ld	hl,(SETXY)
 	call    POSIT
-
-	call	ShowCur
-
 	jp	SetLoop2
 
 Set_V4:
@@ -5351,12 +6417,11 @@ Set_V40:
 	call    POSIT
 	pop	af
 	add	'0'
-	call	CHPUT		; print G value
+	call	CHPUT_VDP	; print G value
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	ld	hl,(SETXY)
 	call    POSIT
-
-	call	ShowCur
-
 	jp	SetColor
 
 Set_V41:
@@ -5377,12 +6442,11 @@ Set_V41:
 	rra
 	rra
 	add	'0'
-	call	CHPUT		; print R value
+	call	CHPUT_VDP	; print R value
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	ld	hl,(SETXY)
 	call    POSIT
-
-	call	ShowCur
-
 	jp	SetColor
 
 Set_V42:
@@ -5399,31 +6463,24 @@ Set_V42:
 	pop	af
 	and	%00000111
 	add	'0'
-	call	CHPUT		; print B value
+	call	CHPUT_VDP	; print B value
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	ld	hl,(SETXY)
 	call    POSIT
-
-	call	ShowCur
-
 	jp	SetColor
 
 Set_VE:
 	push	af
 	ld	hl,(SETXY)
 	call    POSIT
-	ld	a,' '
-	call	CHPUT		; erase setting
-	ld	hl,(SETXY)
-	call    POSIT
 	pop	af
-	call	CHPUT		; put new setting
+	call	CHPUT_VDP	; put new setting
+	ld	hl,#FFFF
+	ld	(CSRY),hl
 	ld	hl,(SETXY)
 	call    POSIT
-
-	call	ShowCur
-
 	jp	SetLoop2
-
 
 SetLeft:
 	ld	a,(SELITEM)
@@ -5444,7 +6501,6 @@ SetLeft1:
 	call    POSIT
 	jp	SetLoop2
 
-
 SetRight:
 	ld	a,(SELITEM)
 	cp	6
@@ -5464,81 +6520,57 @@ SetRight1:
 	call    POSIT
 	jp	SetLoop2
 
-
 NextItem:
 	ld	hl,(SETXY)
 	ld	a,(SELITEM)
-	push	af
-	push	hl
-	ld	h,4
-	call    POSIT
-	ld	a,OffSym
-	call	CHPUT		; erase item indicator
-	pop	hl
-	pop	af
-
 	ld	a,(VDPVER)	; detect if 9918 is used, skip pallette operations then
 	or	a
 	jr	nz,NextItem0
 	ld	a,(SELITEM)
-	cp	5		; first color item
+	cp	4		; frequency item
 	jp	z,NextItem2
-
 NextItem0:
 	ld	a,(SELITEM)
 	cp	#0d		; max item?
 	jp	z,NextItem2
-
 NextItem1:
 	inc	a
 	inc	l
 	ld	(SELITEM),a
 	ld	(SETXY),hl
 NextItem2:
-	ld	h,#04
-	call    POSIT
-	ld	a,OnSym
-	call	CHPUT		; selected item indicator
 	jp	SetLoop
 
 PrevItem:
 	ld	hl,(SETXY)
 	ld	a,(SELITEM)
-	push	af
-	push	hl
-	ld	h,4
-	call    POSIT
-	ld	a,OffSym
-	call	CHPUT		; erase item indicator
-	pop	hl
-	pop	af
 	or	a		; min item?
 	jp	z,PrevItem2
-
 PrevItem1:
 	dec	a
 	dec	l
 	ld	(SELITEM),a
 	ld	(SETXY),hl
 PrevItem2:
-	ld	h,4
-	call    POSIT
-	ld	a,OnSym
-	call	CHPUT		; selected item indicator
 	jp	SetLoop
 
 SetReset:
 	call	HideCur
-
+	ld	hl,#2509
+	call    POSIT
 	ld	hl,SORTD
 	ld	de,SORT
 	ld	bc,22
 	ldir			; reset all settings to defaults
+	call	CLS
+	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
+	or	a
+	jp	nz,UISetup2
+	call	DISDISP		; disable display
 	jp	UISetup2
 
 SetEnd:
 	call	HideCur
-
 	ld	a,%01100000	; write enable
 	call	EEWEN
 
@@ -5552,7 +6584,6 @@ SetEnd:
 	ld	a,#FF
 	ld	(MASSLTS),a	; nothing selected for master slot
 	ld	(SLASLTS),a	; nothing selected for slave slot
-
 	ld	a,b		; sorting currently enabled?
 	or	a
 	jr	z,SetEnd00
@@ -5567,40 +6598,22 @@ SetEnd00:
 	call	DirSort		; sort directory and set RAM instead of flash
 
 SetEnd01:
-	ld	a,2
-	ld	(CardMDR+#0E),a	; set 2nd bank to autostart map
-	ld	a,(SORT)
-	or	a
-	jr	z,SetEndEr
-	ld	hl,B2ON+#03
-	ld	a,(hl)
-	ld	(CardMDR+#0F),a	; show flash instead of RAM for autostart
-
-SetEndEr:
-	xor	a
+	ld	a,#FF
 	ld	(AUTOST),a	; no autostart
-	exx
-	dec	a
-	ld	c,a		; erase autostart
-	exx
-	call	ATR_M_Erase	; erase all records
-
-	ld	a,1
-	ld	(CardMDR+#0E),a	; set 2nd bank to directory map
-	ld	a,(SORT)
-	or	a
-	jr	z,SetEndHm
-	ld	hl,RAM_SORT+#03
-	ld	a,(hl)
-	ld	(CardMDR+#0F),a	; show RAM instead of flash for directory
+	ld	e,a             ; data
+	ld	a,#1C		; address
+	call	EEWR		; save autostart
+	ld	a,#FF
+	ld	(LASTU),a	; erase last used
+	ld	e,a             ; data
+	ld	a,#1A		; address
+	call	EEWR		; save last used entry to EEPROM
 
 SetEndHm:
-	exx
-	xor	a
-	ld	d,a
+	ld	de,#0000
+	ld	(DIRPOS),de	; positions (d=entry number, e=position on page)
 	ld	hl,#0001
 	ld	(CURPAG),hl	; set page 1 after sorting mode change
-	exx
 
 SetEnd0:
 	ld	a,(FREQ)
@@ -5730,6 +6743,7 @@ DetVDPW:
 	ex	af,af'
 	and	%01000000	; check if bit 6 was 0 (s#0 5S) or 1 (s#2 VR)
 	or	a
+	ei
 	ret	z
 
 	ld	a,1		; select s#1
@@ -5754,6 +6768,7 @@ DetVDPW:
 DetVDPE:
 	inc	a
 	ld	(VDPVER),a
+	ei
 	ret
 
 
@@ -5772,8 +6787,15 @@ Change0:
 Change1:
 	res	1,a		; set to NTSC
 Change2:
-	ld	(PALNTSC),a
+	ld	b,a
+	ld	a,(SCROLL)
 	push	af
+	xor	a
+	ld	(SCROLL),a	; stop scroller
+	ld	(SCRSEM),a	; reset semaphore
+	ld	(SYMSEM),a	; reset symbol semaphore
+	ld	a,b
+	ld	(PALNTSC),a
 	push	af
 
 ; Fade out font and background
@@ -5796,13 +6818,6 @@ Change2:
 	ld	c,a
 	call	WRITVDP		; write to VDP register (set 50 or 60 HZ mode)
 
-;	ld	a,%01100000	; write enable
-;	call	EEWEN
-;	pop	af
-;	ld	e,a             ; data
-;	ld	a,2		; address
-;	call	EEWR		; save vdp register 10 value to EEPROM
-
 ; Set screen after change of frequency
 	ld	a,40
 	ld	(SCR0WID),a	; set default width of screen0
@@ -5810,6 +6825,10 @@ Change2:
 	call	SSCREEN
 	call	MODE40A
 	call	CLS
+
+	call	ScrollInit	; initialize data for scroller
+	pop	af
+	ld	(SCROLL),a	; restore scroller status
 
 	ld	hl,(C2BPALM)
 	ex	de,hl
@@ -5962,6 +6981,9 @@ Z80Mode:
 ; Set FMPAC/SCC/SCC+ volume screen
 ;
 SetVolume:
+	xor	a
+	ld	(SCROLL),a	; temporarily disable scroller
+
 	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
 	or	a
 	jr	nz,SetVol1
@@ -6004,38 +7026,17 @@ SetVol1:
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
-	ld 	a,(CardMDR+#0E)
-	push	af
-	ld	a,3
-	ld	(CardMDR+#0E),a	; set 2nd bank to screen data
-	ld 	a,(CardMDR+#0F)
-	push	af
-	and	%11011111
-	ld	(CardMDR+#0F),a	; set Flash instead of RAM
-
   if SPC=1
 	ld	a,#20
-	ld	(#F3B1),a
+	ld	(LINNUM),a
 	ld	hl,VolumeScr	; print volume control screen
-	call	print	
+	call	print_sp
 	ld	a,#18
-	ld	(#F3B1),a
+	ld	(LINNUM),a
   else
 	ld	hl,VolumeScr	; print volume control screen
-	call	print
+	call	print_sp
   endif
-
-  if SPC=1
-	ld	hl,#0118
-	call    POSIT
-	ld	hl,Volll
-	call	print		; print additional line
-  endif
-
-	pop	af
-	ld	(CardMDR+#0F),a	; restore value
-	pop	af
-	ld	(CardMDR+#0E),a	; restore value
 
 	ld	hl,(C2FPALV)
 	ex	de,hl
@@ -6136,6 +7137,7 @@ Wait2:
 	jr	nz,Wait2b	; action detected?
 	jr	Wait2
 Wait2a:
+	call	CHFKEY
 	call	CHGET		; wait for a key
 Wait2b:
 	cp	27		; ESC
@@ -6259,6 +7261,9 @@ VolEnd:
 ; Set PSG volume screen
 ;
 PSGVolume:
+	xor	a
+	ld	(SCROLL),a	; temporarily disable scroller
+
 	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
 	or	a
 	jr	nz,SetPSG1
@@ -6301,38 +7306,17 @@ SetPSG1:
 	ld	c,#0D
 	call	FadeIn		; fade in background
 
-	ld 	a,(CardMDR+#0E)
-	push	af
-	ld	a,3
-	ld	(CardMDR+#0E),a	; set 2nd bank to screen data
-	ld 	a,(CardMDR+#0F)
-	push	af
-	and	%11011111
-	ld	(CardMDR+#0F),a	; set Flash instead of RAM
-
   if SPC=1
 	ld	a,#20
-	ld	(#F3B1),a
+	ld	(LINNUM),a
 	ld	hl,PSGScr	; print PSG control screen
-	call	print	
+	call	print_sp
 	ld	a,#18
-	ld	(#F3B1),a
+	ld	(LINNUM),a
   else
 	ld	hl,PSGScr	; print PSG control screen
-	call	print
+	call	print_sp
   endif
-
-  if SPC=1
-	ld	hl,#0118
-	call    POSIT
-	ld	hl,PSGll
-	call	print		; print additional line
-  endif
-
-	pop	af
-	ld	(CardMDR+#0F),a	; restore value
-	pop	af
-	ld	(CardMDR+#0E),a	; restore value
 
 	ld	hl,(C2FPALP)
 	ex	de,hl
@@ -6419,27 +7403,26 @@ PSGStPr:
 	ld	hl,#1004
 	call    POSIT	
 	ld	a,OffSym
-	call	CHPUT		; mark device as disabled
+	call	CHPUT_VDP	; mark device as disabled
 	ld	a,(CardMDR+#24)
 	bit	7,a
 	jr	z,PSGPrn3
 	ld	hl,#1004
 	call    POSIT	
 	ld	a,OnSym
-	call	CHPUT		; mark device as enabled
+	call	CHPUT_VDP	; mark device as enabled
 PSGPrn3:
 	ld	hl,#2504
 	call    POSIT	
 	ld	a,OffSym
-	call	CHPUT		; mark device as disabled
+	call	CHPUT_VDP	; mark device as disabled
 	ld	a,(CardMDR+#24)
 	bit	6,a
 	jr	z,PSGLoop
 	ld	hl,#2504
 	call    POSIT	
 	ld	a,OnSym
-	call	CHPUT		; mark device as enabled
-
+	call	CHPUT_VDP	; mark device as enabled
 
 PSGLoop:
 	call	ENADISP		; enable display
@@ -6456,6 +7439,7 @@ Wait3:
 	jr	nz,Wait3b	; action detected?
 	jr	Wait3
 Wait3a:
+	call	CHFKEY
 	call	CHGET		; wait for a key
 Wait3b:
 	cp	27		; ESC
@@ -6834,6 +7818,8 @@ DualReset:
 	xor	a
 	ld	(CardMDR+#0E),a	; R2Reg
 	ld	(CardMDR+#05),a	; AddrFr
+	ld	a,(CardMDR+#0F)	; R2Mult
+	push	af
 	ld	a,#34		; RAM instead of ROM, Bank write enabled, 8kb pages, control off
 	ld	(CardMDR+#0F),a	; R2Mult
 
@@ -6856,6 +7842,8 @@ DualRL:
 	jr	nz,DualRL
 
 DualNR:
+	pop	af
+	ld	(CardMDR+#0F),a	; R2Mult
 	xor	a		; do not reset
 	ret	
 
@@ -6864,86 +7852,14 @@ DualRR:
 	ld	hl,Label	; boot menu label
 	ld	bc,8
 	ldir			; Save label to RAM for warm reset
-
+	pop	af
+	ld	(CardMDR+#0F),a	; R2Mult
 	ld	a,1		; reset
 	ret	
 
-
+;
 ; Varions screens
 ;
-
-TitleScr:
-	db	#80,#FF,19,#85,#81,0
-;	db	#86,"  ",#A7," CARNIVORE 2 ",#FE,"  ",#87,0	; inverse name
-	db	#86,"    CARNIVORE 2    ",#87,0
-	db	#86," ",#FF,17,#9A," ",#87,0
-	db	#86," Boot Menu : v .   ",#87,0
-	db	#86,"  Firmware : v .   ",#87,0
-	db	#82,#FF,19,#84,#83,0
-
-TitleScrS:
-	db	#01,#58,#7F,19,#59,#01,#5A,0
-	db	#01,#5B,"    CARNIVORE 2    ",#01,#5F,0
-	db	#01,#5B," ",#FF,17,"-"," ",#01,#5F,0
-	db	#01,#5B," Boot Menu : v .   ",#01,#5F,0
-	db	#01,#5B,"  Firmware : v .   ",#01,#5F,0
-	db	#01,#5E,#7F,19,#5D,#01,#5C,0
-Haltmsg:
-	db	"Unusable slot! System Halted!",0
-
-MainScr:
-  if SPC=0
-	db	#88,#FF,38,#8A,#8F
-	db	#8C,"  Carnivore 2 MFC ",#96," ",#A8,#A9," RBSC ",#96," Help",#A5,#92,#91,#20,#8D
-	db	#8C,"  ",#FF,34,#9A,"  ",#8D
-	db	#8C,"  Slots",#A5,#90,#91," Config",#A5,#A8,#91," Volume",#A5,#93,#91," PSG",#A5,#99,#91," ",#8D
-	db	#8C,"  Auto-Start:",#9B,#20,#20,#9D," ",#96," Dual-Slot:",#9B,"  ",#96,"  ",#9D," ",#8D
-	db	#8C,"  ",#FF,34,#9A,"  ",#8D
-	db	#8C,#AA,#FF,36,#20,#AF,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#7E,#FF,36,#20,#B0,#8D
-	db	#8C,#AE,#FF,36,#20,#AB,#8D
-	db	#8E,#FF,38,#8B,#89
-	db	0
-  else
-	db	#01,#58,#7F,38,#59,#01,#5A
-	db	#01,#5B,"  Carnivore 2 MFC (C) RBSC  Help:'H'  ",#01,#5F
-	db	#01,#5B,"  ",#FF,34,"-","  ",#01,#5F
-	db	#01,#5B," Slots:'O' Cfg:'C' Volume:'V' PSG:'P' ",#01,#5F
-	db	#01,#5B,"  Auto-Start:[  ] - Dual-Slot:[  /  ] ",#01,#5F
-	db	#01,#5B,"  ",#FF,34,"-","  ",#01,#5F
-	db	#01,#5B,#01,#50,#FF,36,#20,#01,#52,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#57,#FF,36,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#56,#FF,36,#20,#01,#54,#01,#5F
-	db	#01,#5E,#7F,38,#5D,#01,#5C
-	db	0
-  endif
-
 
 ; Default variables for colors and settings
 SORTD	db	0		; sorting disabled
@@ -7012,52 +7928,15 @@ DefPal:
 
 ; Various variables, text and data
 
-  if SPC=0
 OnSym	equ	#9C
 OffSym	equ	#9E
-  else
-OnSym	equ	'*'
-OffSym	equ	' '
-  endif
 
 Spaces:
 	db	"  ",0
-
 PALmsg:
-  if SPC=0
-	db	"[50Hz",#96,"Z80]",0
-  else
-	db	"[50Hz/Z80]",0
-  endif
-
+	db	#9F,"50Hz",#96,"Z80",#9D,0
 NTSCmsg:
-  if SPC=0
-	db	"[60Hz",#96,"Z80]",0
-  else
-	db	"[60Hz/Z80]",0
-  endif
-
-AutoMSG:
-	db	"    Auto-Start in 3 seconds...",10,13,10,13
-	db	"    Press [ESC], [TAB], [F4] or hold ",10,13
-	db	"  any joystick button for Boot Menu..."
-	db	0
-
-  if SPC=0
-AltKormsg:
-	db	"   Korean or Arabic MSX detected!",10,13,10,13
-	db	"    The current Boot Menu version is",10,13
-	db	"   incompatible and will be bypassed.",10,13,10,13
-	db	"  Resuming booting in a few seconds..."
-	db	0
-  endif
-
-Netmsg:
-	db	"  KYBT/KYBT2 network module found!",10,13,10,13
-	db	"    Remove network module to prevent",10,13
-	db	"  conflicts with Carnivore2 cartridge.",10,13,10,13
-	db	#FF,13,#20,"System halted!"
-	db	0
+	db	#9F,"60Hz",#96,"Z80",#9D,0
 
 CRLF:	db	10,13,10,13,0
 
@@ -7069,11 +7948,7 @@ ResetMSG:
 	db	"Necessary changes applied.",10,13,"Rebooting MSX...",0
 
 PageNum:
-  if SPC=0
-	db	"[  ",#96,"  ]",0
-  else
-	db	"[  /  ]",0
-  endif
+	db	#9F,"  ",#96,"  ",#9D,0
 
 DefMode:
 	db	"Z80",0
@@ -7082,18 +7957,16 @@ T2PMode:
 RTRMode:
 	db	"R8x",0
 
-Select0	db	"<-empty->",#FF,10,#20,0
-Select1	db	"Konami SCC+  ",#FF,6,#20,0
-Select2	db	"IDE (CF card)",0
-Select3	db	"RAM 1024Kb",0
-Select4	db	"FMPAC + SRAM",0
-  if SPC=0
+Select0	db	"<- Empty ->        ",0
+Select1	db	"Konami SCC+        ",0
+Select2	db	"IDE (CF card)      ",0
+Select3	db	"RAM 1024Kb         ",0
+Select4	db	"FMPAC + SRAM       ",0
+Select5	db	"<- Slave Slot ->   ",0
+
 Subslot	db	"SubSlot ",#9F,#20,#9D,":",0
 Prislot	db	"PriSlot ",#9B,#9C,#9D,":",0
-  else
-Subslot	db	"SubSlot [ ]:",0
-Prislot	db	"PriSlot [*]:",0
-  endif
+
 Subempt	db	#FF,33,#20,0
 
 Sccplsel
@@ -7101,27 +7974,21 @@ Sccplsel
 
 VolumeL:
   if SPC=0
-	db	"[FMP",#A5,"1",#96,"SCC",#A5,"1",#96,"PSG",#A5,"1]",0
+	db	#9F,"FMP",#A5,"1",#96,"SCC",#A5,"1",#96,"PSG",#A5,"1",#9D,0
   else
-	db	"[FMP:1/SCC:1/PSG:1]",0
+	db	#9F,"FMP:1",#96,"SCC:1",#96,"PSG:1",#9D,0
   endif
 
-  if SPC=0
 VolumeInd:
 	db	#FF,4,#98,0,0
 IndEmpty1:
+  if SPC=0
 	db	#FF,32,#A6,0
+  else
+	db	#FF,32,#1B,0
+  endif
 IndEmpty2:
 	db	#FF,32,#5E,0
-
-  else
-VolumeInd:
-	db	">>>>",0,0
-IndEmpty1:
-	db	#FF,32,"-",0
-IndEmpty2:
-	db	#FF,32,"-",0
-  endif
 
 DefVol:
 	db	#1B		; 00011011
@@ -7173,428 +8040,406 @@ Net2ID
   if SPC=1
 ; BIOS envelope routines for Korean and Arabic MSXs
 GTSTCK_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#00D5
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 GTTRIG_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#00D8
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 RDBTST_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#017A
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 CHGCPU_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#0180
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 GETCPU_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#0183
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 CHSNS_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#009C
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 DISDISP_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#0041
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 ENADISP_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#0044
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 WRITVDP_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#0047
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 KILBUF_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#0156
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 DISKEYS_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#00CC
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 ENAKEYS_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#00CF
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 CHCOLOR_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#0062
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 MODE40A_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#006C
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 MODE40_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#0078
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 SSCREEN_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#005F
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 CHGET_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#009F
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 CLEARS_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#00C3
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
-CHPUT_E:
-	exx
-	push	hl
-	push	de
-	push	bc
-	push	ix
-	push	iy
-	exx
-	call	#00A2
-	exx
-	pop	iy
-	pop	ix
-	pop	bc
-	pop	de
-	pop	hl
-	exx
-	ret
+;CHPUT_E:
+;	push	hl
+;	push	de
+;	push	bc
+;	push	ix
+;;	push	iy
+;	call	#00A2
+;;	pop	iy
+;	pop	ix
+;	pop	bc
+;	pop	de
+;	pop	hl
+;	ret
 
 RDSLT_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#000C
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 WRSLT_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#0014
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 ENASLT_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#0024
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
 
 POSIT_E:
-	exx
 	push	hl
 	push	de
 	push	bc
 	push	ix
-	push	iy
-	exx
+;	push	iy
 	call	#00C6
-	exx
-	pop	iy
+;	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	exx
 	ret
   endif
 
 
 GTTRIGG:
 	push	hl
-	push	bc
 	push	de
+	push	bc
 	call	GTTRIG		; joystick 1 button A
-	pop	de
 	pop	bc
+	pop	de
+	pop	hl
+	ret
+
+RDVRM_E:
+	push	hl
+	push	de
+	push	bc
+	push	ix
+;	push	iy
+	call	#004A		; read VRAM
+;	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+
+WRTVRM_E:
+	push	hl
+	push	de
+	push	bc
+	push	ix
+;	push	iy
+	call	#004D		; write VRAM
+;	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+
+FILVRM_E:
+	push	hl
+	push	de
+	push	bc
+	push	ix
+;	push	iy
+	call	#0056		; fill VRAM
+;	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+
+LDIRVM_E:
+	push	hl
+	push	de
+	push	bc
+	push	ix
+;	push	iy
+	call	#005C		; block copy to VRAM
+;	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+
+LDIRMV_E:
+	push	hl
+	push	de
+	push	bc
+	push	ix
+;	push	iy
+	call	#0059		; block copy from VRAM
+;	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
 	pop	hl
 	ret
 
@@ -7605,7 +8450,7 @@ GTTRIGG:
 RDSLT	equ	#000C
 WRSLT	equ	#0014
 ENASLT	equ	#0024
-CHPUT	equ	#00A2
+;CHPUT	equ	#00A2
 CLEARS	equ	#00C3
 POSIT	equ	#00C6
 CHGET	equ	#009F
@@ -7625,11 +8470,17 @@ CHGCPU  equ     #0180
 RDBTST  equ     #017A
 GTSTCK	equ	#00D5
 GTTRIG	equ	#00D8
+WRTVRM	equ	#004D
+RDVRM	equ	#004A
+FILVRM	equ	#0056
+LDIRVM	equ	#005C
+LDIRMV	equ	#0059
+
   else
 WRSLT	equ	WRSLT_E
 RDSLT	equ	RDSLT_E
 ENASLT	equ	ENASLT_E
-CHPUT	equ	CHPUT_E
+;CHPUT	equ	CHPUT_E
 CLEARS	equ	CLEARS_E
 POSIT	equ	POSIT_E
 CHGET	equ	CHGET_E
@@ -7649,16 +8500,12 @@ CHGCPU  equ     CHGCPU_E
 RDBTST  equ     RDBTST_E
 GTSTCK	equ	GTSTCK_E
 GTTRIG	equ	GTTRIG_E
-  endif
+WRTVRM	equ	WRTVRM_E
+RDVRM	equ	RDVRM_E
+FILVRM	equ	FILVRM_E
+LDIRVM	equ	LDIRVM_E
+LDIRMV	equ	LDIRMV_E
 
-;	Cursor (2 bytes)
-;
-  if SPC=0
-CURS1	equ	#94
-CURS2	equ	#95
-  else
-CURS1	equ	'>'
-CURS2	equ	'>'
   endif
 
 
@@ -7675,342 +8522,341 @@ fontdat:
 
 	org	#8000
 
-SlotScr:
+; Title screen
+;
+TitleScr:
+; Thick frame
+;	db	#80,#FF,19,#85,#81,0
+;	db	#86," ",#A7,"  CARNIVORE 2  ",#0F," ",#87,0	; inverse name
+;;	db	#86,"    CARNIVORE 2    ",#87,0
+;	db	#86," ",#FF,17,#9A," ",#87,0
+;	db	#86," Boot Menu : v .   ",#87,0
+;	db	#86,"  Firmware : v .   ",#87,0
+;	db	#82,#FF,19,#84,#83,0
+
+; Thin frame
+	db	#88,#FF,19,#8A,#8F,0
+	db	#8C,"   ",#A7,"           ",#0F,"   ",#8D,0	; inverse name for animation
+;	db	#8C,"   ",#A7,"CARNIVORE 2",#0F,"   ",#8D,0	; inverse name
+;	db	#8C,"    CARNIVORE 2    ",#8D,0
+	db	#8C," ",#FF,17,#9A," ",#8D,0
+	db	#8C," Boot Menu : v .   ",#8D,0
+	db	#8C,"  Firmware : v .   ",#8D,0
+	db	#8E,#FF,19,#8B,#89,0
+
+TitleScrl
+	db 	"C"+#80,"A"+#80,"R"+#80,"N"+#80,"I"+#80,"V"+#80,"O"+#80,"R"+#80,"E"+#80,#DC
+TitleRepl
+	db	#E0,#E1,#E2,#E3,#E4,#E5,#E6,#E7,#E8,#97,#E9,0
+InvSpace
+	db	#FF,#FF,#FF,#FF,#FF,#FF,#FF
+
+Haltmsg:
+	db	"Unusable slot! System Halted!",0
+
+AutoMSG:
+	db	"    Auto-Start in 3 seconds...",10,13,10,13
+	db	"    Press ",#A7,"ESC",#0F,", ",#A7,"TAB",#0F,", ",#A7,"F4",#0F," or hold ",10,13
+	db	"  any joystick button for Boot Menu..."
+	db	0
+
   if SPC=0
+AltKormsg:
+	db	"   Korean or Arabic MSX detected!",10,13,10,13
+	db	"    The current Boot Menu version is",10,13
+	db	"   incompatible and will be bypassed.",10,13,10,13
+	db	"  Resuming booting in a few seconds..."
+	db	0
+  endif
+
+Netmsg:
+	db	"  KYBT/KYBT2 network module found!",10,13,10,13
+	db	"    Remove network module to prevent",10,13
+	db	"  conflicts with Carnivore2 cartridge.",10,13,10,13
+	db	"             System halted!"
+	db	0
+
+MainScr:
+	db	#88,#FF,38,#8A,#8F
+	db	#8C,"  Carnivore 2 MFC ",#96," ",#A8,#A9," RBSC ",#96," Help",#A5,#92,#91,#20,#8D
+	db	#8C,"  ",#FF,34,#9A,"  ",#8D
+	db	#8C,"  Slots",#A5,#90,#91," Config",#A5,#A8,#91," Volume",#A5,#93,#91," PSG",#A5,#99,#91," ",#8D
+	db	#8C,"  Auto-Start:",#9F,#20,#20,#9D," ",#96," Dual-Slot:",#9F,"  ",#96,"  ",#9D," ",#8D
+	db	#8C,"  ",#FF,34,#9A,"  ",#8D
+  if SPC=0
+	db	#8C,#AA,#FF,36,#20,#AF,#8D
+  else
+	db	#8C,#10,#FF,36,#20,#12,#8D
+  endif
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+	db	#8C,#7E,#FF,36,#20,#B0,#8D
+  if SPC=0
+	db	#8C,#AE,#FF,36,#20,#AB,#8D
+  else
+	db	#8C,#16,#FF,36,#20,#14,#8D
+  endif
+	db	#8E,#FF,38,#8B,#89
+	db	0
+
+SlotScr:
 	db	#88,#FF,38,#8A,#8F
 	db	#8C,"  Carnivore 2 MFC ",#96," Dual-Slot Setup   ",#8D
 	db	#8C,"  ",#FF,34,#9A,"  ",#8D
 	db	#8C," Use cursor keys. Action Keys:",#FF,8,#20,#8D
-	db	#8C,#20,#AA,#A7,"ESC",#FE," - cancel & exit to main menu  ",#8D
-	db	#8C,#20,#7E,#A7,"SPACE",#FE," - change or toggle setting  ",#8D
+	db	#8C,#20,#AA,#A7,"ESC",#0F," - cancel & exit to main menu  ",#8D
+	db	#8C,#20,#7E,#A7,"SPACE",#0F," - change or toggle setting  ",#8D
 	db	#8C,#20,#7E,#FF,10,#20,"select ROM or SCC+ mode   ",#8D
-	db	#8C,#20,#AE,#A7,"ENTER",#FE," - apply changes and restart ",#8D
+	db	#8C,#20,#AE,#A7,"ENTER",#0F," - apply changes and restart ",#8D
 	db	#8C,#FF,38,#20,#8D
-	db	#8C,#88,#8A,"  Master Slot",#FF,10,#20,"Expanded ",#9F,#20,#9D,#20,#8D
+	db	#8C,#88,#8A,"  Master Slot",#FF,12,#20,"Expand ",#9F,#20,#9D,#20,#8D
+  if SPC=0
        	db	#8C,#8C,#20,#20,#AA,#FF,33,#20,#AF,#8D
-	db	#8C,#8C,#20,#20,#7E,#FF,33,#20,#B0,#8D
-	db	#8C,#8C,#20,#20,#7E,#FF,33,#20,#B0,#8D
-	db	#8C,#8E,#8B,#20,#AE,#FF,33,#20,#AB,#8D
-	db	#8C,#FF,38,#20,#8D
-	db	#8C,#88,#8A,"  Slave Slot",#FF,11,#20,"Expanded ",#9F,#20,#9D,#20,#8D
-	db	#8C,#8C,#20,#20,#AA,#FF,33,#20,#AF,#8D
-	db	#8C,#8C,#20,#20,#7E,#FF,33,#20,#B0,#8D
-	db	#8C,#8C,#20,#20,#7E,#FF,33,#20,#B0,#8D
-	db	#8C,#8E,#8B,#20,#AE,#FF,33,#20,#AB,#8D
-	db	#8C,#FF,38,#20,#8D
-	db	#8C," Disable Slot Expansion ",#9F,#20,#9D,#FF,11,#20,#8D
-	db	#8E,#FF,38,#8B,#89
-	db	#FF,6,#20,"Set desired slot configuration..."
-	db	0
   else
-	db	#01,#58,#7F,38,#59,#01,#5A
-	db	#01,#5B,"  Carnivore 2 MFC - Dual-Slot Setup   ",#01,#5F
-	db	#01,#5B,"  ",#FF,34,"-","  ",#01,#5F
-	db	#01,#5B," Use cursor keys. Action Keys:",#FF,8,#20,#01,#5F
-	db	#01,#5B,#20,#01,#50,"[ESC] - cancel & exit to main menu  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[SPACE] - change or toggle setting  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,#FF,10,#20,"select ROM or SCC+ mode   ",#01,#5F
-	db	#01,#5B,#20,#01,#56,"[ENTER] - apply changes and restart ",#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B,#01,#58,#01,#59,"  Master Slot",#FF,10,#20,"Expanded [ ] ",#01,#5F
-	db	#01,#5B,#01,#5B,#20,#20,#01,#50,#FF,33,#20,#01,#52,#01,#5F
-	db	#01,#5B,#01,#5B,#20,#20,#01,#57,#FF,33,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#5B,#20,#20,#01,#57,#FF,33,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#5E,#01,#5D,#20,#01,#56,#FF,33,#20,#01,#54,#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B,#01,#58,#01,#59,"  Slave Slot",#FF,11,#20,"Expanded [ ] ",#01,#5F
-	db	#01,#5B,#01,#5B,#20,#20,#01,#50,#FF,33,#20,#01,#52,#01,#5F
-	db	#01,#5B,#01,#5B,#20,#20,#01,#57,#FF,33,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#5B,#20,#20,#01,#57,#FF,33,#20,#01,#53,#01,#5F
-	db	#01,#5B,#01,#5E,#01,#5D,#20,#01,#56,#FF,33,#20,#01,#54,#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B," Disable Slot Expansion [ ]",#FF,11,#20,#01,#5F
-	db	#01,#5E,#7F,38,#5D,#01,#5C
-	db	0
+       	db	#8C,#8C,#20,#20,#10,#FF,33,#20,#12,#8D
+  endif
+	db	#8C,#8C,#20,#20,#7E,#FF,33,#20,#B0,#8D
+	db	#8C,#8C,#20,#20,#7E,#FF,33,#20,#B0,#8D
+  if SPC=0
+	db	#8C,#8E,#8B,#20,#AE,#FF,33,#20,#AB,#8D
+  else
+	db	#8C,#8E,#8B,#20,#16,#FF,33,#20,#14,#8D
+  endif
+	db	#8C,#FF,38,#20,#8D
+	db	#8C,#88,#8A,"  Slave Slot",#FF,13,#20,"Expand ",#9F,#20,#9D,#20,#8D
+  if SPC=0
+	db	#8C,#8C,#20,#20,#AA,#FF,33,#20,#AF,#8D
+  else
+	db	#8C,#8C,#20,#20,#10,#FF,33,#20,#12,#8D
+  endif
+	db	#8C,#8C,#20,#20,#7E,#FF,33,#20,#B0,#8D
+	db	#8C,#8C,#20,#20,#7E,#FF,33,#20,#B0,#8D
+  if SPC=0
+	db	#8C,#8E,#8B,#20,#AE,#FF,33,#20,#AB,#8D
+  else
+	db	#8C,#8E,#8B,#20,#16,#FF,33,#20,#14,#8D
+  endif
+	db	#8C,#FF,38,#20,#8D
+	db	#8C," Slave Slot as Master's Subslot ",#9F,#20,#9D,#FF,#03,#20,#8D
+	db	#8E,#FF,38,#8B,#89
 Slotll	db	#FF,6,#20,"Set desired slot configuration..."
 	db	0
-  endif
 
 VolumeScr:
-  if SPC=0
 	db	#88,#FF,38,#8A,#8F
 	db	#8C,"   Carnivore 2 MFC  ",#96,"  Volume Setup   ",#8D
 	db	#8C,"  ",#FF,34,#9A,"  ",#8D
 	db	#8C," Action Keys:",#FF,25,#20,#8D
 	db	#8C,#FF,38,#20,#8D
-	db	#8C,#20,#AA,#A7,"ESC",#FE,"   - save & exit to main menu  ",#8D
-	db	#8C,#20,#7E,#A7,"UP",#FE,"    - increase FMPAC volume",#FF,5,#20,#8D
-	db	#8C,#20,#7E,#A7,"DOWN",#FE,"  - decrease FMPAC volume",#FF,5,#20,#8D
-	db	#8C,#20,#7E,#A7,"RIGHT",#FE," - increase SCC",#96,"SCC+ volume  ",#8D
-	db	#8C,#20,#7E,#A7,"LEFT",#FE,"  - decrease SCC",#96,"SCC+ volume  ",#8D
-	db	#8C,#20,#AE,#A7,"HOME",#FE,"  - reset to default values   ",#8D
+	db	#8C,#20,#AA,#A7,"ESC",#0F,"   - save & exit to main menu  ",#8D
+	db	#8C,#20,#7E,#A7,"UP",#0F,"    - increase FMPAC volume",#FF,5,#20,#8D
+	db	#8C,#20,#7E,#A7,"DOWN",#0F,"  - decrease FMPAC volume",#FF,5,#20,#8D
+	db	#8C,#20,#7E,#A7,"RIGHT",#0F," - increase SCC",#96,"SCC+ volume  ",#8D
+	db	#8C,#20,#7E,#A7,"LEFT",#0F,"  - decrease SCC",#96,"SCC+ volume  ",#8D
+	db	#8C,#20,#AE,#A7,"HOME",#0F,"  - reset to default values   ",#8D
 	db	#8C,#FF,38,#20,#8D                        
 	db	#8C," FMPAC Volume:",#FF,24,#20,#8D
 	db	#8C,#FF,38,#20,#8D
+  if SPC=0
 	db	#8C,#20,#20,#A0,#FF,32,#A6,#A2,#20,#20,#8D
 	db	#8C,#20,#20,#A1,#FF,32,#5E,#A3,#20,#20,#8D
+  else
+	db	#8C,#20,#20,#1C,#FF,32,#1B,#1D,#20,#20,#8D
+	db	#8C,#20,#20,#1E,#FF,32,#5E,#1F,#20,#20,#8D
+  endif
 	db	#8C,#FF,38,#20,#8D
 	db	#8C," SCC",#96,"SCC+ Volume:",#FF,21,#20,#8D
 	db	#8C,#FF,38,#20,#8D
+  if SPC=0
 	db	#8C,#20,#20,#A0,#FF,32,#A6,#A2,#20,#20,#8D
 	db	#8C,#20,#20,#A1,#FF,32,#5E,#A3,#20,#20,#8D
+  else
+	db	#8C,#20,#20,#1C,#FF,32,#1B,#1D,#20,#20,#8D
+	db	#8C,#20,#20,#1E,#FF,32,#5E,#1F,#20,#20,#8D
+  endif
 	db	#8C,#FF,38,#20,#8D
 	db	#8E,#FF,38,#8B,#89
-	db	#FF,8,#20,"Set desired FMPAC/SCC volume..."
-	db	0
-  else
-	db	#01,#58,#7F,38,#59,#01,#5A
-	db	#01,#5B,"   Carnivore 2 MFC -  Volume Setup    ",#01,#5F
-	db	#01,#5B,"  ",#FF,34,"-","  ",#01,#5F
-	db	#01,#5B," Action Keys:",#FF,25,#20,#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[UP]    - increase FMPAC volume",#FF,5,#20,#01,#5F
-	db	#01,#5B,#20,#01,#57,"[DOWN]  - decrease FMPAC volume",#FF,5,#20,#01,#5F
-	db	#01,#5B,#20,#01,#57,"[RIGHT] - increase SCC/SCC+ volume  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[LEFT]  - decrease SCC/SCC+ volume  ",#01,#5F
-	db	#01,#5B,#20,#01,#56,"[HOME]  - reset to default values   ",#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B," FMPAC Volume:",#FF,24,#20,#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B,#20,#20,#01,#50,#FF,32,"-",#01,#52,#20,#20,#01,#5F
-	db	#01,#5B,#20,#20,#01,#56,#FF,32,"-",#01,#54,#20,#20,#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B," SCC/SCC+ Volume:",#FF,21,#20,#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B,#20,#20,#01,#50,#FF,32,"-",#01,#52,#20,#20,#01,#5F
-	db	#01,#5B,#20,#20,#01,#56,#FF,32,"-",#01,#54,#20,#20,#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5E,#7F,38,#5D,#01,#5C
-	db	0
 Volll	db	#FF,8,#20,"Set desired FMPAC/SCC volume..."
 	db	0
-  endif
 
 PSGScr:
-  if SPC=0
 	db	#88,#FF,38,#8A,#8F
 	db	#8C,"    Carnivore 2 MFC  ",#96,"  PSG Setup",#FF,5,#20,#8D
 	db	#8C,"  ",#FF,34,#9A,"  ",#8D
 	db	#8C," PSG Enabled ",#9B,#9E,#9D,"  Clicker Enabled ",#9B,#9E,#9D," ",#8D
 	db	#8C,#FF,38,#20,#8D
 	db	#8C," Action Keys:",#FF,25,#20,#8D
-	db	#8C,#20,#AA,#A7,"ESC",#FE,"   - save & exit to main menu  ",#8D
-	db	#8C,#20,#7E,#A7,"SPACE",#FE," - enable/disable PSG",#FF,8,#20,#8D
-	db	#8C,#20,#7E,#A7,"ENTER",#FE," - enable/disable Clicker    ",#8D
-	db	#8C,#20,#7E,#A7,"UP",#FE,"    - increase PSG volume",#FF,7,#20,#8D
-	db	#8C,#20,#7E,#A7,"DOWN",#FE,"  - decrease PSG volume",#FF,7,#20,#8D
-	db	#8C,#20,#7E,#A7,"RIGHT",#FE," - increase Clicker volume   ",#8D
-	db	#8C,#20,#7E,#A7,"LEFT",#FE,"  - decrease Clicker volume   ",#8D
-	db	#8C,#20,#AE,#A7,"HOME",#FE,"  - reset to default values   ",#8D
+	db	#8C,#20,#AA,#A7,"ESC",#0F,"   - save & exit to main menu  ",#8D
+	db	#8C,#20,#7E,#A7,"SPACE",#0F," - enable/disable PSG",#FF,8,#20,#8D
+	db	#8C,#20,#7E,#A7,"ENTER",#0F," - enable/disable Clicker    ",#8D
+	db	#8C,#20,#7E,#A7,"UP",#0F,"    - increase PSG volume",#FF,7,#20,#8D
+	db	#8C,#20,#7E,#A7,"DOWN",#0F,"  - decrease PSG volume",#FF,7,#20,#8D
+	db	#8C,#20,#7E,#A7,"RIGHT",#0F," - increase Clicker volume   ",#8D
+	db	#8C,#20,#7E,#A7,"LEFT",#0F,"  - decrease Clicker volume   ",#8D
+	db	#8C,#20,#AE,#A7,"HOME",#0F,"  - reset to default values   ",#8D
 	db	#8C,#FF,38,#20,#8D
 	db	#8C," PSG Volume:",#FF,26,#20,#8D
+  if SPC=0
 	db	#8C,#20,#20,#A0,#FF,32,#A6,#A2,#20,#20,#8D
 	db	#8C,#20,#20,#A1,#FF,32,#5E,#A3,#20,#20,#8D
+  else
+	db	#8C,#20,#20,#1C,#FF,32,#1B,#1D,#20,#20,#8D
+	db	#8C,#20,#20,#1E,#FF,32,#5E,#1F,#20,#20,#8D
+  endif
 	db	#8C,#FF,38,#20,#8D
 	db	#8C," PPI Clicker Volume:",#FF,18,#20,#8D
+  if SPC=0
 	db	#8C,#20,#20,#A0,#FF,32,#A6,#A2,#20,#20,#8D
 	db	#8C,#20,#20,#A1,#FF,32,#5E,#A3,#20,#20,#8D
-	db	#8E,#FF,38,#8B,#89
-	db	#FF,7,#20,"Set up PSG and desired volume..."   
-	db	0
   else
-	db	#01,#58,#7F,38,#59,#01,#5A
-	db	#01,#5B,"    Carnivore 2 MFC  -  PSG Setup",#FF,5,#20,#01,#5F
-	db	#01,#5B,"  ",#FF,34,"-","  ",#01,#5F
-	db	#01,#5B," PSG Enabled [ ]  Clicker Enabled [ ] ",#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B," Action Keys:",#FF,25,#20,#01,#5F
-	db	#01,#5B,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[SPACE] - enable/disable PSG",#FF,8,#20,#01,#5F
-	db	#01,#5B,#20,#01,#57,"[ENTER] - enable/disable Clicker    ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[UP]    - increase PSG volume",#FF,7,#20,#01,#5F
-	db	#01,#5B,#20,#01,#57,"[DOWN]  - decrease PSG volume",#FF,7,#20,#01,#5F
-	db	#01,#5B,#20,#01,#57,"[RIGHT] - increase Clicker volume   ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[LEFT]  - decrease Clicker volume   ",#01,#5F
-	db	#01,#5B,#20,#01,#56,"[HOME]  - reset to default values   ",#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B," PSG Volume:",#FF,26,#20,#01,#5F
-	db	#01,#5B,#20,#20,#01,#50,#FF,32,"-",#01,#52,#20,#20,#01,#5F
-	db	#01,#5B,#20,#20,#01,#56,#FF,32,"-",#01,#54,#20,#20,#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B," PPI Clicker Volume:",#FF,18,#20,#01,#5F
-	db	#01,#5B,#20,#20,#01,#50,#FF,32,"-",#01,#52,#20,#20,#01,#5F
-	db	#01,#5B,#20,#20,#01,#56,#FF,32,"-",#01,#54,#20,#20,#01,#5F
-	db	#01,#5E,#7F,38,#5D,#01,#5C
-	db	0
+	db	#8C,#20,#20,#1C,#FF,32,#1B,#1D,#20,#20,#8D
+	db	#8C,#20,#20,#1E,#FF,32,#5E,#1F,#20,#20,#8D
+  endif
+	db	#8E,#FF,38,#8B,#89
 PSGll	db	#FF,7,#20,"Set up PSG and desired volume..."
 	db	0
-  endif
 
 SetupScr:
-  if SPC=0
 	db	#88,#FF,38,#8A,#8F
 	db	#8C,"  Carnivore 2 MFC  ",#96,"  Configuration   ",#8D
 	db	#8C,"  ",#FF,34,#9A,"  ",#8D
 	db	#8C," Use cursor keys. Action Keys:",#FF,8,#20,#8D
-	db	#8C,#20,#AA,#A7,"ESC",#FE,"   - save & exit to main menu  ",#8D
-	db	#8C,#20,#7E,#A7,"SPACE",#FE," - change selected value     ",#8D
-	db	#8C,#20,#AE,#A7,"HOME",#FE,"  - reset to default values   ",#8D
+	db	#8C,#20,#AA,#A7,"ESC",#0F,"   - save & exit to main menu  ",#8D
+	db	#8C,#20,#7E,#A7,"SPACE",#0F," - change selected value     ",#8D
+	db	#8C,#20,#AE,#A7,"HOME",#0F,"  - reset to default values   ",#8D
 	db	#8C,#FF,38,#20,#8D
-	db	#8C," ",#9B,#9E,#9D," Dual-reset on cold boot:",#FF,5,#20,#9F,#20,#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," Entry sorting in Boot Menu:  ",#9F,#20,#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," Fade in/out effects:",#FF,9,#20,#9F,#20,#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," Disable FMPAC stereo:",#FF,8,#20,#9F,#20,#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," Keyboard/joystick delay:",#FF,5,#20,#9F,#20,#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," Frequency at startup (Hz):  ",#9F," 0",#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," Menu font:",9,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," Menu background:  R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," Help font:",9,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," Help background:  R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," Volume font:",#FF,6,#20,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," Volume backg.:    R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," PSG setup font:   R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C," ",#9B,#9E,#9D," PSG setup backg.: R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
+	db	#8C,#20,#AA,"Dual-reset on cold boot:",#FF,8,#20,#9F,#9E,#9D," ",#8D
+	db	#8C,#20,#7E,"Entry sorting in Boot Menu:     ",#9F,#9E,#9D," ",#8D
+	db	#8C,#20,#7E,"Fade in/out effects:",#FF,12,#20,#9F,#9E,#9D," ",#8D
+	db	#8C,#20,#7E,"FMPAC mono mode enabled:",#FF,8,#20,#9F,#9E,#9D," ",#8D
+	db	#8C,#20,#7E,"Keyboard/joystick delay:",#FF,8,#20,#9F,#20,#9D," ",#8D
+	db	#8C,#20,#7E,"Frequency at startup (Hz):     ",#9F," 0",#9D," ",#8D
+	db	#8C,#20,#7E,"Menu font:",#FF,11,#20,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
+	db	#8C,#20,#7E,"Menu background:     R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
+	db	#8C,#20,#7E,"Help font:",#FF,11,#20,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
+	db	#8C,#20,#7E,"Help background:     R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
+	db	#8C,#20,#7E,"Volume font:",#FF,9,#20,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
+	db	#8C,#20,#7E,"Volume backg.:",#FF,7,#20,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
+	db	#8C,#20,#7E,"PSG setup font:",#FF,6,#20,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
+	db	#8C,#20,#AE,"PSG setup backg.:    R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
 	db	#8E,#FF,38,#8B,#89
-	db	#FF,8,#20,"Configure colors and options..."   
-	db	0
-  else
-	db	#01,#58,#7F,38,#59,#01,#5A
-	db	#01,#5B,"  Carnivore 2 MFC  -  Configuration   ",#01,#5F
-	db	#01,#5B,"  ",#FF,34,"-","  ",#01,#5F
-	db	#01,#5B," Use cursor keys. Action Keys:",#FF,8,#20,#01,#5F
-	db	#01,#5B,#20,#01,#50,"[ESC]   - save & exit to main menu  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[SPACE] - change selected value     ",#01,#5F
-	db	#01,#5B,#20,#01,#56,"[HOME]  - reset to default values   ",#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B," [ ] Dual-reset on cold boot:",#FF,5,#20,"( ) ",#01,#5F
-	db	#01,#5B," [ ] Entry sorting in Boot Menu:  ( ) ",#01,#5F
-	db	#01,#5B," [ ] Fade in/out effects:",#FF,9,#20,"( ) ",#01,#5F
-	db	#01,#5B," [ ] Disable FMPAC stereo:",#FF,8,#20,"( ) ",#01,#5F
-	db	#01,#5B," [ ] Keyboard/joystick delay:",#FF,5,#20,"( ) ",#01,#5F
-	db	#01,#5B," [ ] Frequency at startup (Hz):  ( 0) ",#01,#5F
-	db	#01,#5B," [ ] Menu font:",9,"R( ) G( ) B( ) ",#01,#5F
-	db	#01,#5B," [ ] Menu background:  R( ) G( ) B( ) ",#01,#5F
-	db	#01,#5B," [ ] Help font:",9,"R( ) G( ) B( ) ",#01,#5F
-	db	#01,#5B," [ ] Help background:  R( ) G( ) B( ) ",#01,#5F
-	db	#01,#5B," [ ] Volume font:",#FF,6,#20,"R( ) G( ) B( ) ",#01,#5F
-	db	#01,#5B," [ ] Volume backg.:    R( ) G( ) B( ) ",#01,#5F
-	db	#01,#5B," [ ] PSG setup font:   R( ) G( ) B( ) ",#01,#5F
-	db	#01,#5B," [ ] PSG setup backg.: R( ) G( ) B( ) ",#01,#5F
-	db	#01,#5E,#7F,38,#5D,#01,#5C
-	db	0
 Setupll	db	#FF,8,#20,"Configure colors and options..."   
 	db	0
-  endif
+
 
 ; Help screens
 HelpScr1:
-  if SPC=0
 	db	#88,#FF,38,#8A,#8F
-	db	#8C,"   Carnivore 2 MFC  ",#96,"  Help Page 01   ",#8D
+	db	#8C,"  Carnivore 2 MFC ",#96," Help Page 1 of 2  ",#8D
 	db	#8C,"  ",#FF,34,#9A,"  ",#8D
 	db	#8C," Menu Navigation and Action Keys:",#FF,5,#20,#8D
-	db	#8C,#FF,38,#20,#8D
-	db	#8C,#20,#AA,#A7,"ESC",#FE," - boot MSX using the default  ",#8D
+	db	#8C,#20,#AA,#A7,"ESC",#0F," - boot MSX using the default  ",#8D
 	db	#8C,#20,#7E,#FF,8,#20,"configuration: all enabled  ",#8D
-	db	#8C,#20,#7E,#FF,36,#20,#8D
-	db	#8C,#20,#7E,#A7,"LEFT",#FE,",",#A7,"RIGHT",#FE," - previous/next page ",#8D
-	db	#8C,#20,#7E,#A7,"UP",#FE,",",#A7,"DOWN",#FE," - select ROM/CFG entry  ",#8D
-	db	#8C,#20,#7E,#A7,"SPACE",#FE," - start selected entry",#FF,6,#20,#8D
-	db	#8C,#20,#7E,#A7,"G",#FE," - start an entry directly",#FF,7,#20,#8D
-	db	#8C,#20,#7E,#A7,"R",#FE," - reset MSX and start an entry  ",#8D
-	db	#8C,#20,#7E,#A7,"ENTER",#FE,",",#A7,"O",#FE," - Dual-Slot setup page  ",#8D
-	db	#8C,#20,#7E,#A7,"1",#FE," - select entry for master slot  ",#8D
-	db	#8C,#20,#7E,#A7,"2",#FE," - select entry for slave slot   ",#8D
-	db	#8C,#20,#7E,#A7,"A",#FE," - select entry for Auto-Start   ",#8D
-	db	#8C,#20,#7E,#A7,"D",#FE," - clear Auto-Start & Dual-Slot  ",#8D
-	db	#8C,#20,#7E,#A7,"F",#FE," - select 50Hz or 60Hz frequency ",#8D
-	db	#8C,#20,#7E,#A7,"T",#FE," - toggle Turbo or R800 mode     ",#8D
-	db	#8C,#20,#AE,#A7,"C",#FE," - customize configuration",#FF,7,#20,#8D
-	db	#8C,#FF,38,#20,#8D
+	db	#8C,#20,#7E,#A7,"LEFT",#0F,",",#A7,"RIGHT",#0F," - previous/next page ",#8D
+	db	#8C,#20,#7E,#A7,"UP",#0F,",",#A7,"DOWN",#0F," - select ROM/CFG entry  ",#8D
+	db	#8C,#20,#7E,#A7,"SPACE",#0F," - start selected entry",#FF,6,#20,#8D
+	db	#8C,#20,#7E,#A7,"G",#0F," - start an entry directly",#FF,7,#20,#8D
+	db	#8C,#20,#7E,#A7,"R",#0F," - reset MSX and start an entry  ",#8D
+	db	#8C,#20,#7E,#A7,"ENTER",#0F,",",#A7,"O",#0F," - Dual-Slot setup page  ",#8D
+	db	#8C,#20,#7E,#A7,"1",#0F," - select entry for master slot  ",#8D
+	db	#8C,#20,#7E,#A7,"2",#0F," - select entry for slave slot   ",#8D
+	db	#8C,#20,#7E,#A7,"A",#0F," - select entry for Auto-Start   ",#8D
+	db	#8C,#20,#7E,#A7,"D",#0F," - clear Auto-Start & Dual-Slot  ",#8D
+	db	#8C,#20,#7E,#A7,"F",#0F," - select 50Hz or 60Hz frequency ",#8D
+	db	#8C,#20,#7E,#A7,"T",#0F," - toggle Turbo or R800 mode     ",#8D
+	db	#8C,#20,#7E,#A7,"C",#0F," - customize configuration",#FF,7,#20,#8D
+	db	#8C,#20,#7E,#A7,"L",#0F," - jump to the last used entry   ",#8D
+	db	#8C,#20,#7E,#A7,"M",#0F," - toggle background music",#FF,7,#20,#8D
+	db	#8C,#20,#AE,#A7,"S",#0F," - toggle help scroller",#FF,10,#20,#8D
 	db	#8E,#FF,38,#8B,#89
 helpll	db	#FF,11,#20,"Press any key to continue..."
 	db	0
-  else
-	db	#01,#58,#7F,38,#59,#01,#5A
-	db	#01,#5B,"   Carnivore 2 MFC  -  Help Page 01   ",#01,#5F
-	db	#01,#5B,"  ",#FF,34,"-","  ",#01,#5F
-	db	#01,#5B," Menu Navigation and Action Keys:",#FF,5,#20,#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B,#20,#01,#50,"[ESC] - boot MSX using the default  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,#FF,8,#20,"configuration: all enabled  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,#FF,36,#20,#01,#5F
-	db	#01,#5B,#20,#01,#57,"[LEFT],[RIGHT] - previous/next page ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[UP],[DOWN] - select ROM/CFG entry  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[SPACE] - start selected entry",#FF,6,#20,#01,#5F
-	db	#01,#5B,#20,#01,#57,"[G] - start an entry directly",#FF,7,#20,#01,#5F
-	db	#01,#5B,#20,#01,#57,"[R] - reset MSX and start an entry  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[ENTER],[O] - Dual-Slot setup page  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[1] - select entry for master slot  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[2] - select entry for slave slot   ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[A] - select entry for Auto-Start   ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[D] - clear Auto-Start & Dual-Slot  ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[F] - select 50Hz or 60Hz frequency ",#01,#5F
-	db	#01,#5B,#20,#01,#57,"[T] - toggle Turbo or R800 mode     ",#01,#5F
-	db	#01,#5B,#20,#01,#56,"[C] - customize configuration",#FF,7,#20,#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5E,#7F,38,#5D,#01,#5C
-	db	0
-helpll	db	#FF,13,#20,"Press any key to return..."
-	db	0
-  endif
 
 HelpScr2:
-  if SPC=0
 	db	#88,#FF,38,#8A,#8F
-	db	#8C,"   Carnivore 2 MFC  ",#96,"  Help Page 02   ",#8D
+	db	#8C,"  Carnivore 2 MFC ",#96," Help Page 2 of 2  ",#8D
 	db	#8C,"  ",#FF,34,#9A,"  ",#8D
 	db	#8C," Boot Option Keys:",#FF,20,#20,#8D
-	db	#8C,#20,#AA,#A7,"F3",#FE," - use default UI settings",#FF,6,#20,#8D
-	db	#8C,#20,#7E,#A7,"F4",#FE," - cancel Auto-Start",#FF,12,#20,#8D
-	db	#8C,#20,#AE,#A7,"F5",#FE," - skip Boot Menu",#FF,15,#20,#8D
+	db	#8C,#20,#AA,#A7,"F3",#0F," - use default UI settings",#FF,6,#20,#8D
+	db	#8C,#20,#7E,#A7,"F4",#0F," - cancel Auto-Start",#FF,12,#20,#8D
+	db	#8C,#20,#AE,#A7,"F5",#0F," - skip Boot Menu",#FF,15,#20,#8D
 	db	#8C,#FF,38,#20,#8D
 	db	#8C," Joystick Directional Controls:",#FF,7,#20,#8D
-	db	#8C,#20,#AA,#A7,"LEFT",#FE,",",#A7,"RIGHT",#FE," - same as cursor keys",#8D
-	db	#8C,#20,#AE,#A7,"UP",#FE,",",#A7,"DOWN",#FE,"    - same as cursor keys",#8D
+	db	#8C,#20,#AA,#A7,"LEFT",#0F,",",#A7,"RIGHT",#0F," - same as cursor keys",#8D
+	db	#8C,#20,#AE,#A7,"UP",#0F,",",#A7,"DOWN",#0F,"    - same as cursor keys",#8D
 	db	#8C," NOTE: Other directions are ignored   ",#8D
 	db	#8C,#FF,38,#20,#8D
 	db	#8C," Joystick Button Controls:",#FF,12,#20,#8D
-	db	#8C,#20,#AA,#A7,"BUTTON A",#FE," - toggle (same as SPACE) ",#8D
-	db	#8C,#20,#AE,#A7,"BUTTON B",#FE," - cancel (same as ESC)   ",#8D
+	db	#8C,#20,#AA,#A7,"BUTTON A",#0F," - toggle (same as SPACE) ",#8D
+	db	#8C,#20,#AE,#A7,"BUTTON B",#0F," - cancel (same as ESC)   ",#8D
 	db	#8C,#FF,38,#20,#8D
 	db	#8C," Joystick Action on Auto-Start:",#FF,7,#20,#8D
-	db	#8C,#20,#AA,#A7,"BUTTON A",#FE," - skip countdown",#FF,9,#20,#8D
-	db	#8C,#20,#AE,#A7,"BUTTON B",#FE," - cancel Auto-Start",#FF,6,#20,#8D
+	db	#8C,#20,#AA,#A7,"BUTTON A",#0F," - skip countdown",#FF,9,#20,#8D
+	db	#8C,#20,#AE,#A7,"BUTTON B",#0F," - cancel Auto-Start",#FF,6,#20,#8D
 	db	#8C," NOTE: Hold button for over 1 second  ",#8D
 	db	#8C,#FF,38,#20,#8D
 	db	#8E,#FF,38,#8B,#89
 helplll	db	#FF,13,#20,"Press any key to return..."
 	db	0
-  else
-	db	#01,#58,#7F,38,#59,#01,#5A
-	db	#01,#5B,"   Carnivore 2 MFC  -  Help Page 02   ",#01,#5F
-	db	#01,#5B,"  ",#FF,34,"-","  ",#01,#5F
-	db	#01,#5B," Boot Option Keys:",#FF,20,#20,#01,#5F
-	db	#01,#5B,#20,#01,#50,"[F3] - use default UI settings",#FF,6,#20,#01,#5F
-	db	#01,#5B,#20,#01,#57,"[F4] - cancel Auto-Start",#FF,12,#20,#01,#5F
-	db	#01,#5B,#20,#01,#56,"[F5] - skip Boot Menu",#FF,15,#20,#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B," Joystick Directional Controls:",#FF,7,#20,#01,#5F
-	db	#01,#5B,#20,#01,#50,"[LEFT],[RIGHT] - same as cursor keys",#01,#5F
-	db	#01,#5B,#20,#01,#56,"[UP],[DOWN]    - same as cursor keys",#01,#5F
-	db	#01,#5B," NOTE: Other directions are ignored   ",#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B," Joystick Button Controls:",#FF,12,#20,#01,#5F
-	db	#01,#5B,#20,#01,#50,"[BUTTON A] - toggle (same as SPACE) ",#01,#5F
-	db	#01,#5B,#20,#01,#56,"[BUTTON B] - cancel (same as ESC)   ",#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5B," Joystick Action on Auto-Start:",#FF,7,#20,#01,#5F
-	db	#01,#5B,#20,#01,#50,"[BUTTON A] - skip countdown",#FF,9,#20,#01,#5F
-	db	#01,#5B,#20,#01,#56,"[BUTTON B] - cancel Auto-Start",#FF,6,#20,#01,#5F
-	db	#01,#5B," NOTE: Hold button for over 1 second  ",#01,#5F
-	db	#01,#5B,#FF,38,#20,#01,#5F
-	db	#01,#5E,#7F,38,#5D,#01,#5C
-	db	0
-helplll	db	#FF,13,#20,"Press any key to return..."
-	db	0
-  endif
+
+
+; Default line
+StaticS
+	db	#8C,"  Slots",#A5,#90,#91," Config",#A5,#A8,#91," Volume",#A5,#93,#91," PSG",#A5,#99,#91," ",#8D,0
+
+; 30 changeable characters + 6 spaces
+DynamicS
+	db	#8C,"    "
+	db	#E0,#E1,#E2,#E3,#E4,#E5,#E6,#E7,#E8,#E9,#EA,#EB,#EC,#ED,#EE,#EF
+	db	#F0,#F1,#F2,#F3,#F4,#F5,#F6,#F7,#F8,#F9,#FA,#FB,#FC,#FD
+	db	"    ",#8D,0
+
+; Scroller text
+ScrollerS
+	db	"                               "
+	db	#A7,"S"+#80,#0F," toggles this help scroller ",#1A," "
+	db	#A7,"H"+#80,#0F," shows help screens ",#1A," "
+	db	#A7,"E"+#80,"S"+#80,"C"+#80,#0F," exits and boots with default configuration ",#1A," "
+	db	#A7,"L"+#80,"E"+#80,"F"+#80,"T"+#80,#0F," or ",#A7,"R"+#80,"I"+#80,"G"+#80,"H"+#80,"T"+#80,#0F," flips directory pages ",#1A," "
+	db	#A7,"U"+#80,"P"+#80,#0F," or ",#A7,"D"+#80,"O"+#80,"W"+#80,"N"+#80,#0F," selects ROM or CFG entry ",#1A," "
+	db	#A7,"S"+#80,"P"+#80,"A"+#80,"C"+#80,"E"+#80,#0F," starts selected entry (single slot) ",#1A," "
+	db	#A7,"G"+#80,#0F," starts selected entry directly ",#1A," "
+	db	#A7,"R"+#80,#0F," resets MSX and starts selected entry ",#1A," "
+	db	#A7,"E"+#80,"N"+#80,"T"+#80,"E"+#80,"R"+#80,#0F," or ",#A7,"O"+#80,#0F," opens Dual-Slot setup page ",#1A," "
+	db	#A7,#DB,#0F," selects entry for master slot ",#1A," "	; 1
+	db	#A7,#DC,#0F," selects entry for slave slot ",#1A," "	; 2
+	db	#A7,"A"+#80,#0F," selects entry for Auto-Start ",#1A," "
+	db	#A7,"D"+#80,#0F," clears Auto-Start and Dual-Slot settings ",#1A," "
+	db	#A7,"F"+#80,#0F," sets 50Hz or 60Hz frequency ",#1A," "
+	db	#A7,"T"+#80,#0F," toggles Turbo or R800 mode ",#1A," "
+	db	#A7,"C"+#80,#0F," opens cartridge's configuration page ",#1A," "
+	db	#A7,"L"+#80,#0F," jumps to the last used entry ",#1A," "
+	db	#A7,"M"+#80,#0F," toggles background music "
+	db	0,0,0,0,0,0,0,0,0
+ScrollerE
+
+
+; Music player + music data
+; Must be moved to #C000, initialized at #C000
+; Play: call #C005 in loop
+; Stop: call #C008
+;
+MusicData:
+
+	include	"music.inc"
+
+MusicDataEnd:
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -8022,11 +8868,6 @@ helplll	db	#FF,13,#20,"Press any key to return..."
 ;	#86,#20,#20,#87
 ;	#82,#84,#84,#83
 ;
-;	Thin (Arabic, Korean)
-;	#01,#50,#01,#51,#01,#51,#01,#52
-;	#01,#57,#20,#20,#01,#53
-;	#01,#56,#01,#55,#01,#55,#01,#54
-;	
 ;	Thin
 ;	#AA,#AC,#AC,#AF
 ;	#7E,#20,#20,#B0
@@ -8048,6 +8889,6 @@ helplll	db	#FF,13,#20,"Press any key to return..."
 ;
 ;	Inverse fonts
 ;
-;	#A7 - start
-;	#FE - finish
+;	#A7 - start symbol
+;	#0F - stop symbol
 ;

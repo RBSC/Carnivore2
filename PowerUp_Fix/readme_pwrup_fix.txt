@@ -1,8 +1,7 @@
-Carnivore2 MultiFunctional Cartridge version 2.30
-Copyright (c) 2017-2019 RBSC
-Portions (c) Mitsutaka Okazaki
-Portions (c) Kazuhiro Tsujikawa
-Last updated: 09.02.2020
+--------------------------------------------------------------------------------
+Carnivore2 MultiFunctional Cartridge version 2.40
+Copyright (c) 2017-2020 RBSC
+--------------------------------------------------------------------------------
 
 The power-up modification is no longer needed for the Carnivore2 cartridge starting
 from version 2.30 (boot menu and firmware). The cartridge now detects the cold boot

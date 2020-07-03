@@ -1,5 +1,7 @@
-Carnivore2 MultiFunctional Cartridge version 2.30
+--------------------------------------------------------------------------------
+Carnivore2 MultiFunctional Cartridge version 2.40
 Copyright (c) 2017-2020 RBSC
+--------------------------------------------------------------------------------
 
 OpenMSX supports the emulation of the Carnivore2 cartridge since build 0_14_0-200:
 
@@ -34,7 +36,7 @@ https://github.com/RBSC/Carnivore2
 IMPORTANT!
 ----------
 
-Certain features of Boot Menu v2.30 will not work until the support for them is added into OpenMSX:
+Certain features of Boot Menu starting from v2.30 will not work until the support for them is added into OpenMSX:
 
  - FMPAC mono mode will not be enabled
  - Dual-Slot screen will not allow to run ROMs in the slave slot

@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's FlashROM Backup
 ; Copyright (c) 2015-2020 RBSC
-; Version 1.10
+; Version 1.15
 ;
 
 
@@ -977,7 +977,7 @@ PRESB1:	ld	c,_INNOE
 PRESB2:
 	call	SymbOut
 	ld	a,1
-	ld	(F_P),a			; preserve Boot Menu
+	ld	(F_P),a			; preserve Boot Menu and BIOSes
 
 PRESB3:
 	call	SymbOut
@@ -1122,18 +1122,29 @@ Fpr02b:
 	jp	Fpr08
 
 Fpr03:
+	ld	a,(F_P)			; Preserve flag active?
+	or	a
+	jr	z,Fpr031
+	ld	a,(EBlock)
+	cp	4			; data area?
+	jr	nc,Fpr031
+	cp	1			; bioses?
+	jr	nc,Fpr04
+	ld	a,(PreBnk)
+	cp	6			; last 2 blocks left to write for boot menu?
+	jr	nc,Fpr04
+Fpr031:
 	ld	a,(EBlock)
 	or	a			; first block? 8x8kb
-	jr	z,Fpr030
+	jr	z,Fpr032
 	ld	a,(PreBnk)
 	or	a
 	jr	nz,Fpr03a
-Fpr030:
+Fpr032:
 	call	FBerase			; erase block
 	jr	nc,Fpr03a
 	print	ERA_ERR
 	jr	Fpr03b
-
 Fpr03a:
 	ld	hl,BUFTOP		; source
 	ld	de,#8000		; destination
@@ -1145,7 +1156,7 @@ Fpr03a:
 Fpr03b:
 	print	UL_erd_S
 	scf				; set carry flag because of an error
-	jr	Fpr08
+	jp	Fpr08
 
 Fpr04:
 	ld	a,(PreBnk)
@@ -1167,8 +1178,15 @@ Fpr05:
 	cp	#80			; end of FlashROM?
 	jr	z,Fpr08
 	ld	(EBlock),a
-
-	ld	e,">"			; showing indicator for every block
+	ld	e,">"			; show indicator for every block
+	ld	a,(F_P)			; Preserve flag active?
+	or	a
+	jr	z,Fpr055
+	ld	a,(EBlock)
+	cp	4
+	jr	nc,Fpr055
+	ld	e,"-"			; show skip indicator
+Fpr055:
 	ld	c,_CONOUT
 	call	DOS
 
@@ -1223,6 +1241,8 @@ DEF11:
 	or	a			; auto mode?
 	jp	nz,Exit
 
+	xor	a
+	ld	(F_P),a			; preserve flag deactivated
 	jp	MainM	
 
 Reset1:
@@ -2663,7 +2683,7 @@ fkey06:
 	or	a
 	jr	nz,fkey07
 	ld	a,6
-	ld	(F_P),a			; preserve original Boot Menu
+	ld	(F_P),a			; preserve original Boot Menu and BIOSes
 	ret
 
 fkey07:
@@ -2836,7 +2856,7 @@ DL_erd_S:
 F_EXIST_S:
         db      13,10,"File already exists, overwrite? (y/n) $"
 PRES_BB:
-        db      13,10,"Preserve the existing Boot Menu? (y/n) $"
+        db      13,10,"Preserve existing Boot Menu and BIOSes? (y/n) $"
 OverwrWRN1:
 	db	10,13,"WARNING! This will overwrite all data on the FlashROM chip. Proceed? (y/n) $"
 OverwrWRN2:
@@ -2866,7 +2886,7 @@ OpInterr2:
 	db	10,13,"ABORTED! This will result in an partially written FlashROM...",10,13,"$"
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge FlashROM Backup v1.10",13,10
+	db	"Carnivore2 MultiFunctional Cartridge FlashROM Backup v1.15",13,10
 	db	"(C) 2015-2020 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -2914,7 +2934,7 @@ H_PAR_S:
 	db	" /v  - verbose mode (show detailed information)",13,10
 	db	" /d  - download FlashROM's contents into a file",10,13
 	db	" /u  - upload file's contents into FlashROM",13,10
-	db	" /p  - preserve the existing Boot Menu on upload",10,13
+	db	" /p  - preserve the existing Boot Menu and BIOSes",10,13
 	db	" /r  - restart computer after up/downloading",10,13
 	db	10,13
 	db	"WARNING!"
