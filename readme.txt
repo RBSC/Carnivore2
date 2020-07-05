@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
-Carnivore2 MultiFunctional Cartridge Readme File
+Carnivore2 MultiFunctional Cartridge version 2.40
 Copyright (c) 2017-2020 RBSC
-Last updated: 21.03.2020
+Last updated: 03.07.2020
 --------------------------------------------------------------------------------
 
 The user guide and technical documentation have been moved into the PDF files:
@@ -34,11 +34,15 @@ https://sysadminmosaic.ru/msx/carnivore2/partslist-en
 Last minute notes
 -----------------
 
-The dual-slot functionality doesn't work on at least 2 computers: Sony HB-55 and HB-75. The reason is still unknown. We hope to
-mitigate this issue in the future versions of Boot Meny, when the subslot is invoked in the dual-slot emulation functionality.
-Certain subslot combinations may not work well on MSX TurboR computers. We will try to fix this as well.
+The default dual-slot functionality doesn't work on at least 2 computers: Sony HB-55 and HB-75. Please enable the "Slave Slot
+as Master's Subslot" option to be able to run 2 ROMs at the same time on these computers. This also applies to certain Arabic
+MSXs that have only one free available slot.
 
-When a computer is just powered on with the Carnivore2 cartridge inserted into a slot, it will reboot twice. This is normal and
+If any of your CF cards or SD-to-CF adapters no longer work with Carnivore2, try to replace the IDE bios with an earlier
+version. To do this, rename BIDECMFC.ALPHA to BIDECMFC.BIN and write the IDE BIOS into Carnivore2 with the C2MAN or C2MAN40
+utility. This bug has been reported to Konamiman.
+
+When a computer is just powered on with the Carnivore2 cartridge inserted into a slot, it may reboot twice. This is normal and
 was implemented to make sure that the cartridge is fully initialized after the cold boot. You can enable the dual-reboot feature
 in the Configuration settings.
 
