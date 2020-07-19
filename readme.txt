@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge version 2.40
 Copyright (c) 2017-2020 RBSC
-Last updated: 03.07.2020
+Last updated: 19.07.2020
 --------------------------------------------------------------------------------
 
 The user guide and technical documentation have been moved into the PDF files:
@@ -10,6 +10,11 @@ Carnivore2 User Guide (English).pdf
 Carnivore2 User Guide (Russian).pdf
 Carnivore2 Technical Description (English).pdf
 Carnivore2 Technical Description (Russian).pdf
+
+The CF card/adapter compatibility reference is available in these files:
+
+Carnivore2 Compatibility Reference (English).pdf
+Carnivore2 Compatibility Reference (Russian).pdf
 
 The partslist and changelog have been moved into the PDF files:
 
@@ -29,6 +34,8 @@ https://sysadminmosaic.ru/msx/carnivore2/changelog
 https://sysadminmosaic.ru/msx/carnivore2/changelog-en
 https://sysadminmosaic.ru/msx/carnivore2/partslist
 https://sysadminmosaic.ru/msx/carnivore2/partslist-en
+https://sysadminmosaic.ru/msx/carnivore2/qvl_list
+https://sysadminmosaic.ru/msx/carnivore2/qvl_list-en
 
 
 Last minute notes
@@ -38,9 +45,9 @@ The default dual-slot functionality doesn't work on at least 2 computers: Sony H
 as Master's Subslot" option to be able to run 2 ROMs at the same time on these computers. This also applies to certain Arabic
 MSXs that have only one free available slot.
 
-If any of your CF cards or SD-to-CF adapters no longer work with Carnivore2, try to replace the IDE bios with an earlier
-version. To do this, rename BIDECMFC.ALPHA to BIDECMFC.BIN and write the IDE BIOS into Carnivore2 with the C2MAN or C2MAN40
-utility. This bug has been reported to Konamiman.
+If any of your CF cards or SD-to-CF adapters no longer work with Carnivore2, try to replace the IDE bios with an alternative
+version. To do this, rename BIDECMFC.ALT into BIDECMFC.BIN and write the IDE BIOS into Carnivore2 with the C2MAN or C2MAN40
+utility.
 
 When a computer is just powered on with the Carnivore2 cartridge inserted into a slot, it may reboot twice. This is normal and
 was implemented to make sure that the cartridge is fully initialized after the cold boot. You can enable the dual-reboot feature
