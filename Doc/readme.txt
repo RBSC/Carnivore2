@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge version 2.40
 Copyright (c) 2017-2020 RBSC
-Last updated: 23.07.2020
+Last updated: 20.07.2020
 --------------------------------------------------------------------------------
 
 The user guide and technical documentation have been moved into the PDF files:
