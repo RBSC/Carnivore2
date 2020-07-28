@@ -40,6 +40,7 @@ QBERT.RCP	- RCP file for "Qbert" game
 CHOPLIFT.RCP	- RCP file for "ChopLifter" game
 PAINTER.RCP	- RCP file for "Painter" graphics editor
 QURAN.RCP	- RCP file for "Quran" cartridge dump (shared by Wbahnassi)
+EIDOLON.RCP	- RCP file for "Eidolon" game (shared by Carmeloco)
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
 more information about this file.
