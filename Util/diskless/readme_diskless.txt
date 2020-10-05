@@ -4,11 +4,7 @@ Copyright (c) 2017-2020 RBSC
 --------------------------------------------------------------------------------
 
 The utilities and the readme.txt file were made by Vladimir and shared with the
-RBSC team for deploying into the repository. Please note that this solution
-contains older versions of Boot Menu and BIOSes, so it's advised to update the
-firmware, Boot Menu, BIOSes and tools from the repository after enabling your
-cartridge.
-
+RBSC team for deploying into the repository. 
 
 Installing ROMs on diskless machine
 -----------------------------------
@@ -84,16 +80,20 @@ your CF card, transfer MSX DOS and  other Carnivore utilities to the card from
 your PC. Boot with the card in the cartridge straight to MSX DOS. Enjoy your
 machine being not diskless any more
 
-    
-Using CFTEST utility to verify IDE function on cartridge
---------------------------------------------------------
 
-Run the utility by playing CFTEST.WAV file into cassette input after entering
+Utilities that maybe useful in debugging
+----------------------------------------
+
+Run a utility by playing its .WAV file into cassette input after entering
 Basic command:
 
   bload"cas:",r
 
 NOTE: Windows Media Player can not play the file, use audocity(http://www.audacityteam.org/)
+
+
+CFTEST utility to verify IDE function on cartridge
+---------------------------------------------------
 
 Enter slot number of the cartridge, press 1 for subslot number,  press "i" key
 to dump ide block, enter block number 0. If the IDE interface functions correctly
@@ -101,3 +101,16 @@ the program will dump the start of first block on CF card immediately. If you
 entered incorrect slot number or IDE is not functional, the will be a long pause
 without output, followed by error message. Press "Esc" key to return to slot
 selection.
+
+RSTEEPROM for resetting dual reset setting in EEPROM
+----------------------------------------------------
+
+This utility clears the dual reset flag in EEPROM. It may be useful in situation when setting this flag resulted in infinite boot loop of the machine.
+
+SETCFG for editing default configuration
+----------------------------------------
+
+This utility allows editing default configuration of the cartridge. It may be useful when one of subsytems is malfunctioning preventing machine booting with the cartridge. It is similar to "Create new configuration entry" in C2man except it acts on first default entry.
+
+NOTE: this utility will erase all exsiting configuration entries.
+NOTE: make sure you configure extended slot and two subsystems, otherwise the cartridge registers may not be exposed and it will not be possible to access cartridge by any software.
