@@ -189,8 +189,6 @@ askS:
 	
 	or	0x80
 	ld	(FlashSlotId),a
-	or	0x04
-	ld	(IdeSlotId),a
 	
 setSlot:
 	print	SWITCHING	
@@ -200,88 +198,155 @@ setSlot:
 	ld	a,(FlashSlotId)
 	ld	h,0x80
 	call	ENASLT
-	
+	call	BCTSF
+
+	ld	hl,DEF_CFG+59
+	xor a
+	ld	(hl),a	
+	inc hl
+	ld a,#28
+	ld (hl),a
+	inc hl
+	inc hl
+	ld a,#01
+	ld (hl),a
+
+	ld	bc,0			; counter for enabled devices
+	push	bc
+	print	ExtSlot
+ADCQ1:
+	call	CHGET
+	call	CHPUT
+	print 	ONE_NL_S
+	cp	"n"
+	jr	z,ADCQ2
+	cp	"y"
+	jr	nz,ADCQ1
+	ld	hl,DEF_CFG+59
+	ld	a,(hl)
+	or	#80			; enable expanded slot bit
+	ld	(hl),a	
+	pop	bc
+	inc	bc
+	push	bc
+ADCQ2:
+	print	MapRAM
+ADCQ3:
+	call	CHGET
+	call	CHPUT
+	print 	ONE_NL_S
+	cp	"n"
+	jr	z,ADCQ4
+	cp	"y"
+	jr	nz,ADCQ3
+	ld	hl,DEF_CFG+59
+	ld	a,(hl)
+	or	#54			; enable RAM bits: 1010100
+	ld	(hl),a	
+	pop	bc
+	inc	bc
+	push	bc
+ADCQ4:
+	print	FmOPLL
+ADCQ5:
+	call	CHGET
+	call	CHPUT
+	print 	ONE_NL_S
+	cp	"n"
+	jr	z,ADCQ6
+	cp	"y"
+	jr	nz,ADCQ5
+	ld	hl,DEF_CFG+59
+	ld	a,(hl)
+	or	#28			; enable FMPAC bits: 101000
+	ld	(hl),a
+	pop	bc
+	inc	bc
+	push	bc
+ADCQ6:
+	print	IDEContr
+ADCQ7:
+	call	CHGET
+	call	CHPUT
+	print 	ONE_NL_S
+	cp	"n"
+	jr	z,ADCQ8
+	cp	"y"
+	jr	nz,ADCQ7
+	ld	hl,DEF_CFG+59
+	ld	a,(hl)
+	or	2			; enable IDE bit: 10
+	ld	(hl),a	
+	pop	bc
+	inc	bc
+	push	bc
+ADCQ8:
+	print	MultiSCC
+ADCQ9:
+	call	CHGET
+	call	CHPUT
+	print 	ONE_NL_S
+	cp	"n"
+	jr	z,ADCQ10
+	cp	"y"
+	jr	nz,ADCQ9
+	ld	hl,DEF_CFG+59
+	ld	a,(hl)
+	or	1			; enable MLTMAP/SCC bit: 1
+	ld	(hl),a	
+	ld	hl,DEF_CFG+60
+	ld	a,(hl)
+	or	#10			; enable SCC sound in main control register
+	ld	(hl),a	
+	pop	bc
+	inc	bc
+	push	bc
+
+ADCQ10:
+	pop	bc
+	ld	a,c			; more than 1 device enabled?
+	cp	2
+	jr	c,ADCQ11
+	ld	hl,DEF_CFG+59
+	ld	a,(hl)
+	or	#80			; enable expanded slot bit
+	ld	(hl),a	
+
+ADCQ11:
+	ld	hl,DEF_CFG+59
+	ld	a,(hl)
+	cp	#FF			; all enabled?
+	jr	nz,ADCQ12
+	ld	hl,DEF_CFG+60
+	ld	a,(hl)
+	and	#FB			; enable restart for delayed reconfig
+	ld	(hl),a
+	ld	hl,DEF_CFG+62
+	ld	a,1			; enable reset for full config
+	ld	(hl),a
+
+ADCQ12:	or	a			; nothing enabled?
+	jr	nz,doit
+	print	NothingE
+	jp	Exit
+
+doit:	
+	print NEWMCONF
+	ld	hl,DEF_CFG+59
+	ld	a,(hl)
+	call HEXOUT
+	print NEWCARDMDR
+	ld	hl,DEF_CFG+60
+	ld	a,(hl)
+	call HEXOUT
+	print 	ONE_NL_S
 	print	PROCEED
 	call	CHGET
 	call	CHPUT
 	cp	"y"
 	jr	nz,askS
-		
-	call	BCTSF
 
-	call	ChipErase
 	call	DIRINI
-
-	print	BootWrit
-;;	xor	a
-;;	ld	(EBlock),a
-;;	ld	a,#00			; 1st 1/2 Boot Block
-;;	ld	(EBlock0),a
-;;	call	FBerase	
-;;	ld	a,#20			; 2nd 1/2 Boot Block
-;;	ld	(EBlock0),a
-;;	call	FBerase	
-;Program 1st Boot
-	call	SET2PD
-	ld	a,#15
-	ld	(R2Mult),a
-	xor a
-	ld	(PreBnk),a		; 0-page #0000 (Boot)
-	
-	ld	hl,0x2000
-	ld	(Size),hl
-	xor	a
-	ld	(Size+2),a
-	ld	hl,0
-	ld	de,#8000
-	call	FBProgCF
-	jp	c,FlshFailed
-; Program 2-nd Boot Block
-	ld	hl,0x10
-	ld	de,#A000
-	call	FBProgCF
-	jp	c,FlshFailed
-	print	Flash_C_S
-
-; Program 3-d Boot Block
-	ld	a,3		
-	ld	(PreBnk),a
-	ld	hl,0x20
-	ld	de,#8000
-	call	FBProgCF
-	jr	c,FlshFailed
-; Program 4-th Boot Block
-	ld	hl,0x30
-	ld	de,#A000
-	call	FBProgCF
-	jr	c,FlshFailed
-	print	Flash_C_S
-
-	print	IdeWrit
-	ld	a,#01
-	ld	(Record+2),a		; set start block #10000
-	ld	a,#02
-	ld	(Record+3),a		; set length 2 bl #10000-#2FFFF
-	ld	(Size+2),a
-	ld	hl,0
-	ld	(Size),hl
-	ld	hl,#40	
-	call	LoadImage
-	jr	c,FlshFailed
-	print	ONE_NL_S
-	print	Flash_C_S
-
-	print	FmpacWrit
-	ld	a,#03
-	ld	(Record+2),a		; set start block #30000
-	ld	a,#01
-	ld	(Record+3),a		; set length 1 bl #30000-#3FFFF
-	ld	(Size+2),a
-	ld	hl, #140
-	call	LoadImage
-	jr	c,FlshFailed
-	print	ONE_NL_S
-	print	Flash_C_S
 
 	print	DONE
 	jp	Exit
@@ -404,120 +469,20 @@ Trp03:
 	print	NOTD_S
 	jp	Exit
 
-;-----------------------------------------------------------------------------
-LoadImage:
-; Erase block's and load ROM-image from CF
-; Input: hl - first block of image in CF
-
-	ld	(CurrentBlock),hl
-;;; 1st operation - erase flash block(s)
-;;	print	FLEB_S
-;;	xor	a
-;;	ld	(EBlock0),a
-;;	ld	a,(Record+02)		; start bloc
-;;	ld	(EBlock),a
-;;	ld	a,(Record+03)		; len b
-;;	or	a
-;;	jp	z,LIF04
-;;	ld	b,a
-;;LIF03:	push	bc
-;;	call	FBerase
-;;	jr	nc,LIF02
-;;	pop	bc			
-;;	print 	FLEBE_S
-;;	jp	LIF04
-;;LIF02:
-;;	ld	a,(EBlock)
-;;	call	HEXOUT
-;;	ld	a," "
-;;	call	CHPUT
-;;	pop	bc
-;;	ld	hl,EBlock
-;;	inc	(hl)
-;;	djnz	LIF03
-;;	print	ONE_NL_S
-
-; 2nd operation - loading ROM-image to flash
-LIFM1:
-	ld	a,#14			; #14 #84
-	ld	(R2Mult),a		; set 8kB Bank
-	ld	a,(Record+02)		; start block (absolute block 64kB)
-	ld	(EBlock),a
-	ld	(AddrFR),a
-
-LIFM2:	xor	a
-	ld	(PreBnk),a
-
-	print	LFRI_S
-;calc loading cycles
-; Size 3 = 0 ( or oversize )
-; Size 2 (x 64 kB ) - cycles for (Eblock) 
-; Size 1,0 / 0x2000 - cycles for FBProg portions
-
-;Size / #2000 
-	ld	h,0
-	ld	a,(Size+2)
-	ld	l,a
-	xor	a
-	ld	a,(Size+1)
-	rl	a
-	rl	l
-	rl	h			; 00008000
-	rl	a
-	rl	l
-	rl	h			; 00004000
-	rl	a
-	rl	l
-	rl	h			; 00002000
-	ld	b,a
-	ld	a,(Size)
-	or	b
-	jr	z,Fpr03
-	inc	hl			; rounding up
-Fpr03:	ld	(C8k),hl		; save Counter 8kB blocks
-
-Fpr02:	
-;program portion
-;      	ld      a,(ERMSlt)
-;	ld	e,#94			; sent bank2 to 8kb
-;	call	WRTSLT
-
-	call	FBProg2
-	jr	c,PR_Fail
-	ld	a,">"			; flashing indicator
-	call	CHPUT
-	ld	a,(PreBnk)
-	inc	a			; next PreBnk 
-	and	7
-	ld	(PreBnk),a	
-	jr	nz,FPr01
-	ld	hl,EBlock
-	inc	(hl)	
-FPr01:	ld	bc,(C8k)
-	dec	bc
-	ld	(C8k),bc
-	ld	a,c
-	or	b
-	jr	nz,Fpr02	
-
-LIF04:
-; finish loading ROMimage
-	ret
-
 PR_Fail:
 	print	FL_erd_S
 	scf				; set carry flag because of an error
-	jr	LIF04
+	ret
 
 Ld_Fail:
 	print	ONE_NL_S
 	print	FR_ER_S
 	scf				; set carry flag because of an error
-	jr	LIF04
+	ret
 
 FBProg:
 ; Block (0..2000h) programm to flash
-; hl - buffer sourse
+; hl - DEF_CFG sourse
 ; de = flash destination
 ; bc - size
 ; (Eblock),(Eblock0) - start address in flash
@@ -549,113 +514,12 @@ Loop1:
 	ld	a,b
 	or	c
 	jr	nz,Loop1
-	jp	PrEr
-
-
-FBProgCF:
-; Block (0..0x2000) programm to flash
-; de = flash destination
-; (Eblock),(Eblock0) - start address in flash
-; output CF - flashing failed flag
-	ld	(CurrentBlock),hl
-	push	de
-	ld	a,(PreBnk)
-	ld	(R2Reg),a
-	ld	a,(EBlock)
-	ld	(AddrFR),a
-        ld	b,#20
-        pop	de
-	di
-Loop1Block:
-	exx
-	ld	c,1
-	ld	de,(CurrentBlock)
-	ld	hl,BUFTOP
-	call	ReadBlocks
-	exx
-	jp	nz,Ld_Fail
-	ld	hl,(CurrentBlock)
-	inc	hl
-	ld	(CurrentBlock),hl
-	ld	hl,BUFTOP
-	ld	c,0
-Loop1CF:
-	ld	a,#AA
-	ld	(#8AAA),a		; (AAA)<-AA
-	ld	a,#55		
-	ld	(#8555),a		; (555)<-55
-	ld	a,#A0
-	ld	(#8AAA),a		; (AAA)<-A0
-
-	ld	a,(hl)
-	ld	(de),a			; byte programm
-
-	call	CHECK			; check
-	jp	c,PrEr
-	inc	hl
-	inc	de
-	dec	c
-	jr	nz,Loop1CF
-	dec	b
-	ld	a,b
-	and	1
-	jr	nz,Loop1CF
-	or	b
-	jr	nz,Loop1Block
-	jr	PrEr
-
-FBProg2:
-; Block (0..0x2000) programm to flash
-; (Eblock)x64kB, (PreBnk)x8kB(16kB) - start address in flash
-; CurrentBlock - start block of image in CF
-; output CF - flag Programm fail
-
-	ld	a,(PreBnk)
-	ld	(R2Reg),a
-	ld	a,(EBlock)
-	ld	(AddrFR),a
-
-        ld	b,#20
-	ld	de,#8000
-	di
-
-Loop2Block:
-	exx
-	ld	c,1
-	ld	de,(CurrentBlock)
-	ld	hl,BUFTOP
-	call	ReadBlocks
-	exx
-	jp	nz,Ld_Fail
-	ld	hl,(CurrentBlock)
-	inc	hl
-	ld	(CurrentBlock),hl
-	ld	hl,BUFTOP
-	ld	c,0
-Loop2:
-	ld	a,#50
-	ld	(#8AAA),a		; double byte programm
-
-	ld	a,(hl)
-	ld	(de),a			; 1st byte programm
-	inc	hl
-	inc	de
-	ld	a,(hl)			; 2nd byte programm
-	ld	(de),a
-	call	CHECK			; check
-	jp	c,PrEr
-	inc	hl
-	inc	de
-	dec	c
-	jr	nz,Loop2
-	ld	a,b
-	sub	a,2
-	ld	b,a
-	jr	nz,Loop2Block
+	;jp	PrEr
 PrEr:
 ;    	save flag CF - fail
 	ei
 	ret
+
 
 FBerase:
 ; Flash block erase 
@@ -793,48 +657,6 @@ HEXOUT:
 	pop	hl
 	ret
 	
-;*********************************************
-;input a - Slot Number
-;*********************************************	
-ChipErase:
-	print	Erasing
-	di
-	ld	a,(ShadowMDR)
-	and	#FE
-	ld	(CardMDR),a
-	ld	a,#95			; enable write to bank (current #85)
-	ld	(R1Mult),a  
-
-	ld	a,#AA
-	ld	(#4AAA),a
-	ld	a,#55
-	ld	(#4555),a
-	ld	a,#80
-	ld	(#4AAA),a		; Erase Mode
-	ld	a,#AA
-	ld	(#4AAA),a
-	ld	a,#55
-	ld	(#4555),a
-	ld	a,#10			; Command Erase Block
-	ld	(#4AAA),a
-
-	ld	a,#FF
-    	ld	de,#4000
-    	call	CHECK
-	push	af
-	ld	a,(ShadowMDR)
-	ld	(CardMDR),a
-	ei
-	pop	af
-
-	jp	nc,ChipErOK
-	print	EraseFail
-	jp	Exit
-ChipErOK:
-	print	EraseOK
-	ret
-
-	
 ; Erase directory + add 00 Record (empty SCC)
 DIRINI:
 ; erase directory area
@@ -894,204 +716,15 @@ KEYOFF:	ld	ix, #00CC
 
 
 
-;----------------------------------------------------------------------------
-;          C = Number of sectors to read
-;          HL = Destination memory address for the transfer
-;          DE = 2 byte sector number
-;Output:   A = Error code (the same codes of MSX-DOS are used):
-;              0: Ok
-;          B = Number of sectors actually read/written
-ReadBlocks:
-	push	bc
-	push	de
-	push	hl
-	ld	a,(IdeSlotId)
-	ld	h,0x40
-	call	ENASLT
-	pop	hl
-	pop	de
-	pop	bc
-	xor	a
-	ld	b,a
-	ld	a,c
-	or	a
-	jr	nz,DEV_RW_NO0SEC
-	xor	a
-	ld	b,0
-	jr	ReadBlocksDone
-DEV_RW_NO0SEC:
-	call	IDE_ON
-	xor	a
-	or	M_LBA
-	ld	(IDE_HEAD),a	;IDE_HEAD must be written first,
-	ld	a,e		;or the other IDE_LBAxxx and IDE_SECCNT
-	ld	(IDE_LBALOW),a	;registers will not get a correct value
-	ld	a,d		;(blueMSX issue?)
-	ld	(IDE_LBAMID),a
-	xor	a
-	ld	(IDE_LBAHIGH),a
-	ld	a,c
-	ld	(IDE_SECCNT),a
-	call	WAIT_CMD_RDY
-	jr	c,ReadBlocksRwErr
-	ld	a,0x20
-	push	bc	;Save sector count
-	call	DO_IDE
-	pop	bc
-	jr	c,ReadBlocksRwErr
-
-	call	DEV_RW_FAULT
-	jr	nz,ReadBlocksDone
-
-	ld	b,c	;Retrieve sector count
-	ex	de,hl
-DEV_R_GDATA:
-	push	bc
-	ld	hl,IDE_DATA
-	ld	bc,512
-	ldir
-	pop	bc
-	djnz	DEV_R_GDATA
-
-	call	IDE_OFF
-	xor	a
-ReadBlocksDone:
-	push	af
-	push	bc
-	ld	a,(FlashSlotId)
-	ld	h,0x40
-	call	ENASLT
-	pop	bc
-	pop	af
-	ret
-ReadBlocksRwErr:
-	call	DEV_RW_ERR
-	jr	ReadBlocksDone
-;-----------------------------------------------------------------------------
-;
-; Enable or disable the IDE registers
-
-;Note that bank 7 (the driver code bank) must be kept switched
-
-IDE_ON:
-	ld	a,1+7*32
-	ld	(IDE_BANK),a
-	ret
-
-IDE_OFF:
-	ld	a,7*32
-	ld	(IDE_BANK),a
-	ret
-	
-DEV_RW_ERR:
-	ld	a,(IDE_ERROR)
-	ld	b,a
-	call	IDE_OFF
-	ld	a,b	
-
-	bit	NM,a	;Not ready
-	jr	nz,DEV_R_ERR1
-	ld	a,.NRDY
-	ld	b,0
-	ret
-DEV_R_ERR1:
-
-	bit	IDNF,a	;Sector not found
-	jr	nz,DEV_R_ERR2
-	ld	a,.RNF
-	ld	b,0
-	ret
-DEV_R_ERR2:
-
-	bit	WP,a	;Write protected
-	jr	nz,DEV_R_ERR3
-	ld	a,.WPROT
-	ld	b,0
-	ret
-DEV_R_ERR3:
-
-	ld	a,.DISK	;Other error
-	ld	b,0
-	ret
-
-	;--- Check for device fault
-	;    Output: NZ and A=.DISK on fault
-
-DEV_RW_FAULT:
-	ld	a,(IDE_STATUS)
-	and	M_DF	;Device fault
-	ret	z
-
-	call	IDE_OFF
-	ld	a,.DISK
-	ld	b,0
-	or	a
-	ret
-;-----------------------------------------------------------------------------
-;
-; Wait the BSY flag to clear and RDY flag to be set
-; if we wait for more than 30s, send a soft reset to IDE BUS
-; if the soft reset didn't work after 30s return with error
-;
-; Input:  Nothing
-; Output: Cy=1 if timeout after soft reset 
-; Preserves: DE and BC
-
-WAIT_CMD_RDY:
-	push	de
-	push	bc
-	ld	de,8142		;Limit the wait to 30s
-WAIT_RDY1:
-	ld	b,255
-WAIT_RDY2:
-	ld	a,(IDE_STATUS)
-	and	M_BSY+M_DRDY
-	cp	M_DRDY
-	jr	z,WAIT_RDY_END	;Wait for BSY to clear and DRDY to set		
-	djnz	WAIT_RDY2	;End of WAIT_RDY2 loop
-	dec	de
-	ld	a,d
-	or	e
-	jr	nz,WAIT_RDY1	;End of WAIT_RDY1 loop
-	scf
-WAIT_RDY_END:
-	pop	bc
-	pop	de
-	ret	
-
-;-----------------------------------------------------------------------------
-;
-; Execute a command
-;
-; Input:  A = Command code
-;         Other command registers appropriately set
-; Output: Cy=1 if ERR bit in status register set
-
-DO_IDE:
-	ld	(IDE_CMD),a
-
-WAIT_IDE:
-	nop	; Wait 50us
-	ld	a,(IDE_STATUS)
-	bit	DRQ,a
-	jr	nz,IDE_END
-	bit	BSY,a
-	jr	nz,WAIT_IDE
-
-IDE_END:
-	rrca
-	ret
-
 ;------------------------------------------------------	
 DEF_CFG:
 	db	#00,#FF,00,00,"C"
-	db	"DefConfig: RAM+IDE+FMPAC+SCC  "
+	db	"Edited by SETCFG              "
 	db	#F8,#50,#00,#8C,#3F,#40 ;35
 	db	#F8,#70,#01,#8C,#3F,#60	;41	
-	db      #F8,#90,#02,#8C,#3F,#80	;47	
+	db  #F8,#90,#02,#8C,#3F,#80	;47	
 	db	#F8,#B0,#03,#8C,#3F,#A0	;53
-	db	#FF,#38,#00,#01,#FF	;59
-;	db	#D7,#38,#00,#01,#FF	;59
+	db	#00,#28,#00,#01,#FF ; 59
 
 ;
 ;Variables
@@ -1099,7 +732,6 @@ DEF_CFG:
 
 Slot:	db	0
 FlashSlotId:	db	0
-IdeSlotId:	db	0
 CurrentBlock:	ds 2
 protect:
 	db	1
@@ -1175,5 +807,27 @@ PROCEED: db "Proceed programming BIOS in this slot? $"
 SWITCHING: db "Switching slot",13,10,"$"
 CHECKAT: db "Check@$"
 DONE: db "All done. Reset machine to proceed",13,10,"$"
+ExtSlot:
+	db	10,13,"Enable extended slot? (y/n) $"
+MapRAM:
+	db	10,13,"Enable RAM and Mapper? (y/n) $"
+FmOPLL:
+	db	10,13,"Enable FMPAC? (y/n) $"
+IDEContr:
+	db	10,13,"Enable IDE controller? (y/n) $"
+MultiSCC:
+	db	10,13,"Enable SCC and MultiMapper? (y/n) $"
+
+EntryOK:
+	db	10,13,"Configuration entry added successfully!",10,13,"$"
+EntryFAIL:
+	db	10,13,"Failed to create configuration entry!",10,13,"$"
+NothingE:
+	db	10,13,"Ignored! Enable at least one device!",10,13,"$"
+NEWMCONF:
+	db " New Mconf: #$"
+NEWCARDMDR
+	db " New CardMDR: #$"
+
 Last:
 BUFTOP:
