@@ -1,11 +1,11 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's Boot Menu
-; Copyright (c) 2015-2020 RBSC
+; Copyright (c) 2015-2021 RBSC
 ; Portions (c) Grauw
 ; Portions (c) Spark/SDM
 ; Portions (c) Jordon aka KOD/SDM 
  
-; Version 2.40
+; Version 2.41
 ;
 
 ; !COMPILATION OPTIONS!
@@ -159,7 +159,7 @@ MUSSTOP	equ	#C008
 	db	0,0,0,0,0,0
 Label	db	"CMFCCFRC"
 	db	0
-BBVers	db	"v2.40"  ; Version | also update it in the header!
+BBVers	db	"v2.41"  ; Version | also update it in the header!
 	db	0
 
 
@@ -549,7 +549,7 @@ Check_AS:
 
 	call	KILBUF
 	ld	hl,#0000
-	ld	a,(ADelay)
+	ld	a,ADelay
 	ld	b,a
 	ld	c,"3"
 AutoWA2:
