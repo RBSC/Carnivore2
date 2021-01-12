@@ -45,3 +45,15 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+Firmware/Sources/db
+Firmware/Sources/incremental_db
+Firmware/Sources/mcscc.asm.rpt
+Firmware/Sources/mcscc.done
+Firmware/Sources/mcscc.fit.rpt
+Firmware/Sources/mcscc.fit.summary
+Firmware/Sources/mcscc.flow.rpt
+Firmware/Sources/mcscc.map.rpt
+Firmware/Sources/mcscc.map.summary
+Firmware/Sources/mcscc.sta.rpt
+Firmware/Sources/mcscc.sta.summary
+Firmware/Sources/mcscc_assignment_defaults.qdf
