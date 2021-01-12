@@ -160,11 +160,11 @@ begin
         
         if rmute = '0' then
           if mdata.sign = '0' then
-            ro <= "1000000000" + (mdata.value&"0");--(10<10+9)
-            ACRO <= ACRO + mdata.value; --*    (16<16+9)
+            ro <= "1000000000" + mdata.value;
+            ACRO <= ACRO + (mdata.value&"0"); --*
           else
-            ro <= "1000000000" - (mdata.value&"0");
-            ACRO <= ACRO - mdata.value; --*
+            ro <= "1000000000" - mdata.value;
+            ACRO <= ACRO - (mdata.value&"0"); --*
           end if;
         else
           ro <= "1000000000";
