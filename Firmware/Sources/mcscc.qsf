@@ -41,7 +41,7 @@ set_global_assignment -name DEVICE EP2C5Q208C8
 set_global_assignment -name TOP_LEVEL_ENTITY mcscc
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 9.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "19:45:57  JULY 26, 2015"
-set_global_assignment -name LAST_QUARTUS_VERSION 9.0
+set_global_assignment -name LAST_QUARTUS_VERSION "11.0 SP1"
 set_global_assignment -name MISC_FILE "K:/msx/ALTERA_S_MSX/aa/mcscc/mcscc.dpf"
 set_global_assignment -name DEVICE_FILTER_PACKAGE "ANY QFP"
 set_location_assignment PIN_27 -to pSltClk
@@ -139,7 +139,6 @@ set_location_assignment PIN_45 -to pFlVpp
 set_location_assignment PIN_134 -to pFlRB_b
 
 set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION OFF
-set_global_assignment -name INCREMENTAL_COMPILATION OFF
 set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
 set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_global_assignment -name NUM_PARALLEL_PROCESSORS 1
@@ -271,3 +270,12 @@ set_instance_assignment -name PASSIVE_RESISTOR "PULL-UP" -to "pIDEDat(3)"
 set_instance_assignment -name PASSIVE_RESISTOR "PULL-UP" -to "pIDEDat(4)"
 set_instance_assignment -name PASSIVE_RESISTOR "PULL-UP" -to "pIDEDat(5)"
 set_instance_assignment -name PASSIVE_RESISTOR "PULL-UP" -to "pIDEDat(6)"
+set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_global_assignment -name PHYSICAL_SYNTHESIS_ASYNCHRONOUS_SIGNAL_PIPELINING OFF
+set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION OFF
+set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC_FOR_AREA ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_MAP_LOGIC_TO_MEMORY_FOR_AREA ON
+set_global_assignment -name PHYSICAL_SYNTHESIS_EFFORT EXTRA
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
