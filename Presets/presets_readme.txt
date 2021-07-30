@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
-Carnivore2 MultiFunctional Cartridge version 2.40
-Copyright (c) 2017-2020 RBSC
+Carnivore2 MultiFunctional Cartridge
+Copyright (c) 2017-2021 RBSC
 --------------------------------------------------------------------------------
 
 Register Configuration Presets
@@ -41,6 +41,10 @@ CHOPLIFT.RCP	- RCP file for "ChopLifter" game
 PAINTER.RCP	- RCP file for "Painter" graphics editor
 QURAN.RCP	- RCP file for "Quran" cartridge dump (shared by Wbahnassi)
 EIDOLON.RCP	- RCP file for "Eidolon" game (shared by Carmeloco)
+HOIN1SP.RCP	- RCP file for "Hole In One Special" game
+RMONSTER.RCP	- RCP file for "Rune Monster" game
+GUARDIC.RCP	- RCP file for "Guardic" game
+MUTANTS.RCP	- RCP file for "Mutants from the Deep" game
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
 more information about this file.
