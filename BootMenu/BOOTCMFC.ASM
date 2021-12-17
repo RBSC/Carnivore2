@@ -1,6 +1,6 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's Boot Menu
-; Copyright (c) 2015-2021 RBSC
+; Copyright (c) 2015-2020 RBSC
 ; Portions (c) Grauw
 ; Portions (c) Spark/SDM
 ; Portions (c) Jordon aka KOD/SDM 
@@ -278,7 +278,6 @@ FirmVs:
 	ld	hl,#0000
 	ld	bc,TDelay*50	; set delay for title
 	call	AutoWait	; wait a few seconds
-	ld	hl,#0611
 
 SltCheck:
 	ld	a,(ERMSLT)
@@ -288,6 +287,8 @@ SltCheck:
 	cp	3		; Won't work in slot 3!
 	jr	nz,DrCheck
 NoSlt:
+	call	CLS
+	ld	hl,#0611
 	call    POSIT
 	ld	hl,Haltmsg
 	call	print_sp	; print halt msg
@@ -308,6 +309,7 @@ Boot1:
 	ld	a,(ARKOR)	; Arabic or Korean?
 	or	a
 	jr	z,Boot2
+	call	CLS
 	ld	hl,#0309
 	call    POSIT
 	ld	hl,AltKormsg
@@ -318,6 +320,13 @@ Boot1:
 	call	AutoWait	; wait a few seconds
 	xor	a
 	call	RestEnv		; restore environment (font, colors, screen)
+
+	ld	a,#38
+	ld	(CardMDR),a	; set CardMDR for Defconfig
+	ld	hl,DefCfg	; DefConfig values
+	ld	de,CardMDR+6	; current registers
+	ld	bc,24
+	ldir
 	ret			; skip boot menu
   endif
 
@@ -549,7 +558,7 @@ Check_AS:
 
 	call	KILBUF
 	ld	hl,#0000
-	ld	a,ADelay
+	ld	a,(ADelay)
 	ld	b,a
 	ld	c,"3"
 AutoWA2:
@@ -4240,9 +4249,9 @@ SlotFilter:
 	ld	a,(ERMSLT)
 	and	%00000011
 	or	a		; Won't work with dual slots in slot 0! Unlikely to happen anyway...
-	jp	z,Pagep
+	jr	z,SlotSet2
 	cp	3		; With slot 3 no expansion will be possible
-	jp	z,Pagep
+	jr	z,SlotSet2
 ;	jr	nz,SlotSet0
 ;	ld	(MASSLTN),a	; save master slot
 ;	ld	a,#FF
@@ -4275,7 +4284,7 @@ SlotSet0:
 	jr	SlotSet2
 SlotSet1:
 	cp	2
-	jp	nz,Pagep	
+	jp	nz,SlotSet2	
 	ld	(MASSLTN),a	; save master slot
 	ld	a,1
 	ld	(SLASLTN),a	; save slave slot

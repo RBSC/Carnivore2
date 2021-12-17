@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
-Carnivore2 MultiFunctional Cartridge version 2.41
+Carnivore2 MultiFunctional Cartridge version 2.40 (Boot Menu version 2.41)
 Copyright (c) 2017-2021 RBSC
 --------------------------------------------------------------------------------
 
