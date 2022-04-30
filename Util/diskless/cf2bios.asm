@@ -163,7 +163,7 @@ shftLLp	or	a	; clear Cy
 	endm
 	
 	org	0xC000-7
-; BLOAD header, before the ORG so that the header isnï¿½t counted
+; BLOAD header, before the ORG so that the header isn’t counted
 	db 0xFE     ; magic number
 	dw begin    ; begin address
 	dw Last - 1  ; end address
@@ -225,7 +225,7 @@ setSlot:
 	call	SET2PD
 	ld	a,#15
 	ld	(R2Mult),a
-	xor a
+	ld	a,0
 	ld	(PreBnk),a		; 0-page #0000 (Boot)
 	
 	ld	hl,0x2000
@@ -235,23 +235,9 @@ setSlot:
 	ld	hl,0
 	ld	de,#8000
 	call	FBProgCF
-	jp	c,FlshFailed
+	jr	c,FlshFailed
 ; Program 2-nd Boot Block
 	ld	hl,0x10
-	ld	de,#A000
-	call	FBProgCF
-	jp	c,FlshFailed
-	print	Flash_C_S
-
-; Program 3-d Boot Block
-	ld	a,3		
-	ld	(PreBnk),a
-	ld	hl,0x20
-	ld	de,#8000
-	call	FBProgCF
-	jr	c,FlshFailed
-; Program 4-th Boot Block
-	ld	hl,0x30
 	ld	de,#A000
 	call	FBProgCF
 	jr	c,FlshFailed
@@ -265,7 +251,7 @@ setSlot:
 	ld	(Size+2),a
 	ld	hl,0
 	ld	(Size),hl
-	ld	hl,#40	
+	ld	hl,#20	
 	call	LoadImage
 	jr	c,FlshFailed
 	print	ONE_NL_S
@@ -277,7 +263,7 @@ setSlot:
 	ld	a,#01
 	ld	(Record+3),a		; set length 1 bl #30000-#3FFFF
 	ld	(Size+2),a
-	ld	hl, #140
+	ld	hl, #120
 	call	LoadImage
 	jr	c,FlshFailed
 	print	ONE_NL_S

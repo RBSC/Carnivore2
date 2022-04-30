@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
 Changelog for Carnivore2 MultiFunctional Cartridge
-Copyright (c) 2017-2020 by RBSC
+Copyright (c) 2017-2022 by RBSC
 English verison
 --------------------------------------------------------------------------------
 

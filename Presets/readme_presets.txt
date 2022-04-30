@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge
-Copyright (c) 2017-2021 RBSC
+Copyright (c) 2017-2022 RBSC
 --------------------------------------------------------------------------------
 
 Register Configuration Presets

@@ -1,11 +1,11 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's Boot Menu
-; Copyright (c) 2015-2020 RBSC
+; Copyright (c) 2015-2021 RBSC
 ; Portions (c) Grauw
 ; Portions (c) Spark/SDM
 ; Portions (c) Jordon aka KOD/SDM 
  
-; Version 2.41
+; Version 2.50
 ;
 
 ; !COMPILATION OPTIONS!
@@ -31,10 +31,14 @@ BDRCLR 	equ	#F3EB
 CHSETA	equ	#F920
 CHSETS	equ	#F91F
 SCR0WID	equ	#F3AE
-LINNUM	equ	#F3B1
-BSLT	equ	#F560
+SCRWID	equ	#F3B0
+SCRHIGH	equ	#F3B1
+SCRMOD	equ	#FCAF
+
+; Boot Menu variable storage
+SCRNUM	equ	#F560
 SLASLTN	equ	#F561
-BFNT	equ	#F562	; 2 bytes!
+SCRINFO	equ	#F562	; 2 bytes!
 DIRCNT	equ	#F564	; 2 bytes!
 DIRPAG	equ	#F566	; 2 bytes!
 CURPAG	equ	#F568	; 2 bytes!
@@ -69,6 +73,9 @@ FMMON	equ	#F584	; 1 byte
 SPD	equ	#F585	; 1 byte
 FREQ	equ	#F586	; 1 byte
 DUALRST	equ	#F587	; 1 byte
+ASDELAY	equ	#F588	; 1 byte
+SLOT3R	equ	#F589	; 1 byte
+IOPORT	equ	#F58A	; 1 byte
 
 ; Colors for main menu screen -------------
 ; First value - foreground color
@@ -77,41 +84,42 @@ DUALRST	equ	#F587	; 1 byte
 ; Fourth value - background color palette
 
 C2FCOLM	equ	15
-C2FPALM	equ	#F588	; 2 bytes!
+C2FPALM	equ	#F58B	; 2 bytes!
 C2BCOLM	equ	13
-C2BPALM	equ	#F58A	; 2 bytes!
+C2BPALM	equ	#F58D	; 2 bytes!
 
 ; Colors for help screen -------------
 C2FCOLH	equ	15
-C2FPALH	equ	#F58C	; 2 bytes!
+C2FPALH	equ	#F58F	; 2 bytes!
 C2BCOLH	equ	4
-C2BPALH	equ	#F58E	; 2 bytes!
+C2BPALH	equ	#F591	; 2 bytes!
 
 ; Colors for volume screen -------------
 C2FCOLV	equ	15
-C2FPALV	equ	#F590	; 2 bytes!
+C2FPALV	equ	#F593	; 2 bytes!
 C2BCOLV	equ	12
-C2BPALV	equ	#F592	; 2 bytes!
+C2BPALV	equ	#F595	; 2 bytes!
 
 ; Colors for PSG setup screen -------------
 C2FCOLP	equ	15
-C2FPALP	equ	#F594	; 2 bytes!
+C2FPALP	equ	#F597	; 2 bytes!
 C2BCOLP	equ	6
-C2BPALP	equ	#F596	; 2 bytes!
+C2BPALP	equ	#F599	; 2 bytes!
 
-SETXY	equ	#F598	; 2 bytes!
-MUSSTAT	equ	#F59A
-MYHOOK	equ	#F59B	; 6 bytes!
-ORGHOOK	equ	#F5A0	; 6 bytes!
-DIRPOS	equ	#F5A6	; 2 bytes!
-BLINK	equ	#F5A8
-SCROLL	equ	#F5A9
-SCRTXT	equ	#F5AA	; 2 bytes!
-SCRFDAT	equ	#F5AC	; 2 bytes!
-SPECRBS	equ	#F5AE
-SCRSEM	equ	#F5AF
-SYMSEM	equ	#F5B0
-SORTBUF	equ	#F5B1	; will use 64 characters for sorting!
+SETXY	equ	#F59B	; 2 bytes!
+MUSSTAT	equ	#F59D
+MYHOOK	equ	#F59E	; 6 bytes!
+ORGHOOK	equ	#F5A4	; 6 bytes!
+DIRPOS	equ	#F5AA	; 2 bytes!
+BLINK	equ	#F5AC
+SCROLL	equ	#F5AD
+SCRTXT	equ	#F5AE	; 2 bytes!
+SCRFDAT	equ	#F5B0	; 2 bytes!
+SPECRBS	equ	#F5B2
+SCRSEM	equ	#F5B3
+SYMSEM	equ	#F5B4
+SCOLORS	equ	#F5B5	; 3 bytes!
+SORTBUF	equ	#F5B8	; will use 64 characters for sorting!
 
 VDPR10	equ	#FFE8
 KEYBUF	equ	#FBF0
@@ -128,7 +136,7 @@ SCRSEMV	equ	#4
 
 ; Delay for autostart, title and boot menu skip
 ADelay	equ	3
-TDelay	equ	2
+TDelay	equ	1
 SDelay	equ	10
 
 ; Cursor (2 bytes)
@@ -159,7 +167,7 @@ MUSSTOP	equ	#C008
 	db	0,0,0,0,0,0
 Label	db	"CMFCCFRC"
 	db	0
-BBVers	db	"v2.41"  ; Version | also update it in the header!
+BBVers	db	"v2.50"  ; Version | also update it in the header!
 	db	0
 
 
@@ -191,8 +199,7 @@ BootL:
 	ret	z
 
 Boot0:
-; set slot
-	call	SltDet
+	call	SltDet		; detect current slot
 	ld	(ERMSLT),a	; save current slot
 	ld	h,#80
 	call	ENASLT		; Set slot 8000-BFFF the same on 4000-3FFF
@@ -280,12 +287,40 @@ FirmVs:
 	call	AutoWait	; wait a few seconds
 
 SltCheck:
+	ld	a,#20
+	call	EERD		; read slot 3 enable flag
+	ld	(SLOT3R),a
+
 	ld	a,(ERMSLT)
 	and	%00000011
 	or	a		; Won't work in slot 0! Unlikely to happen anyway...
 	jr	z,NoSlt
 	cp	3		; Won't work in slot 3!
 	jr	nz,DrCheck
+	ld	a,(SLOT3R)
+	or	a		; disabled?
+	jr	nz,DrCheck
+
+	ld	hl,#0000
+	ld	a,(hl)
+	cp	'C'		; subrom MSX2/2+?
+	jr	z,NoSlt
+	inc	hl
+	ld	a,(hl)
+	cp	'D'		; subrom MSX2/2+?
+	jr	z,NoSlt
+	ld	hl,#4010
+	cp	'C'		; carnivore id?
+	jr	nz,NoSlt
+	inc	hl
+	ld	a,(hl)
+	cp	'M'		; carnivore id?
+	jr	nz,NoSlt
+	ld	hl,SL3EXP	; slot expansion table
+	ld	a,(hl)		; slot expanded?
+	cp	#80
+	jr	z,DrCheck	; unusable
+
 NoSlt:
 	call	CLS
 	ld	hl,#0611
@@ -426,10 +461,43 @@ TA_0B:
 	ld	(CardMDR+#24),a	; set the previously stored PSG volume
 	ld 	(PSGCFG),a
 
+	ld	a,#1E
+	call	EERD		; read Dual-PSG setting from EEPROM
+	cp	#FF
+	jr	nz,TA_0BA
+	xor	a		; fix initial value (only 0 and 1 allowed)
+TA_0BA:
+	ld	(CardMDR+#30),a
+
 	ld	hl,SORTD
 	ld	de,SORT
-	ld	bc,22
+	ld	bc,25
 	ldir			; reset all UI settings to defaults
+
+	ld	a,#21
+	call	EERD		; read port setting
+	cp	#FF
+	jr	nz,TA_0BAA
+	ld	a,(ERMSLT)
+	and	%00000011
+	ld	b,a		; main slot number
+	ld	a,#EF
+	add	b		; autoset ID port based on slot
+TA_0BAA:
+	cp	#F0
+	jr	z,TA_0BB
+	cp	#F1
+	jr	z,TA_0BB
+	cp	#F2
+	jr	z,TA_0BB
+	ld	a,#F0
+TA_0BB:
+	ld	(IOPORT),a
+	ld	(CardMDR+#35),a	; set new control port
+
+	ld	a,#20
+	call	EERD		; read slot 3 enable flag
+	ld	(SLOT3R),a
 
 	ld	a,#18
 	call	EERD		; read double reset flag
@@ -452,7 +520,7 @@ TA_0B:
 	ld	(CardMDR+#22),a	; enable FMPAC mono
 
 TA_0B0:
-	ld	a,#17		; address
+	ld	a,#17
 	call	EERD		; read custom flag from EEPROM
 	cp	#42		; custom settings?
 	jr	nz,TA_0B3
@@ -535,6 +603,14 @@ DSort:
 Check_AS:
 	ld	a,#FF
 	ld	(AUTOST),a	; no autostart
+	ld	a,#1F
+	call	EERD		; read autostart delay
+	cp	10
+	jr	c,Check_AS1
+	ld	a,ADelay	; default value
+Check_AS1:
+	ld	(ASDELAY),a
+
 	ld	a,#1C
 	call	EERD		; check for autostart
 	ld	(AUTOST),a	; save entry
@@ -550,23 +626,35 @@ Check_AS:
 	cp	%00001101
 	jr	nz,Menu
 
+	ld	a,(ASDELAY)
+	or	a
+	jr	z,AutoWA22
+	ld	b,a
+	add	"0"
+	ld	c,a
+	push	bc
+	push	bc
+
 	call	CLS
 	ld	hl,#030A
 	call    POSIT
 	ld	hl,AutoMSG
 	call	print_sp	; print autostart message
+	ld	hl,#150A
+	call    POSIT
+	pop	bc
+	ld	a,c
+	call	CHPUT_VDP	; output initial counter
 
 	call	KILBUF
 	ld	hl,#0000
-	ld	a,(ADelay)
-	ld	b,a
-	ld	c,"3"
+	pop	bc
 AutoWA2:
 	ld	de,60		; set delay for autostart in NTSC
 	ld	a,(PALNTSC)
 	bit	1,a
 	jr	z,AutoWA21
-	ld	de,50	; set delay for autostart for PAL
+	ld	de,50		; set delay for autostart for PAL
 AutoWA21:
 	push	hl
 	push	de
@@ -581,12 +669,13 @@ AutoWA21:
 	dec	c
 	ld	a,c
 	push	bc
-	call	CHPUT_VDP	; output ASCII8 mapper symbol	
+	call	CHPUT_VDP	; output counter symbol	
 	pop	bc
 	pop	de
 	pop	hl
 	djnz	AutoWA2
 
+AutoWA22:
 	call	CLS
 
 	jp	RUN_CT		; not empty record, do autostart
@@ -688,11 +777,11 @@ Pagep0:
 
   if SPC=1
 	ld	a,#20
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
 	ld	hl,MainScr	; print main screen messages
 	call	print_sp
 	ld	a,#18
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   else
 	ld	hl,MainScr	; print main screen messages
 	call	print_sp
@@ -1478,7 +1567,6 @@ Reset:
 	ld	hl,ResetMSG	; print rebooting message with configuration
 Reset1:
 	call	print
-
 	ld	a,(SPECRB)	; special reboot?
 	or	a
 	jp	nz,#0000
@@ -1599,6 +1687,12 @@ RUN_CJ:
 	jr	nz,RUN_CJ2	; skip effects
 
 RUN_CJ1:
+	ld	a,(ix+#04)	; mapper type
+	cp	'C'
+	jp	z,CH01		; ignore direct start for configuration entries
+	cp	'c'
+	jp	z,CH01		; ignore direct start for configuration entries
+
 	push	hl
 	push	de
 	push	bc
@@ -1614,12 +1708,6 @@ RUN_CJ1:
 	pop	hl
 	xor	a
 	ld      (MUSSTAT),a	; stop music
-
-	ld	a,(ix+#04)	; mapper type
-	cp	'C'
-	jp	z,CH01		; ignore direct start for configuration entries
-	cp	'c'
-	jp	z,CH01		; ignore direct start for configuration entries
 
 	ld	a,%01100000	; write enable
 	call	EEWEN
@@ -1743,171 +1831,6 @@ AUTO_R:
 	jp	CH00
 
 
-; Print help information page
-Help:
-	xor	a
-	ld	(SCROLL),a	; temporarily disable scroller
-	ld	(SCRSEM),a	; reset counter
-	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
-	or	a
-	jr	nz,Help1
-	call	DISDISP		; disable display
-
-Help1:
-	ld	hl,(C2BPALM)
-	ex	de,hl
-	ld	hl,(C2FPALM)
-	ld	b,C2FCOLM
-	ld	c,#0D
-	call	FadeOut		; fade out text
-
-	call	CLS
-
-	ld	de,#0000
-	ld	hl,(C2BPALM)
-	ld	b,C2BCOLM
-	ld	c,#0D
-	call	FadeOut		; fade out background
-
-	ld	a,C2BCOLH
-	ld	hl,#0000
-	call	PALETTE
-	ld	a,C2FCOLH
-	ld	(FORCLR),a
-	ld	a,C2BCOLH
-	ld	(BAKCLR),a
-	ld	(BDRCLR),a
-	call	CHCOLOR		; set screen colors (foreground=background)
-
-	ld	a,C2FCOLH
-	ld	hl,(C2BPALH)
-	call	PALETTE
-
-	ld	hl,(C2BPALH)
-	ex	de,hl
-	ld	hl,#0000
-	ld	b,C2BCOLH
-	ld	c,#0D
-	call	FadeIn		; fade in background
-
-  if SPC=1
-	ld	a,#20
-	ld	(LINNUM),a
-	ld	hl,HelpScr1	; print help screen
-	call	print_sp
-	ld	a,#18
-	ld	(LINNUM),a
-  else
-	ld	hl,HelpScr1	; print help screen
-	call	print_sp
-  endif
-
-	ld	hl,(C2FPALH)
-	ex	de,hl
-	ld	hl,(C2BPALH)
-	ld	b,C2FCOLH
-	ld	c,#0D
-	call	FadeIn		; fade in text
-
-	call	ENADISP		; enable display
-
-	call	KILBUF
-	call	KILJOY
-
-Wait1:
-	call	KeyJoyDelay	; delay for interface
-	call	CHSNS		; wait for key and avoid displaying cursor
-	jr	nz,Wait1a
-
-	call	JoyCheck	; check joystick action
-	or	a
-	jr	nz,Wait1b	; action not detected?
-	jr	Wait1
-Wait1a:
-	call	CHFKEY
-	call	CHGET		; wait for a key
-Wait1b:
-	ld	hl,(C2BPALH)
-	ex	de,hl
-	ld	hl,(C2FPALH)
-	ld	b,C2FCOLH
-	ld	c,#0D
-	call	FadeOut		; fade out text
-
-	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
-	or	a
-	jr	nz,Help2
-	call	DISDISP		; disable display
-
-Help2:
-	call	CLS
-
-  if SPC=1
-	ld	a,#20
-	ld	(LINNUM),a
-	ld	hl,HelpScr2	; print help screen
-	call	print_sp
-	ld	a,#18
-	ld	(LINNUM),a
-  else
-	ld	hl,HelpScr2	; print help screen
-	call	print_sp
-  endif
-
-	ld	hl,(C2FPALH)
-	ex	de,hl
-	ld	hl,(C2BPALH)
-	ld	b,C2FCOLH
-	ld	c,#0D
-	call	FadeIn		; fade in text
-
-	call	ENADISP		; enable display
-
-	call	KILBUF
-	call	KILJOY
-
-Wait11:
-	call	KeyJoyDelay	; delay for interface
-	call	CHSNS		; wait for key and avoid displaying cursor
-	jr	nz,Wait11a
-
-	call	JoyCheck	; check joystick action
-	or	a
-	jr	nz,Wait11b	; action not detected?
-	jr	Wait11
-Wait11a:
-	call	CHFKEY
-	call	CHGET		; wait for a key
-Wait11b:
-	ld	hl,(C2BPALH)
-	ex	de,hl
-	ld	hl,(C2FPALH)
-	ld	b,C2FCOLH
-	ld	c,#0D
-	call	FadeOut		; fade out text
-
-	call	CLS
-
-	ld	de,#0000
-	ld	hl,(C2BPALH)
-	ld	b,C2BCOLH
-	ld	c,#0D
-	call	FadeOut		; fade out background
-
-	ld	hl,(C2BPALM)
-	ex	de,hl
-	ld	hl,#0000
-	ld	b,C2BCOLM
-	ld	c,#0D
-	call	FadeIn		; fade in background
-
-	ld	a,C2FCOLM
-	ld	hl,(C2BPALM)
-	call	PALETTE
-
-	jp	Pagep
-
-
 ; Exit from boot menu
 Exit:
 	ld	ix,#0707
@@ -1934,87 +1857,6 @@ Exit:
 	xor	a
 	call	RestEnv		; restore environment (font, colors, screen)
 
-	ret
-
-
-; Fade-out effect
-; In: de (target palette)
-; In: hl (current palette)
-; In: bc (foreground/background colors)
-FadeOut:
-	ld	a,(EFF)
-	or	a
-	jr	nz,FadeLS
-	ld	a,b
-	push	de
-	pop	hl
-	call	PALETTE		; set target palette without fade effect
-	ret
-FadeLS:
-	ld	a,b
-	call	PALETTE		; initial palette set for foreground color
-
-FadeL4:
-	push	bc
-	ld	bc,FDelay
-	call	Delay
-	pop	bc
-	
-	ld	a,l
-	cp	e
-	jr	z,FadeL5
-	jr	c,FadeL4a
-	dec	l
-	jr	FadeL5
-FadeL4a:
-	inc	l
-FadeL5:
-	ld	a,h
-	and	#0F
-	push	de
-	push	af
-	ld	a,d
-	and	#0F
-	ld	d,a
-	pop	af
-	cp	d
-	jr	z,FadeL6
-	jr	c,FadeL5a
-	dec	h
-	jr	FadeL6
-FadeL5a:
-	inc	h
-FadeL6: 
-	pop	de
-	ld	a,h
-	and	#F0
-	push	de
-	push	af
-	ld	a,d
-	and	#F0
-	ld	d,a
-	pop	af
-	cp	d
-	jr	z,FadeL7
-	jr	c,FadeL6a
-	ld	a,h
-	sub	#10
-	ld	h,a
-	jr	FadeL7
-FadeL6a:
-	ld	a,h
-	add	#10
-	ld	h,a
-FadeL7:	
-	pop	de
-	ld	a,b
-	call	PALETTE		; set modified palette for foreground color
-	ld	a,h
-	cp	d
-	jr	nz,FadeL4
-	ld	a,l
-	cp	e
-	jr	nz,FadeL4
 	ret
 
 
@@ -2440,6 +2282,171 @@ SndLoop:
 	ret
 
 
+; Print help information page
+Help:
+	xor	a
+	ld	(SCROLL),a	; temporarily disable scroller
+	ld	(SCRSEM),a	; reset counter
+	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
+	or	a
+	jr	nz,Help1
+	call	DISDISP		; disable display
+
+Help1:
+	ld	hl,(C2BPALM)
+	ex	de,hl
+	ld	hl,(C2FPALM)
+	ld	b,C2FCOLM
+	ld	c,#0D
+	call	FadeOut		; fade out text
+
+	call	CLS
+
+	ld	de,#0000
+	ld	hl,(C2BPALM)
+	ld	b,C2BCOLM
+	ld	c,#0D
+	call	FadeOut		; fade out background
+
+	ld	a,C2BCOLH
+	ld	hl,#0000
+	call	PALETTE
+	ld	a,C2FCOLH
+	ld	(FORCLR),a
+	ld	a,C2BCOLH
+	ld	(BAKCLR),a
+	ld	(BDRCLR),a
+	call	CHCOLOR		; set screen colors (foreground=background)
+
+	ld	a,C2FCOLH
+	ld	hl,(C2BPALH)
+	call	PALETTE
+
+	ld	hl,(C2BPALH)
+	ex	de,hl
+	ld	hl,#0000
+	ld	b,C2BCOLH
+	ld	c,#0D
+	call	FadeIn		; fade in background
+
+  if SPC=1
+	ld	a,#20
+	ld	(SCRHIGH),a
+	ld	hl,HelpScr1	; print help screen
+	call	print_sp
+	ld	a,#18
+	ld	(SCRHIGH),a
+  else
+	ld	hl,HelpScr1	; print help screen
+	call	print_sp
+  endif
+
+	ld	hl,(C2FPALH)
+	ex	de,hl
+	ld	hl,(C2BPALH)
+	ld	b,C2FCOLH
+	ld	c,#0D
+	call	FadeIn		; fade in text
+
+	call	ENADISP		; enable display
+
+	call	KILBUF
+	call	KILJOY
+
+Wait1:
+	call	KeyJoyDelay	; delay for interface
+	call	CHSNS		; wait for key and avoid displaying cursor
+	jr	nz,Wait1a
+
+	call	JoyCheck	; check joystick action
+	or	a
+	jr	nz,Wait1b	; action not detected?
+	jr	Wait1
+Wait1a:
+	call	CHFKEY
+	call	CHGET		; wait for a key
+Wait1b:
+	ld	hl,(C2BPALH)
+	ex	de,hl
+	ld	hl,(C2FPALH)
+	ld	b,C2FCOLH
+	ld	c,#0D
+	call	FadeOut		; fade out text
+
+	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
+	or	a
+	jr	nz,Help2
+	call	DISDISP		; disable display
+
+Help2:
+	call	CLS
+
+  if SPC=1
+	ld	a,#20
+	ld	(SCRHIGH),a
+	ld	hl,HelpScr2	; print help screen
+	call	print_sp
+	ld	a,#18
+	ld	(SCRHIGH),a
+  else
+	ld	hl,HelpScr2	; print help screen
+	call	print_sp
+  endif
+
+	ld	hl,(C2FPALH)
+	ex	de,hl
+	ld	hl,(C2BPALH)
+	ld	b,C2FCOLH
+	ld	c,#0D
+	call	FadeIn		; fade in text
+
+	call	ENADISP		; enable display
+
+	call	KILBUF
+	call	KILJOY
+
+Wait11:
+	call	KeyJoyDelay	; delay for interface
+	call	CHSNS		; wait for key and avoid displaying cursor
+	jr	nz,Wait11a
+
+	call	JoyCheck	; check joystick action
+	or	a
+	jr	nz,Wait11b	; action not detected?
+	jr	Wait11
+Wait11a:
+	call	CHFKEY
+	call	CHGET		; wait for a key
+Wait11b:
+	ld	hl,(C2BPALH)
+	ex	de,hl
+	ld	hl,(C2FPALH)
+	ld	b,C2FCOLH
+	ld	c,#0D
+	call	FadeOut		; fade out text
+
+	call	CLS
+
+	ld	de,#0000
+	ld	hl,(C2BPALH)
+	ld	b,C2BCOLH
+	ld	c,#0D
+	call	FadeOut		; fade out background
+
+	ld	hl,(C2BPALM)
+	ex	de,hl
+	ld	hl,#0000
+	ld	b,C2BCOLM
+	ld	c,#0D
+	call	FadeIn		; fade in background
+
+	ld	a,C2FCOLM
+	ld	hl,(C2BPALM)
+	call	PALETTE
+
+	jp	Pagep
+
+
 ; 24 bytes of DefConfig to compare (must be in first 8kb!)
 DefCfg
 	db	#F8,#50,#00,#85,#3F,#40
@@ -2467,6 +2474,86 @@ REGS:	ds	128
 
 	org	#5000
 
+
+; Fade-out effect
+; In: de (target palette)
+; In: hl (current palette)
+; In: bc (foreground/background colors)
+FadeOut:
+	ld	a,(EFF)
+	or	a
+	jr	nz,FadeLS
+	ld	a,b
+	push	de
+	pop	hl
+	call	PALETTE		; set target palette without fade effect
+	ret
+FadeLS:
+	ld	a,b
+	call	PALETTE		; initial palette set for foreground color
+
+FadeL4:
+	push	bc
+	ld	bc,FDelay
+	call	Delay
+	pop	bc
+	
+	ld	a,l
+	cp	e
+	jr	z,FadeL5
+	jr	c,FadeL4a
+	dec	l
+	jr	FadeL5
+FadeL4a:
+	inc	l
+FadeL5:
+	ld	a,h
+	and	#0F
+	push	de
+	push	af
+	ld	a,d
+	and	#0F
+	ld	d,a
+	pop	af
+	cp	d
+	jr	z,FadeL6
+	jr	c,FadeL5a
+	dec	h
+	jr	FadeL6
+FadeL5a:
+	inc	h
+FadeL6: 
+	pop	de
+	ld	a,h
+	and	#F0
+	push	de
+	push	af
+	ld	a,d
+	and	#F0
+	ld	d,a
+	pop	af
+	cp	d
+	jr	z,FadeL7
+	jr	c,FadeL6a
+	ld	a,h
+	sub	#10
+	ld	h,a
+	jr	FadeL7
+FadeL6a:
+	ld	a,h
+	add	#10
+	ld	h,a
+FadeL7:	
+	pop	de
+	ld	a,b
+	call	PALETTE		; set modified palette for foreground color
+	ld	a,h
+	cp	d
+	jr	nz,FadeL4
+	ld	a,l
+	cp	e
+	jr	nz,FadeL4
+	ret
 
 ; Fade-in effect
 ; In: de (target palette)
@@ -3404,20 +3491,11 @@ JC7:	ld	a,29		; left
 ; Restore palette, font address and colors
 ;
 RestEnv:
-	push	af
 	push	hl
 	push	de
 	push	bc
+	push	af
 
-	or	a		; skip font restoring
-	jr	nz,RestEnv1
-
-	ld	a,(BSLT)
-        ld	(CHSETS),a	; restore bios font's slot
-	ld	hl,(BFNT)
-	ld	(CHSETA),hl	; restore bios font's address
-
-RestEnv1:
 	ld	a,C2FCOLM
 	ld	hl,#0000
 	call	PALETTE
@@ -3465,15 +3543,58 @@ RestPal:
 
 	ld	a,1
 	ld	(KEYCLK),a	; enable click on keypress
-	xor	a
+
+	pop	af
+	or	a		; keep screen and font?
+	jr	nz,RestEnv1
+
+	ld	a,(SCRINFO)	; get screen width
+	ld	(SCRWID),a
+	ld	a,(SCRINFO+1)	; get screen height
+	ld	(SCRHIGH),a
+	ld	a,(SCRNUM)	; get screen mode
 	call	SSCREEN
-	call	MODE40A
+
+	ld	a,(SCOLORS)
+	ld	(FORCLR),a	; restore screen colors
+	ld	a,(SCOLORS+1)
+	ld	(BAKCLR),a	; restore screen colors
+	ld	a,(SCOLORS+2)
+	ld	(BDRCLR),a	; restore screen colors
+	call	CHCOLOR		; set colors
+
+RestEnv1:
 	call	CLS
 
 	pop	bc
 	pop	de
 	pop	hl
+	ret
+
+
+; Set font
+;
+SetFont:
+	ld 	a,(CardMDR+#0E)
+	push	af
+	ld	a,3
+	ld	(CardMDR+#0E),a	; set 2nd bank to music data
+	ld 	a,(CardMDR+#0F)
+	push	af
+	and	%11011111
+	ld	(CardMDR+#0F),a	; set Flash instead of RAM
+
+	di 
+	ld	hl,fontdat+2
+	ld	de,#0800	; point to font data in VRAM
+	ld	bc,2048
+	call	LDIRVM		; copy data for all symbols to VRAM
+	ei
+
 	pop	af
+	ld	(CardMDR+#0F),a	; restore value
+	pop	af
+	ld	(CardMDR+#0E),a	; restore value
 	ret
 
 
@@ -3484,15 +3605,19 @@ SetEnv:	push	af
 	push	de
 	push	bc
 
-	ld	a,(CHSETS)
-	ld	(BSLT),a	; save bios font's slot
-	ld	hl,(CHSETA)
-	ld	(BFNT),hl	; save bios font's address
-	call	SltDet
+	ld	a,(SCRMOD)
+	ld	(SCRNUM),a	; save screen mode
+	ld	a,(SCRWID)
+	ld	(SCRINFO),a	; save screen width
+	ld	a,(SCRHIGH)
+	ld	(SCRINFO+1),a	; save screen height
+	ld	a,(FORCLR)
+	ld	(SCOLORS),a	; save screen colors
+	ld	a,(BAKCLR)
+	ld	(SCOLORS+1),a	; save screen colors
+	ld	a,(BDRCLR)
+	ld	(SCOLORS+2),a	; save screen colors
 
-	ld	(CHSETS),a
-	ld	hl,fontdat+2
-	ld	(CHSETA),hl	; set new font address
 	ld	a,40
 	ld	(SCR0WID),a	; set default width of screen0
 
@@ -3500,6 +3625,7 @@ SetEnv:	push	af
 	ld	(KEYCLK),a	; disable click on keypress
 	call	SSCREEN		; set screen 0
 	call	MODE40		; set 40x25 mode
+	call	SetFont		; set font
 	call	DISKEYS		; no functional key display
 	call	CLS
 
@@ -3698,7 +3824,7 @@ EEENa1:
 ; In: hl = palette in BRG format
 PALETTE:
 	push	af
-	ld	a,(VDPVER)	; detect if 9918 is used, skip pallette operations then
+	ld	a,(VDPVER)	; detect if 9918 is used, skip palette operations then
 	or	a
 	jr	z,PALEND
 	di
@@ -3967,7 +4093,7 @@ PrintTur:
 
   if SPC=1
 	ld	a,#20
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   endif
 
 	ld	hl,#0818
@@ -4005,7 +4131,7 @@ PrintTE:
 
   if SPC=1
 	ld	a,#18
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   endif
 
 	pop	bc
@@ -4037,7 +4163,7 @@ PrintInf:
 
   if SPC=1
 	ld	a,#20
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   endif
 
 	ld	hl,#2118
@@ -4059,7 +4185,7 @@ PrintInf:
 
   if SPC=1
 	ld	a,#18
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   endif
 
 	pop	bc
@@ -4076,7 +4202,7 @@ PrintFrq:
 
   if SPC=1
 	ld	a,#20
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   endif
 
 	ld	hl,#218
@@ -4091,7 +4217,7 @@ PrintHZ:
 
   if SPC=1
 	ld	a,#18
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   endif
 
 	pop	bc
@@ -4108,7 +4234,7 @@ PrintVol:
 
   if SPC=1
 	ld	a,#20
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   endif
 
 	ld	hl,#0D18
@@ -4148,7 +4274,7 @@ PrintVol:
 
   if SPC=1
 	ld	a,#18
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   endif
 
 	pop	bc
@@ -4248,10 +4374,16 @@ FindByte:
 SlotFilter:
 	ld	a,(ERMSLT)
 	and	%00000011
-	or	a		; Won't work with dual slots in slot 0! Unlikely to happen anyway...
+	or	a		; won't work with dual slots in slot 0! Unlikely to happen anyway...
 	jr	z,SlotSet2
-	cp	3		; With slot 3 no expansion will be possible
+	push	af
+	ld	a,(SLOT3R)	; allowed slot 3?
+	or	a
+	jr	nz,SlotSet0
+	pop	af
+	cp	3		; with slot 3 no expansion will be possible
 	jr	z,SlotSet2
+	push	af
 ;	jr	nz,SlotSet0
 ;	ld	(MASSLTN),a	; save master slot
 ;	ld	a,#FF
@@ -4268,6 +4400,7 @@ SlotFilter:
 ;	ld	(SLASEXP),a	; slave slot not usable
 ;	jr	SlotSet2
 SlotSet0:
+	pop	af
 	cp	1
 	jr	nz,SlotSet1
 	ld	(MASSLTN),a	; save master slot
@@ -4284,13 +4417,27 @@ SlotSet0:
 	jr	SlotSet2
 SlotSet1:
 	cp	2
-	jp	nz,SlotSet2	
+	jr	nz,SlotSet15	
 	ld	(MASSLTN),a	; save master slot
 	ld	a,1
 	ld	(SLASLTN),a	; save slave slot
 	call	CheckSlot
 	jr	nz,SlotSet2
 	ld	a,3
+	ld	(SLASLTN),a	; save slave slot
+	call	CheckSlot
+	jr	nz,SlotSet2
+	ld	a,#FF
+	ld	(SLASLTN),a	; slave slot not usable
+SlotSet15:
+	cp	3
+	jr	nz,SlotSet2
+	ld	(MASSLTN),a	; save master slot
+	ld	a,1
+	ld	(SLASLTN),a	; save slave slot
+	call	CheckSlot
+	jr	nz,SlotSet2
+	ld	a,2
 	ld	(SLASLTN),a	; save slave slot
 	call	CheckSlot
 	jr	nz,SlotSet2
@@ -4353,11 +4500,11 @@ SSetup2:
 
   if SPC=1
 	ld	a,#20
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
 	ld	hl,SlotScr	; print setup screen
 	call	print_sp
 	ld	a,#18
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   else
 	ld	hl,SlotScr	; print setup screen
 	call	print_sp
@@ -5810,6 +5957,10 @@ UISetup1:
 	ld	c,#0D
 	call	FadeOut		; fade out background
 
+	ld	a,#21
+	call	EERD		; read port setting
+	ld	(IOPORT),a
+
 UISetup2:
 	ld	hl,#0101
 	ld	(SETXY),hl
@@ -5837,11 +5988,11 @@ UISetup2:
 
   if SPC=1
 	ld	a,#20
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
 	ld	hl,SetupScr	; print setup screen
 	call	print_sp
 	ld	a,#18
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   else
 	ld	hl,SetupScr	; print setup screen
 	call	print_sp
@@ -5850,7 +6001,47 @@ UISetup2:
         xor	a
 	ld	(SELITEM),a
 
-	ld	hl,#2509
+	ld	hl,#1F09
+	call    POSIT
+	ld	a,' '
+	call	CHPUT_VDP	; erase automatic port number
+	ld	a,' '
+	call	CHPUT_VDP	; erase automatic port number
+	ld	a,' '
+	call	CHPUT_VDP	; erase automatic port number
+	ld	hl,#2409
+	call    POSIT
+	ld	a,'F'
+	call	CHPUT_VDP	; erase automatic port number
+	ld	a,(IOPORT)
+	cp	#FF
+	jr	nz,Set01
+	ld	hl,#2409
+	call    POSIT
+	ld	a,'-'
+	call	CHPUT_VDP	; erase port number for auto-set
+	ld	a,'-'
+	call	CHPUT_VDP	; erase port number for auto-set
+	ld	hl,#1F09
+	call    POSIT
+	ld	a,'#'
+	call	CHPUT_VDP	; print hash symbol
+	ld	a,'F'
+	call	CHPUT_VDP	; print current automatic port number
+	ld	a,(ERMSLT)
+	and	%00000011
+	ld	b,a		; main slot number
+	ld	a,#EF
+	add	b		; autoset ID port based on slot
+	jr	Set011
+Set01:
+	ld	a,(IOPORT)
+Set011:
+	sub	#F0
+	add	'0'
+	call	CHPUT_VDP	; print used port number
+
+	ld	hl,#250A
 	call    POSIT
 	ld	a,(DUALRST)
 	cp	1
@@ -5862,7 +6053,7 @@ Set0:
 Set00:
 	call	CHPUT_VDP	; dual-reset Y/N
 
-	ld	hl,#250A
+	ld	hl,#250B
 	call    POSIT
 	ld	a,(SORT)
 	or	a
@@ -5874,7 +6065,7 @@ Set1:
 Set2:
 	call	CHPUT_VDP	; sorting Y/N
 
-	ld	hl,#250B
+	ld	hl,#250C
 	call    POSIT
 	ld	a,(EFF)
 	or	a
@@ -5886,7 +6077,7 @@ Set3:
 Set4:
 	call	CHPUT_VDP	; fmpac mono
 
-	ld	hl,#250C
+	ld	hl,#250D
 	call    POSIT
 	ld	a,(FMMON)
 	cp	1
@@ -5898,17 +6089,17 @@ Set3a:
 Set3aa:
 	call	CHPUT_VDP	; effects Y/N
 
-	ld	hl,#250D
+	ld	hl,#250E
 	call    POSIT
 	ld	a,(SPD)
 	add	'0'
 	call	CHPUT_VDP	; speed value
 
-	ld	hl,#250E
+	ld	hl,#250F
 	call    POSIT
 	ld	a,'0'
 	call	CHPUT_VDP	; zero of frequency value
-	ld	hl,#240E
+	ld	hl,#240F
 	call    POSIT
 	ld	a,(FREQ)
 	cp	#FF		; ignore?
@@ -5927,7 +6118,24 @@ Set4a:
 Set4b:
 	call	CHPUT_VDP	; frequency value
 
-	ld	hl,#1b0f
+	ld	hl,#2510
+	call    POSIT
+	ld	a,(ASDELAY)
+	add	"0"
+	call	CHPUT_VDP	; autostart delay
+	ld	hl,#2511
+	call    POSIT
+	ld	a,(SLOT3R)
+	or	a
+	jr	z,Set5
+	ld	a,"Y"
+	jr	Set6
+Set5:
+	ld	a,"N"
+Set6:
+	call	CHPUT_VDP	; slot 3 enable
+
+	ld	hl,#1213
 	call    POSIT
 	ld	a,(C2FPALM+1)	; menu foreground
 	and	%11110000
@@ -5937,19 +6145,19 @@ Set4b:
 	rra
 	add	'0'
 	call	CHPUT_VDP	; R value
-	ld	hl,#200f
+	ld	hl,#1313
 	call    POSIT
 	ld	a,(C2FPALM)
 	add	'0'
 	call	CHPUT_VDP	; G value
-	ld	hl,#250f
+	ld	hl,#1413
 	call    POSIT
 	ld	a,(C2FPALM+1)
 	and	%00000111
 	add	'0'
 	call	CHPUT_VDP	; B value
 
-	ld	hl,#1b10
+	ld	hl,#1813
 	call    POSIT
 	ld	a,(C2BPALM+1)	; menu background
 	and	%11110000
@@ -5959,19 +6167,19 @@ Set4b:
 	rra
 	add	'0'
 	call	CHPUT_VDP	; R value
-	ld	hl,#2010
+	ld	hl,#1913
 	call    POSIT
 	ld	a,(C2BPALM)
 	add	'0'
 	call	CHPUT_VDP	; G value
-	ld	hl,#2510
+	ld	hl,#1A13
 	call    POSIT
 	ld	a,(C2BPALM+1)
 	and	%00000111
 	add	'0'
 	call	CHPUT_VDP	; B value
 
-	ld	hl,#1b11
+	ld	hl,#1214
 	call    POSIT
 	ld	a,(C2FPALH+1)	; help foreground
 	and	%11110000
@@ -5981,19 +6189,19 @@ Set4b:
 	rra
 	add	'0'
 	call	CHPUT_VDP	; R value
-	ld	hl,#2011
+	ld	hl,#1314
 	call    POSIT
 	ld	a,(C2FPALH)
 	add	'0'
 	call	CHPUT_VDP	; G value
-	ld	hl,#2511
+	ld	hl,#1414
 	call    POSIT
 	ld	a,(C2FPALH+1)
 	and	%00000111
 	add	'0'
 	call	CHPUT_VDP	; B value
 
-	ld	hl,#1b12
+	ld	hl,#1814
 	call    POSIT
 	ld	a,(C2BPALH+1)	; help background
 	and	%11110000
@@ -6003,19 +6211,19 @@ Set4b:
 	rra
 	add	'0'
 	call	CHPUT_VDP	; R value
-	ld	hl,#2012
+	ld	hl,#1914
 	call    POSIT
 	ld	a,(C2BPALH)
 	add	'0'
 	call	CHPUT_VDP	; G value
-	ld	hl,#2512
+	ld	hl,#1A14
 	call    POSIT
 	ld	a,(C2BPALH+1)
 	and	%00000111
 	add	'0'
 	call	CHPUT_VDP	; B value
 
-	ld	hl,#1b13
+	ld	hl,#1215
 	call    POSIT
 	ld	a,(C2FPALV+1)	; volume foreground
 	and	%11110000
@@ -6025,19 +6233,19 @@ Set4b:
 	rra
 	add	'0'
 	call	CHPUT_VDP	; R value
-	ld	hl,#2013
+	ld	hl,#1315
 	call    POSIT
 	ld	a,(C2FPALV)
 	add	'0'
 	call	CHPUT_VDP	; G value
-	ld	hl,#2513
+	ld	hl,#1415
 	call    POSIT
 	ld	a,(C2FPALV+1)
 	and	%00000111
 	add	'0'
 	call	CHPUT_VDP	; B value
 
-	ld	hl,#1b14
+	ld	hl,#1815
 	call    POSIT
 	ld	a,(C2BPALV+1)	; volume background
 	and	%11110000
@@ -6047,19 +6255,19 @@ Set4b:
 	rra
 	add	'0'
 	call	CHPUT_VDP	; R value
-	ld	hl,#2014
+	ld	hl,#1915
 	call    POSIT
 	ld	a,(C2BPALV)
 	add	'0'
 	call	CHPUT_VDP	; G value
-	ld	hl,#2514
+	ld	hl,#1A15
 	call    POSIT
 	ld	a,(C2BPALV+1)
 	and	%00000111
 	add	'0'
 	call	CHPUT_VDP	; B value
 
-	ld	hl,#1b15
+	ld	hl,#1216
 	call    POSIT
 	ld	a,(C2FPALP+1)	; psg foreground
 	and	%11110000
@@ -6069,19 +6277,19 @@ Set4b:
 	rra
 	add	'0'
 	call	CHPUT_VDP	; R value
-	ld	hl,#2015
+	ld	hl,#1316
 	call    POSIT
 	ld	a,(C2FPALP)
 	add	'0'
 	call	CHPUT_VDP	; G value
-	ld	hl,#2515
+	ld	hl,#1416
 	call    POSIT
 	ld	a,(C2FPALP+1)
 	and	%00000111
 	add	'0'
 	call	CHPUT_VDP	; B value
 
-	ld	hl,#1b16
+	ld	hl,#1816
 	call    POSIT
 	ld	a,(C2BPALP+1)	; psg background
 	and	%11110000
@@ -6091,12 +6299,12 @@ Set4b:
 	rra
 	add	'0'
 	call	CHPUT_VDP	; R value
-	ld	hl,#2016
+	ld	hl,#1916
 	call    POSIT
 	ld	a,(C2BPALP)
 	add	'0'
 	call	CHPUT_VDP	; G value
-	ld	hl,#2516
+	ld	hl,#1A16
 	call    POSIT
 	ld	a,(C2BPALP+1)
 	and	%00000111
@@ -6128,20 +6336,20 @@ SetLoop:
 	ld	hl,(SETXY)
 	ld	h,#25
 	ld	a,(SELITEM)
-	cp	6
+	cp	9
 	jp	c,SetLoop1
-	ld	h,#1b
+	ld	h,#12
 	ld	(SETXY),hl
 	call    POSIT
 
 SetColor:
 	ld	a,(SELITEM)
-	cp	8
-	jr	c,SetColorM
+	cp	9
+	jr	z,SetColorM
 	cp	10
-	jr	c,SetColorH
-	cp	12
-	jr	c,SetColorV
+	jr	z,SetColorH
+	cp	11
+	jr	z,SetColorV
 
 SetColorP:
 	ld	a,C2FCOLP
@@ -6264,18 +6472,84 @@ CfgL2:
 Set_Val:
 	ld	a,(SELITEM)
 	or	a
-	jr	z,Set_V00
+	jr	z,Set_V000
 	cp	1
-	jr	z,Set_V0
+	jp	z,Set_V00
 	cp	2
-	jr	z,Set_V1
+	jp	z,Set_V0
 	cp	3
-	jr	z,Set_V15
+	jp	z,Set_V1
 	cp	4
-	jr	z,Set_V2
+	jp	z,Set_V15
 	cp	5
-	jr	z,Set_V3
+	jp	z,Set_V2
+	cp	6
+	jp	z,Set_V3
+	cp	7
+	jp	z,Set_V3A
+	cp	8
+	jp	z,Set_V3B
 	jp	Set_V4
+
+
+Set_V000:
+	ld	hl,#1F09
+	call    POSIT
+	ld	a,' '
+	call	CHPUT_VDP	; erase automatic port number
+	ld	a,' '
+	call	CHPUT_VDP	; erase automatic port number
+	ld	a,' '
+	call	CHPUT_VDP	; erase automatic port number
+	ld	hl,#FFFF
+	ld	(CSRY),hl
+	ld	hl,#2409
+	call    POSIT
+	ld	a,'F'
+	call	CHPUT_VDP	; erase automatic port number
+	ld	hl,#2509
+	call    POSIT
+	ld	a,(IOPORT)
+	cp	#F2		; F0-F1?
+	jr	c,Set_V0A2
+	jr	z,Set_V0001
+	ld	a,#F0		; next value after auto
+	jr	Set_V0A1
+Set_V0001:
+	ld	a,#FF
+	ld	(IOPORT),a	; IO port set to auto
+	ld	hl,#1F09
+	call    POSIT
+	ld	a,'#'
+	call	CHPUT_VDP	; print hash symbol
+	ld	a,'F'
+	call	CHPUT_VDP	; print current automatic port number
+	ld	a,(ERMSLT)
+	and	%00000011
+	ld	b,a		; main slot number
+	ld	a,#EF
+	add	b		; autoset ID port based on slot
+	sub	#F0
+	add	'0'
+	call	CHPUT_VDP	; print current automatic port number
+	ld	hl,#FFFF
+	ld	(CSRY),hl
+	ld	hl,#2509
+	call    POSIT
+	ld	a,'-'
+	call	CHPUT_VDP	; erase port number
+	ld	hl,#FFFF
+	ld	(CSRY),hl
+	ld	a,'-'
+	jp	Set_V30E
+Set_V0A1:
+	ld	(IOPORT),a	; IO port
+	sub	#F0
+	add	'0'
+	jp	Set_VE
+Set_V0A2:
+	inc	a		; increase port number
+	jr	Set_V0A1
 
 Set_V00:
 	ld	a,(DUALRST)
@@ -6353,7 +6627,7 @@ Set_V3:
 	ld	a,(ORGVR10)	; get original value
 	set	1,a
 	ld	(FREQ),a	; set PAL
-	ld	hl,#250e
+	ld	hl,#250F
 	call    POSIT
 	ld	a,'0'
 	call	CHPUT_VDP	; zero of frequency value
@@ -6366,7 +6640,7 @@ Set_V31:
 	jr	nz,Set_V30
 	ld	a,#FF
 	ld	(FREQ),a	; set ignore
-	ld	hl,#250e
+	ld	hl,#250F
 	call    POSIT
 	ld	a,'-'
 	call	CHPUT_VDP	; zero of frequency value
@@ -6378,7 +6652,7 @@ Set_V30:
 	ld	a,(ORGVR10)	; get original value
 	res	1,a
 	ld	(FREQ),a	; set NTSC
-	ld	hl,#250e
+	ld	hl,#250F
 	call    POSIT
 	ld	a,'0'
 	call	CHPUT_VDP	; zero of frequency value
@@ -6398,23 +6672,61 @@ Set_V30E:
 	call    POSIT
 	jp	SetLoop2
 
+Set_V3A:
+	ld	a,(ASDELAY)
+	cp	9		; max?
+	jr	c,Set_V3A2
+	xor	a		; reset autostart delay
+Set_V3A1:
+	ld	(ASDELAY),a
+	add	'0'
+	jp	Set_VE
+Set_V3A2:
+	inc	a		; increase autostart delay
+	jr	Set_V3A1
+
+Set_V3B:
+	ld	a,(SLOT3R)
+	or	a
+	jr	z,Set_V3B1
+	xor	a
+	ld	(SLOT3R),a	; slot 3 not alowed
+	ld	a,"N"
+	jp	Set_VE
+Set_V3B1:
+	ld	a,1	
+	ld	(SLOT3R),a	; slot 3 allowed
+	ld	a,"Y"
+	jp	Set_VE
+
 Set_V4:
-	ld	hl,C2FPALM-2
+	ld	hl,C2FPALM-4
 	ld	a,(SELITEM)
-	sub	5
+	sub	8
 	ld	b,a
-Set_V40:
+Set_V4A:
 	inc	hl
 	inc	hl
-	djnz	Set_V40		; find appropriate color area
+	inc	hl
+	inc	hl
+	djnz	Set_V4A		; find appropriate color area
 	ex	de,hl
 	ld	hl,(SETXY)
 	ld	a,h
-	cp	#1b		; R
+	cp	#12		; R
 	jr	z,Set_V41
-	cp	#25		; B
+	cp	#13		; G
+	jr	z,Set_V40
+	cp	#14		; B
+	jr	z,Set_V42
+	inc	de
+	inc	de		; point to background
+	cp	#18		; R
+	jr	z,Set_V41
+	cp	#1A		; B
 	jr	z,Set_V42
 
+Set_V40:
 	ex	de,hl
 	ld	a,(hl)		; point to G value
 	and	%00000111
@@ -6493,38 +6805,46 @@ Set_VE:
 
 SetLeft:
 	ld	a,(SELITEM)
-	cp	6
+	cp	9
 	jp	c,SetLoop2
 	ld	hl,(SETXY)
 	ld	a,h
-	cp	#1b
+	cp	#12
 	jr	z,SetLeft1
-	sub	5
+	dec	a
+	cp	#17
+	jr	nz,SetLeft0
+	sub	3
+SetLeft0:
 	ld	h,a
 	ld	(SETXY),hl
 	call    POSIT
 	jp	SetLoop2
 SetLeft1:
-	ld	h,#25
+	ld	h,#1A
 	ld	(SETXY),hl
 	call    POSIT
 	jp	SetLoop2
 
 SetRight:
 	ld	a,(SELITEM)
-	cp	6
+	cp	9
 	jp	c,SetLoop2
 	ld	hl,(SETXY)
 	ld	a,h
-	cp	#25
+	cp	#1A
 	jr	z,SetRight1
-	add	5
+	inc	a
+	cp	#15
+	jr	nz,SetRight0
+	add	3
+SetRight0:
 	ld	h,a
 	ld	(SETXY),hl
 	call    POSIT
 	jp	SetLoop2
 SetRight1:
-	ld	h,#1b
+	ld	h,#12
 	ld	(SETXY),hl
 	call    POSIT
 	jp	SetLoop2
@@ -6532,20 +6852,24 @@ SetRight1:
 NextItem:
 	ld	hl,(SETXY)
 	ld	a,(SELITEM)
-	ld	a,(VDPVER)	; detect if 9918 is used, skip pallette operations then
+	ld	a,(VDPVER)	; detect if 9918 is used, skip palette operations then
 	or	a
 	jr	nz,NextItem0
 	ld	a,(SELITEM)
-	cp	4		; frequency item
-	jp	z,NextItem2
+	cp	8		; last non-color item?
+	jr	z,NextItem2
 NextItem0:
 	ld	a,(SELITEM)
-	cp	#0d		; max item?
-	jp	z,NextItem2
+	cp	#0C		; max item?
+	jr	z,NextItem2
 NextItem1:
 	inc	a
 	inc	l
 	ld	(SELITEM),a
+	cp	9
+	jr	nz,NextItem1a
+	inc	l
+NextItem1a:
 	ld	(SETXY),hl
 NextItem2:
 	jp	SetLoop
@@ -6559,6 +6883,10 @@ PrevItem1:
 	dec	a
 	dec	l
 	ld	(SELITEM),a
+	cp	8
+	jr	nz,PrevItem1a
+	dec	l
+PrevItem1a:
 	ld	(SETXY),hl
 PrevItem2:
 	jp	SetLoop
@@ -6569,8 +6897,10 @@ SetReset:
 	call    POSIT
 	ld	hl,SORTD
 	ld	de,SORT
-	ld	bc,22
+	ld	bc,25
 	ldir			; reset all settings to defaults
+	ld	a,#FF
+	ld	(IOPORT),a	; default setting
 	call	CLS
 	ld	a,(VDPVER)	; detect if 9938 or later used, don't disable the screen
 	or	a
@@ -6645,6 +6975,30 @@ SetEnd0:
 	ld	e,a             ; data
 	ld	a,#18		; address
 	call	EEWR		; save dual-reset to EEPROM
+	ld	a,(ASDELAY)
+	ld	e,a             ; data
+	ld	a,#1F		; address
+	call	EEWR		; save autostart delay
+	ld	a,(SLOT3R)
+	ld	e,a             ; data
+	ld	a,#20		; address
+	call	EEWR		; save slot 3 enable flag
+
+	ld	a,(IOPORT)
+	ld	e,a             ; data
+	ld	a,#21		; address
+	call	EEWR		; save IO port number
+	ld	a,(IOPORT)
+	cp	#FF
+	jr	nz,SetEnd000
+	ld	a,(ERMSLT)
+	and	%00000011
+	ld	b,a		; main slot number
+	ld	a,#EF
+	add	b		; autoset ID port based on slot
+	ld	(IOPORT),a
+SetEnd000:
+	ld	(CardMDR+#35),a	; set new control port
 
 	ld	a,(FMMON)
 	push	af
@@ -6834,6 +7188,7 @@ Change2:
 	call	SSCREEN
 	call	MODE40A
 	call	CLS
+	call	SetFont		; set font
 
 	call	ScrollInit	; initialize data for scroller
 	pop	af
@@ -7037,11 +7392,11 @@ SetVol1:
 
   if SPC=1
 	ld	a,#20
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
 	ld	hl,VolumeScr	; print volume control screen
 	call	print_sp
 	ld	a,#18
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   else
 	ld	hl,VolumeScr	; print volume control screen
 	call	print_sp
@@ -7317,11 +7672,11 @@ SetPSG1:
 
   if SPC=1
 	ld	a,#20
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
 	ld	hl,PSGScr	; print PSG control screen
 	call	print_sp
 	ld	a,#18
-	ld	(LINNUM),a
+	ld	(SCRHIGH),a
   else
 	ld	hl,PSGScr	; print PSG control screen
 	call	print_sp
@@ -7409,29 +7764,41 @@ PSGPrn2:
 	djnz	PSGPrn2
 
 PSGStPr:
-	ld	hl,#1004
+	ld	hl,#0904
 	call    POSIT	
 	ld	a,OffSym
 	call	CHPUT_VDP	; mark device as disabled
 	ld	a,(CardMDR+#24)
 	bit	7,a
 	jr	z,PSGPrn3
-	ld	hl,#1004
+	ld	hl,#0904
 	call    POSIT	
 	ld	a,OnSym
 	call	CHPUT_VDP	; mark device as enabled
 PSGPrn3:
-	ld	hl,#2504
+	ld	hl,#1604
 	call    POSIT	
 	ld	a,OffSym
 	call	CHPUT_VDP	; mark device as disabled
 	ld	a,(CardMDR+#24)
 	bit	6,a
-	jr	z,PSGLoop
-	ld	hl,#2504
+	jr	z,PSGPrn4
+	ld	hl,#1604
 	call    POSIT	
 	ld	a,OnSym
 	call	CHPUT_VDP	; mark device as enabled
+PSGPrn4:
+	ld	hl,#2404
+	call    POSIT	
+	ld	a,OffSym
+	call	CHPUT_VDP	; mark dual option as disabled
+	ld	a,(CardMDR+#30)
+	bit	0,a
+	jr	z,PSGLoop
+	ld	hl,#2404
+	call    POSIT	
+	ld	a,OnSym
+	call	CHPUT_VDP	; mark dual option as enabled
 
 PSGLoop:
 	call	ENADISP		; enable display
@@ -7454,13 +7821,15 @@ Wait3b:
 	cp	27		; ESC
 	jp	z,PSGEnd
 	cp	30		; UP
-	jr	z,PSG_UP
+	jp	z,PSG_UP
 	cp	31		; DOWN
-	jr	z,PSG_DOWN
+	jp	z,PSG_DOWN
 	cp	28		; RIGHT
-	jr	z,CLKR_UP
+	jp	z,CLKR_UP
 	cp	29		; LEFT
-	jr	z,CLKR_DOWN
+	jp	z,CLKR_DOWN
+	cp	9		; LEFT
+	jr	z,DualPSG
 	cp	11		; HOME
 	jp	z,PSGReset
 	cp	32		; Space
@@ -7470,10 +7839,23 @@ Wait3b:
 	jr	PSGLoop
 
 PSG_ED:
+	ld	a,(MUSSTAT)
+	or	a
+	jr	z,PSG_ED0
+	ld	ix,#0707
+	call	MUSSTOP		; stop music
+	xor	a
+	ld      (MUSSTAT),a	; stop music
+PSG_ED0:
 	ld	a,(CardMDR+#24)
 	bit	7,a
 	jr	z,PSG_ED1
 	res	7,a
+	push	af
+	ld	a,(CardMDR+#30)
+	res	0,a		; disable dual PSG
+	ld	(CardMDR+#30),a
+	pop	af
 	jr	PSG_ED2
 PSG_ED1:
 	set	7,a
@@ -7481,7 +7863,6 @@ PSG_ED2:
 	ld	(CardMDR+#24),a
 	jp	PSGStPr
 
-	
 CLKR_ED:
 	ld	a,(CardMDR+#24)
 	bit	6,a
@@ -7494,6 +7875,30 @@ CLKR_ED2:
 	ld	(CardMDR+#24),a
 	jp	PSGStPr
 
+DualPSG:
+	ld	a,(CardMDR+#24)
+	bit	7,a			; PSG enabled?
+	jp	z,PSGStPr
+	ld	a,(CardMDR+#30)
+	bit	0,a			; Dual PSG enabled?
+	jr	z,DualPSG1
+	res	0,a			; disable Dual PSG
+	jr	DualPSG2
+DualPSG1:
+	set	0,a			; enable Dual PSG
+DualPSG2:
+	push	af
+	ld	a,(MUSSTAT)
+	or	a
+	jr	z,DualPSG3
+	ld	ix,#0707
+	call	MUSSTOP		; stop music
+	xor	a
+	ld      (MUSSTAT),a	; stop music
+DualPSG3:
+	pop	af
+	ld	(CardMDR+#30),a		; enable/disable dual psg
+	jp	PSGStPr
 
 PSG_UP:
 	ld	a,(CardMDR+#24)
@@ -7552,15 +7957,33 @@ CLKR_DOWN:
 	jp	PSGPrint
 
 PSGReset:
+	ld	a,(MUSSTAT)
+	or	a
+	jr	z,PSGReset1
+	ld	ix,#0707
+	call	MUSSTOP		; stop music
+	xor	a
+	ld      (MUSSTAT),a	; stop music
+PSGReset1:
         ld	hl,DefPSG	; default volume and configuration for PSG and Clicker
 	ld	a,(hl)
 	ld	(CardMDR+#24),a
+	ld	a,(CardMDR+#30)
+	res	0,a		; dual PSG off by default
+	ld	(CardMDR+#30),a
+
 	jp      PSGPrint
 
 
 PSGEnd:
 	ld	a,%01100000	; write enable
 	call	EEWEN
+
+	ld	a,(CardMDR+#30)
+	ld	e,a             ; data
+	ld	a,#1E		; address
+	call	EEWR		; save Dual-PSG flag to EEPROM
+
 	ld	a,(CardMDR+#24)
 	ld	e,a             ; data
 	ld	a,3		; address
@@ -7867,7 +8290,7 @@ DualRR:
 	ret	
 
 ;
-; Varions screens
+; Various screens
 ;
 
 ; Default variables for colors and settings
@@ -7877,6 +8300,9 @@ FMMOND	db	0		; FMPAC mode = stereo
 SPDD	db	1		; default delay = 1
 FRQD	db	#FF		; frequency forcing off
 DUALRD	db	1		; dual reset enabled
+ADELAYD	db	3		; default autostart delay
+SLOT3RD	db	0		; allow to run in slot 3
+IOPORTD	db	#FF		; default setting = based on slot
 
 C2FPALMD
 	dw	#7707		; default
@@ -8518,13 +8944,6 @@ LDIRMV	equ	LDIRMV_E
   endif
 
 
-; Font data 2048 bytes
-fontdat:
-	dw	0
-
-	include	"font.inc"
-
-
 ;
 ; EXTRA DATA AREA for one-time use, will be loaded from 7th 8kb block from FlashROM
 ;	
@@ -8564,7 +8983,7 @@ Haltmsg:
 	db	"Unusable slot! System Halted!",0
 
 AutoMSG:
-	db	"    Auto-Start in 3 seconds...",10,13,10,13
+	db	"    Auto-Start in   seconds...",10,13,10,13
 	db	"    Press ",#A7,"ESC",#0F,", ",#A7,"TAB",#0F,", ",#A7,"F4",#0F," or hold ",10,13
 	db	"  any joystick button for Boot Menu..."
 	db	0
@@ -8703,17 +9122,17 @@ PSGScr:
 	db	#88,#FF,38,#8A,#8F
 	db	#8C,"    Carnivore 2 MFC  ",#96,"  PSG Setup",#FF,5,#20,#8D
 	db	#8C,"  ",#FF,34,#9A,"  ",#8D
-	db	#8C," PSG Enabled ",#9B,#9E,#9D,"  Clicker Enabled ",#9B,#9E,#9D," ",#8D
+	db	#8C,"  PSG ",#9B,#9E,#9D,"  Clicker ",#9B,#9E,#9D,"  Dual-PSG ",#9B,#9E,#9D,"  ",#8D
 	db	#8C,#FF,38,#20,#8D
 	db	#8C," Action Keys:",#FF,25,#20,#8D
 	db	#8C,#20,#AA,#A7,"ESC",#0F,"   - save & exit to main menu  ",#8D
 	db	#8C,#20,#7E,#A7,"SPACE",#0F," - enable/disable PSG",#FF,8,#20,#8D
 	db	#8C,#20,#7E,#A7,"ENTER",#0F," - enable/disable Clicker    ",#8D
-	db	#8C,#20,#7E,#A7,"UP",#0F,"    - increase PSG volume",#FF,7,#20,#8D
-	db	#8C,#20,#7E,#A7,"DOWN",#0F,"  - decrease PSG volume",#FF,7,#20,#8D
-	db	#8C,#20,#7E,#A7,"RIGHT",#0F," - increase Clicker volume   ",#8D
-	db	#8C,#20,#7E,#A7,"LEFT",#0F,"  - decrease Clicker volume   ",#8D
+	db	#8C,#20,#7E,#A7,"TAB",#0F,"   - enable/disable Dual-PSG   ",#8D
+	db	#8C,#20,#7E,#A7,"UP",#0F," or ",#A7,"DOWN",#0F,"    - PSG volume",#FF,6,#20,#8D
+	db	#8C,#20,#7E,#A7,"RIGHT",#0F," or ",#A7,"LEFT",#0F," - Clicker volume  ",#8D
 	db	#8C,#20,#AE,#A7,"HOME",#0F,"  - reset to default values   ",#8D
+	db	#8C,#FF,38,#20,#8D
 	db	#8C,#FF,38,#20,#8D
 	db	#8C," PSG Volume:",#FF,26,#20,#8D
   if SPC=0
@@ -8745,25 +9164,28 @@ SetupScr:
 	db	#8C,#20,#7E,#A7,"SPACE",#0F," - change selected value     ",#8D
 	db	#8C,#20,#AE,#A7,"HOME",#0F,"  - reset to default values   ",#8D
 	db	#8C,#FF,38,#20,#8D
-	db	#8C,#20,#AA,"Dual-reset on cold boot:",#FF,8,#20,#9F,#9E,#9D," ",#8D
+	db	#8C,#20,#AA,"I/O port for ID & control:     ",#9F,"F ",#9D," ",#8D
+	db	#8C,#20,#7E,"Dual-Reset on cold boot:",#FF,8,#20,#9F,#9E,#9D," ",#8D
 	db	#8C,#20,#7E,"Entry sorting in Boot Menu:     ",#9F,#9E,#9D," ",#8D
 	db	#8C,#20,#7E,"Fade in/out effects:",#FF,12,#20,#9F,#9E,#9D," ",#8D
-	db	#8C,#20,#7E,"FMPAC mono mode enabled:",#FF,8,#20,#9F,#9E,#9D," ",#8D
+	db	#8C,#20,#7E,"FMPAC mono enabled:",#FF,13,#20,#9F,#9E,#9D," ",#8D
 	db	#8C,#20,#7E,"Keyboard/joystick delay:",#FF,8,#20,#9F,#20,#9D," ",#8D
 	db	#8C,#20,#7E,"Frequency at startup (Hz):     ",#9F," 0",#9D," ",#8D
-	db	#8C,#20,#7E,"Menu font:",#FF,11,#20,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C,#20,#7E,"Menu background:     R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C,#20,#7E,"Help font:",#FF,11,#20,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C,#20,#7E,"Help background:     R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C,#20,#7E,"Volume font:",#FF,9,#20,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C,#20,#7E,"Volume backg.:",#FF,7,#20,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C,#20,#7E,"PSG setup font:",#FF,6,#20,"R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
-	db	#8C,#20,#AE,"PSG setup backg.:    R",#9F,#20,#9D," G",#9F,#20,#9D," B",#9F,#20,#9D," ",#8D
+	db	#8C,#20,#7E,"Autostart delay (0-no delay):   ",#9F,#20,#9D," ",#8D
+	db	#8C,#20,#7E,"Allow to work in Slot 3:",#FF,8,#20,#9F,#9E,#9D," ",#8D
+	db	#8C,#20,#7E,#FF,36,#20,#8D
+;	db	#8C,#20,#7E,"                                    ",#8D
+;	db	#8C,#20,#7E,#FF,8,#20,"Font> RGB   RGB <Background ",#8D
+;	db	#8C,#20,#7E,"Main menu:   ",#9F,#20,#20,#20,#9D," ",#9F,#20,#20,#20,#9D,#FF,12,#20,#8D
+	db	#8C,#20,#7E,"Main menu:   ",#9F,#20,#20,#20,#9D," ",#9F,#20,#20,#20,#9D,"   Colors:  ",#8D
+	db	#8C,#20,#7E,"Help screens:",#9F,#20,#20,#20,#9D," ",#9F,#20,#20,#20,#9D,#20,#20,#FF,9,#9A,#20,#8D
+	db	#8C,#20,#7E,"SCC/FM setup:",#9F,#20,#20,#20,#9D," ",#9F,#20,#20,#20,#9D," [RGB] [RGB]",#8D
+	db	#8C,#20,#AE,"PSG setup:   ",#9F,#20,#20,#20,#9D," ",#9F,#20,#20,#20,#9D,"  FNT   BKG ",#8D
 	db	#8E,#FF,38,#8B,#89
 Setupll	db	#FF,8,#20,"Configure colors and options..."   
 	db	0
 
-
+                                                                                                          
 ; Help screens
 HelpScr1:
 	db	#88,#FF,38,#8A,#8F
@@ -8867,6 +9289,16 @@ MusicData:
 
 MusicDataEnd:
 
+; Font data 2048 bytes
+fontdat:
+	dw	0
+
+	include	"font.inc"
+
+
+; End of Boot Menu
+
+	org	#C000
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;

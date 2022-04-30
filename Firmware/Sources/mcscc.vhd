@@ -1,6 +1,6 @@
 
 ----------------------------------------------------------------
--- v2.40.0001
+-- v2.50.0003
 ----------------------------------------------------------------
 library IEEE;
 use IEEE.std_logic_1164.all;
@@ -301,6 +301,7 @@ architecture RTL of mcscc is
   signal LRD1		: std_logic;
   signal Rd_n		: std_logic;
   signal Wr_n		: std_logic;
+  signal Rd_n1		: std_logic;
 
 -- IDE CF adapter
   signal cReg	       : std_logic_vector(7 downto 0);  
@@ -431,15 +432,16 @@ architecture RTL of mcscc is
   signal PsgRegWe    : std_logic;
   signal KC    : std_logic;
   signal PsgAmp      : std_logic_vector(9 downto 0);
+  signal PsgAlt      : std_logic_vector(1 downto 0);
 
 -- Code injector
-  signal V_active : std_logic_vector(1 downto 0);
-  signal V_hunt   : std_logic;
-  signal aV_hunt  : std_logic;
-  signal V_fr     : std_logic;
-  signal V_stop   : std_logic;
-  signal V_RA	  : std_logic_vector(15 downto 0);
-  signal V_AR	  : std_logic_vector(13 downto 0);   
+--CIV  signal V_active : std_logic_vector(1 downto 0);
+--CIV  signal V_hunt   : std_logic;
+--CIV  signal aV_hunt  : std_logic;
+--CIV  signal V_fr     : std_logic;
+--CIV  signal V_stop   : std_logic;
+--CIV  signal V_RA	  : std_logic_vector(15 downto 0);
+--CIV  signal V_AR	  : std_logic_vector(13 downto 0);   
 
 -- Reset Conditions
   signal pSltRst_n :std_logic := '0' ;
@@ -469,8 +471,10 @@ architecture RTL of mcscc is
   signal aSCART_StBl :std_logic_vector(7 downto 0);
   signal Maddrs :std_logic_vector(22 downto 0);
   signal SccEna :std_logic;
-  
-  
+--- port #F0
+  signal PF0_RV :std_logic_vector(1 downto 0);
+  signal CrSlt 	:std_logic_vector(1 downto 0);
+  signal PFXN :std_logic_vector(1 downto 0):= "00";
 begin
   ----------------------------------------------------------------
   -- Slot Select Disable trigger key
@@ -572,6 +576,7 @@ begin
 						     and pSltRd_n = '0') -- MMM page register read
 						 or (pSltAdr(7 downto 2) = "111111" and pSltIorq_n = '0' and Port3C(5) = '0'
 						     and pSltRd_n = '0' and MAPpEn = '1' and Mconf(6) = '1') -- MAP register read (port)
+						 or (pSltRd_n = '0' and pSltAdr(7 downto 0) = "111100"&PFXN and pSltIorq_n = '0' and not(PF0_RV = "00")) -- #F0 port 
 						 or (Sltsl_F_n = '0' and pSltRd_n = '0' and pSltAdr(15 downto 1) = "011111111111011")-- FM page register
 					
 					else '1';
@@ -626,6 +631,9 @@ begin
             else "ZZ" & MAP_FF(5 downto 0) when ((pSltAdr(7 downto 0) = "11111111" and pSltIorq_n = '0' and Port3C(5) = '0') -- MAP reg FF
                                                 or DEC_PFF ='1') and pSltRd_n = '0' and MAP_S = '0'
             else Port3C when DEC_P3C ='1' and pSltRd_n = '0'    
+  -- Port #F0 (#F1,#F2,#F3) read
+            else "00110010" when (pSltAdr(7 downto 0) = "111100"&PFXN and pSltIorq_n = '0' and PF0_RV = "01")-- char "2"
+            else "001100"& CrSlt when (pSltAdr(7 downto 0) = "111100"&PFXN and pSltIorq_n = '0' and PF0_RV = "10")-- char "2"
             
 --			MDRregister				
 			else CardMDR when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "000000" 
@@ -671,31 +679,33 @@ begin
 			else "0000" & EECS1 & EECK1 & EEDI1 & EEDO 
 			          when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100011"
 			else LVL1 when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100100"
-			else V_AR(7 downto 0) when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100101"
-			else pSltAdr(15 downto 14) & V_AR(13 downto 8) when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100110"
-			else "000000" & V_fr & aV_hunt when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100111"
+--CIV			else V_AR(7 downto 0) when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100101"
+--CIV			else pSltAdr(15 downto 14) & V_AR(13 downto 8) when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100110"
+--CIV			else "000000" & V_fr & aV_hunt when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "100111"
 			else aSLM_cfg when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101000"
 			else aSCART_cfg when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101001"
 			else aSCART_SLT when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101010"
 			else aSCART_StBl when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101011"
 
 			else "00110010" when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101100" -- 2C - 32
-			else "00110100" when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101101" -- 2D - 34
+			else "00110101" when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101101" -- 2D - 35
 			else "00110000" when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101110" -- 2E	- 30
 			else "00000"&SCRT_mRr when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101111"
 					
 --			else A8_save when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101100"
 --			else SCRT_1reg when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101101"
 --			else SCRT_2reg when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101110"
---			else SCRT_3reg when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101111"		
+--			else SCRT_3reg when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "101111"
+            else "000000"&PsgAlt when DecMdr = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "110000"
 			else SLT_0_save when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "110000"	
 			else SLT_1_save when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "110001"	
 			else SLT_2_save when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "110010"	
 			else SLT_3_save when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "110011"	
-			else A8_save    when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "110100"		
+			else A8_save    when DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "110100"
+			else "111100"&PFXN when	DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "110101"	
 --	        
-            else V_RA(7 downto 0) when V_active = "10"
-            else V_RA(15 downto 8) when V_active = "01"  				   					
+--CIV            else V_RA(7 downto 0) when V_active = "10"
+--CIV            else V_RA(15 downto 8) when V_active = "01"  				   					
 			else pFlDat ;
   
 
@@ -713,7 +723,9 @@ begin
                     when pSltMerq_n = '0' and pSltAdr(15 downto 0) = "1111111111111111" and A8_save(7) = A8_save(6)
            else '0' when pSltSltsl_n = '0' and pSltRd_n = '0' 
            else '0' when pSltRd_n = '0' and pSltAdr(7 downto 2) = "111111" and pSltIorq_n = '0' 
-                         and Port3C(5) = '0' and Mconf(6) = '1' and MAPpEn = '1' 
+                         and Port3C(5) = '0' and Mconf(6) = '1' and MAPpEn = '1'
+           else '0' when pSltRd_n = '0' and pSltAdr(7 downto 0) = "111100"&PFXN and pSltIorq_n = '0' and not(PF0_RV = "00")
+           else '0' when pSltRd_n = '0' and pSltAdr(7 downto 2) = "11110000" and pSltIorq_n = '0' and not(PF0_RV = "00")                
            else '0' when pSltRd_n = '0' and DecSCARD = '1' -- Second Cartgige read   
            else '0' when pSltRd_n = '0' and DecMCARD = '1' -- Primary Cartrige read non standart slot
            else '0' when pSltRd_n = '0' and pSltMerq_n = '0' and pSltAdr(15 downto 0) = "1111111111111111" and
@@ -844,6 +856,7 @@ begin
          R4Mult    <= "00000000";
          aR4Mult    <= "00000000";
          SCRT_mRr  <= "000";
+         PsgAlt		<= "00";
          
  --        REXPSLT	<= "00000000";  -- Extend Slot Register Reset to 0
          aMconf  	<= "11111111";  -- Reset slot configurations
@@ -861,17 +874,34 @@ begin
 		 aNSReg <= "00000000" ;
 --		 LVL <= "00011011"; 
 		 EECS1 <= '0'; EECK1 <= '0'; EEDI1 <= '0';
-		 V_hunt <= '0';
-		 aV_hunt <= '0';
-		 V_fr <= '0';
+--CIV		 V_hunt <= '0';
+--CIV		 aV_hunt <= '0';
+--CIV		 V_fr <= '0';
 --
 		 SLM_cfg <= "11100100"; aSLM_cfg <= "11100100";
          SCART_cfg <= "00000000"; aSCART_cfg <= "00000000";--"11100100"; -- "00000000";
          SCART_SLT <= "00000000"; aSCART_SLT <= "00000000";--"00000101"; -- "00000000";
          SCART_StBl <= "00000000"; aSCART_StBl <= "00000000";--"00001101"; -- "00000000";
+--- port #F0
+         PF0_RV <= "00";
        
     elsif (pSltClk_n'event and pSltClk_n = '1') then
-
+          -- Port #F0 decription
+      if (pSltIorq_n = '0' and pSltWr_n = '0' and pSltAdr(7 downto 0) = "111100"&PFXN) then -- #F0
+        case pSltDat(7 downto 0) is
+          when "01000011" => PF0_RV <= "01"; -- char C - get version (detect)
+          when "01010010" => CardMDR(7) <= '0';-- char R - enable control registers 
+		  when "01001000" => CardMDR(7) <= '1';-- char H - disable control registers 
+		  when "01010011" => PF0_RV <= "10";-- char S - get slot 
+		  when "00110000" => CardMDR(6  downto 5) <= "00";-- char 0 - set register base #0F80
+		  when "00110001" => CardMDR(6  downto 5) <= "01";-- char 1 - set register base #4F80
+		  when "00110010" => CardMDR(6  downto 5) <= "10";-- char 2 - set register base #8F80
+		  when "00110011" => CardMDR(6  downto 5) <= "11";-- char 3 - set register base #CF80
+		  when "01000001" => Mconf(7)<='0';Mconf(3 downto 0)<="0001";-- char A - set catrige main slot only
+		  when "01001101" => Mconf(7)<='1';Mconf(3 downto 0)<="1111";-- char M - set default subslot config
+          when others     => PF0_RV <= "00";
+        end case;
+      end if;
           -- Mapped I/O port access on 8F80 ( 0F80, 4F80, CF80 ) Cart mode resister write
       if (DecMDR = '1' and pSltWr_n = '0' ) then 
         if (pSltAdr(5 downto 0) = "000000") then CardMDR <= pSltDat ; end if;
@@ -916,19 +946,21 @@ begin
                                                  EECK1 <= pSltDat(2);
                                                  EEDI1 <= pSltDat(1);  end if;
         if (pSltAdr(5 downto 0) = "100100") then LVL1    <= pSltDat(7 downto 0); end if;                                                 
-        if (pSltAdr(5 downto 0) = "100101") then V_AR(7 downto 0) <= pSltDat ; end if; 
-        if (pSltAdr(5 downto 0) = "100110") then V_AR(13 downto 8) <= pSltDat(5 downto 0); end if;    
-        if (pSltAdr(5 downto 0) = "100111") then aV_hunt <= pSltDat(0); V_fr <= pSltDat(1); end if;    
+--CIV        if (pSltAdr(5 downto 0) = "100101") then V_AR(7 downto 0) <= pSltDat ; end if; 
+--CIV        if (pSltAdr(5 downto 0) = "100110") then V_AR(13 downto 8) <= pSltDat(5 downto 0); end if;    
+ --CIV       if (pSltAdr(5 downto 0) = "100111") then aV_hunt <= pSltDat(0); V_fr <= pSltDat(1); end if;    
         if (pSltAdr(5 downto 0) = "101000") then aSLM_cfg <= pSltDat; end if;
         if (pSltAdr(5 downto 0) = "101001") then aSCART_cfg <= pSltDat; end if;
         if (pSltAdr(5 downto 0) = "101010") then aSCART_SLT <= pSltDat; end if;  
         if (pSltAdr(5 downto 0) = "101011") then aSCART_StBl <= pSltDat; end if; 
-        if (pSltAdr(5 downto 0) = "101111") then SCRT_mRr <=pSltDat(2 downto 0); end if;             
+        if (pSltAdr(5 downto 0) = "101111") then SCRT_mRr <=pSltDat(2 downto 0); end if;
+        if (pSltAdr(5 downto 0) = "110000") then PsgAlt <= pSltDat (1 downto 0); end if;            
+        if (pSltAdr(5 downto 0) = "110101") then PFXN <= pSltDat (1 downto 0); end if; 
       end if;
  -- V_hunt off
-      if V_active = "11" then
-        aV_hunt <= '0'; V_hunt <='0';
-     end if;
+--CIV      if V_active = "11" then
+--CIV        aV_hunt <= '0'; V_hunt <='0';
+--CIV      end if;
  -- delayed reconfiguration
      if RloadEn = '1' then
 
@@ -963,7 +995,7 @@ begin
       
       Mconf   <= aMconf; 
       NSReg   <= aNSReg;  
-      V_hunt <= aV_hunt;
+ --CIV     V_hunt <= aV_hunt;
       SLM_cfg <= aSLM_cfg;
       SCART_cfg <= aSCART_cfg;
       SCART_SLT <= aSCART_SLT;
@@ -1063,7 +1095,8 @@ begin
 					 		             or (MR2A(3) = '0' and R2Mult(5) = '0')
 					 		             or (MR3A(3) = '0' and R3Mult(5) = '0')
 					 		             or (MR4A(3) = '0' and R4Mult(5) = '0') --uv )
-					 		             or (V_active /= "00" and V_fr = '0')  ) -- H vector in ROM
+--CIV					 		             or (V_active /= "00" and V_fr = '0')  -- H vector in ROM
+                                                                                    )
 		 else '0' when IDEROMCs_n = '0' and CardMDR(1) = '0' -- IDE ROM read
 		 else '0' when Sltsl_F_n = '0'  and CardMDR(1) = '0' and pSltAdr(15 downto 14) = "01" and CsRAM8k = '0'  -- FM Pack ROM read
 		 else '1';
@@ -1077,7 +1110,8 @@ begin
 					   or (MR2A(3) = '0' and R2Mult(5) = '1')
 					   or (MR3A(3) = '0' and R3Mult(5) = '1')
 					   or (MR4A(3) = '0' and R4Mult(5) = '1') --uv )
-					   or (V_active /= "00" and V_fr = '1')  ) -- H vector in RAM  
+--CIV					   or (V_active /= "00" and V_fr = '1')   -- H vector in RAM  
+                                                                 )
 		 else '0' when Sltsl_F_n = '0' and pSltAdr(15 downto 13) = "010" and CsRAM8k = '1'  -- FM Pack RAM
 		 else '0' when IDEROMCs_n = '0' and CardMDR(1) = '1' -- Shadow IDE ROM read
 		 else '0' when Sltsl_F_n = '0'  and CardMDR(1) = '1' and pSltAdr(15 downto 14) = "01" -- Shadow FM Pack ROM read
@@ -1139,8 +1173,8 @@ begin
     
 			else   AddrM2(6 downto 0) & AddrM1(7 downto 0) & AddrM0(7 downto 0) 
                          when (DecMDR = '1' and CardMDR(0) = '0' and pSltAdr(5 downto 0) = "000100") -- Direct card vector port
-            else   "000000000"&(V_AR + pSltAdr(13 downto 0) - V_RA(13 downto 0)) -- inject vector address
-                         when V_active /= "00"          
+--CIV            else   "000000000"&(V_AR + pSltAdr(13 downto 0) - V_RA(13 downto 0)) -- inject vector address
+--CIV                        when V_active /= "00"          
 			else  (AddrFR(6 downto 0) + Maddr(22 downto 16)) & Maddr(15 downto 0); -- Cartridge 
   
   AddrMAP	<=	MAP_FC when  pSltAdr(15 downto 14) = "00" else	-- Mapper Page
@@ -1524,8 +1558,15 @@ begin
  --   elsif (pSltRd_n = '1' and LRD = '0') then Rd_n <= '1';
  --   end if;
     if pSltRd_n = '1' then Rd_n <= '1';
-    elsif pSltClk'event and pSltClk = '1' then
+    elsif pSltClk'event and pSltClk = '0' then
       if    pSltRd_n = '0' then Rd_n <= '0'; end if;
+    end if;
+  end process;
+  process (pSltRd_n,pSltClk)
+  begin
+    if pSltRd_n = '0' then Rd_n1 <= '0';
+    elsif pSltClk'event and pSltClk = '0' then
+      if pSltRd_n = '1' then Rd_n1 <= '1'; end if;
     end if;
   end process;
   process (pSltWr_n)
@@ -1604,12 +1645,12 @@ begin
 ---							else IDEsOUT when IDEReg = '1' and pSltAdr(9) = '0' and pSltAdr(0) = '1' 
 ---							                  and RD_hT1 = '0' 
 ---							else (others => 'Z');  
-  pIDEDat(15 downto 8) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and Rd_n = '1' and pSltRd_n = '1'
-                       else pSltDat when IDEReg = '1' and Rd_n = '1' and pSltRd_n = '1'
+  pIDEDat(15 downto 8) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and Rd_n = '1' and Rd_n1 = '1' and pSltRd_n = '1'
+                       else pSltDat when IDEReg = '1' and Rd_n = '1' and Rd_n1 = '1' and pSltRd_n = '1'
 					   else (others => 'Z');
-  pIDEDat(7 downto 0) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and Rd_n = '1' and pSltRd_n = '1'
+  pIDEDat(7 downto 0) 	<= 	pSltDat when IDEReg = '1' and pSltAdr(9) = '1' and Rd_n = '1' and Rd_n1 = '1' and pSltRd_n = '1'
 					   else IDEsOUT when IDEReg = '1' and pSltAdr(9) = '0' and pSltAdr(0) = '1' 
-							             and Rd_n = '1' and pSltRd_n = '1'
+							             and Rd_n = '1' and Rd_n1 = '1' and pSltRd_n = '1'
 					   else (others => 'Z');
 
 
@@ -1986,7 +2027,7 @@ begin
     elsif (pSltClk_n'event and pSltClk_n = '1') then
 
       -- I/O port access on A0h ... Resister number setting
-      if (DevHit = '1' and pSltIorq_n = '0' and pSltWr_n = '0' and pSltAdr(7 downto 0) = "10100000") then
+      if (DevHit = '1' and pSltIorq_n = '0' and pSltWr_n = '0' and pSltAdr(7 downto 0) = (not PsgAlt(0))&"0"&(not PsgAlt(0))&PsgAlt(0)&"0000") then
         PsgRegPtr <= pSltDat(3 downto 0);
       end if;
 
@@ -2002,8 +2043,8 @@ begin
     end if;
 
   end process;
-  -- I/O port access on A1h ... Resister write
-  PsgRegWe <= '1' when DevHit = '1' and pSltIorq_n = '0' and pSltWr_n = '0' and pSltAdr(7 downto 0) = "10100001" else '0';
+  -- I/O port access on A1h ... Resister write (11h) (1010 0001 - 0001 0001)
+  PsgRegWe <= '1' when DevHit = '1' and pSltIorq_n = '0' and pSltWr_n = '0' and pSltAdr(7 downto 0) = (not PsgAlt(0))&"0"&(not PsgAlt(0))&PsgAlt(0)&"0001" else '0';
   -- Connect component
   PsgCh  : psg_wave
     port map(
@@ -2015,31 +2056,31 @@ begin
 -- INIT ROM Code Injector
 ----------------------------------------------------------------
 
-process (Rd_n,pSltRst_n)
-begin
-  if pSltRst_n = '0' then
-    V_active <= "00";
-  elsif (Rd_n'event and Rd_n = '0') then
-    if pSltM1_n = '0' and  Sltsl_C_n = '0' and V_hunt = '1' then
-	  V_RA <= pSltAdr; -- get return address
-      V_active <= "11"; -- inject mode on
-    end if;
-    if Sltsl_C_n = '0' and V_stop = '1' and V_active /= "00" then 
-      V_active <= V_active - "01"; -- inject mode off
-    end if;
-  end if; 
-end process;    
-
-process (Rd_n,pSltRst_n)
-begin
-  if pSltRst_n = '0' then
-    V_stop <= '0';
-  elsif (Rd_n'event and Rd_n = '1') then
-    if pSltM1_n = '0' and V_active = "11" and Sltsl_C_n = '0' and pSltDat = "11000011" then -- C3h :JPXXXX:
-    V_stop <= '1';
-    end if;
-  end if;
-end process;  
+--CIVprocess (Rd_n,pSltRst_n)
+--CIVbegin
+--CIV  if pSltRst_n = '0' then
+--CIV    V_active <= "00";
+--CIV  elsif (Rd_n'event and Rd_n = '0') then
+--CIV    if pSltM1_n = '0' and  Sltsl_C_n = '0' and V_hunt = '1' then
+--CIV	  V_RA <= pSltAdr; -- get return address
+--CIV      V_active <= "11"; -- inject mode on
+--CIV    end if;
+--CIV    if Sltsl_C_n = '0' and V_stop = '1' and V_active /= "00" then 
+--CIV      V_active <= V_active - "01"; -- inject mode off
+--CIV    end if;
+--CIV  end if; 
+--CIVend process;    
+--CIV
+--CIVprocess (Rd_n,pSltRst_n)
+--CIVbegin
+--CIV  if pSltRst_n = '0' then
+--CIV    V_stop <= '0';
+--CIV  elsif (Rd_n'event and Rd_n = '1') then
+--CIV    if pSltM1_n = '0' and V_active = "11" and Sltsl_C_n = '0' and pSltDat = "11000011" then -- C3h :JPXXXX:
+--CIV    V_stop <= '1';
+--CIV    end if;
+--CIV  end if;
+--CIVend process;  
 
 ----------------------------------------------------------------
 -- Reset conditions
@@ -2065,6 +2106,16 @@ end process;
 --  SDOp <= '1' when SDOc /= "0000111111111111"  else '0';
 --  SDOpo <='0' when pSltIorq_n = '0' and pSltWr_n = '0'and pSltAdr(7 downto 0) = "10100001" else 'Z'; --#A0
   SDOpo <= pSltRst_n; --not KC; 
+-- Current Slot detector
+process(pSltClk_n, DecMCARD, pSltAdr)
+begin
+ if (pSltClk_n'event and pSltClk_n = '1') then
+   if (DecMCARD = '1' and pSltAdr(15 downto 14) = "00") then CrSlt <= A8_save(1 downto 0); end if;
+   if (DecMCARD = '1' and pSltAdr(15 downto 14) = "01") then CrSlt <= A8_save(3 downto 2); end if;
+   if (DecMCARD = '1' and pSltAdr(15 downto 14) = "10") then CrSlt <= A8_save(5 downto 4); end if;
+   if (DecMCARD = '1' and pSltAdr(15 downto 14) = "11") then CrSlt <= A8_save(7 downto 6); end if;
+ end if;
+end process;
   
 -- Second Slot Control slot register 
 process(pSltClk_n, pSltRst_n)

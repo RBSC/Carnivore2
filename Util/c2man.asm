@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
-; Copyright (c) 2015-2020 RBSC
-; Version 2.10
+; Copyright (c) 2015-2021 RBSC
+; Version 2.12
 ;
 ; WARNING!!
 ; The program's code and data before must not go over #4000 and below #C000 addresses!
@@ -6719,18 +6719,18 @@ CRTT2:	db	"K"
 	db	#F8,#B0,#03,#84,#FF,#A0			
 	db	#FF,#BC,#00,#02,#FF
 CRTT3:	db	"a"
-	db	"ASCII 8-bit                      $"
+	db	"ASCII 8                          $"
 	db	#F8,#60,#00,#84,#FF,#40			
-	db	#F8,#68,#01,#84,#FF,#60				
-	db      #F8,#70,#02,#84,#FF,#80				
-	db	#F8,#78,#03,#84,#FF,#A0			
+	db	#F8,#68,#00,#84,#FF,#60				
+	db      #F8,#70,#00,#84,#FF,#80				
+	db	#F8,#78,#00,#84,#FF,#A0			
 	db	#FF,#AC,#00,#02,#FF
 CRTT4:	db	"A"
-	db	"ASCII 16-bit                     $"		
+	db	"ASCII 16                         $"		
 	db	#F8,#60,#00,#85,#FF,#40			
-	db	#F8,#70,#01,#85,#FF,#80				
-	db      #F8,#70,#02,#08,#3F,#80				
-	db	#F8,#78,#03,#08,#3F,#A0			
+	db	#F8,#70,#00,#85,#FF,#80				
+	db      #F8,#60,#00,#85,#FF,#C0				
+	db	#F8,#70,#00,#85,#FF,#00			
 	db	#FF,#8C,#00,#01,#FF
 CRTT5:	db	"M"
 	db	"Mini ROM (no mapper)             $"		
@@ -7569,8 +7569,8 @@ I_MPAR_S:
 ;------------------ MODE 80 ------------------
 PRESENT_S:
 	db	3
-	db	"Carnivore2 Multi-Cartridge Manager v2.10",13,10
-	db	"(C) 2015-2020 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 Multi-Cartridge Manager v2.12",13,10
+	db	"(C) 2015-2021 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
 Findcrt_S:
@@ -7621,8 +7621,8 @@ NO_B_UPD:
 ;------------------ MODE 40 ------------------
 PRESENT_S:
 	db	3
-	db	"Carnivore2 Multi-Cartridge",10,13,"Manager v2.10",13,10
-	db	"(C) 2015-2020 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 Multi-Cartridge",10,13,"Manager v2.12",13,10
+	db	"(C) 2015-2021 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found.",10,13
 	db	"Please specify its slot number - $"
@@ -8221,5 +8221,5 @@ HSOB	db	"ROM's starting options register",13,10
 EXIT_S:	db	10,13,"Thanks for using RBSC's products!",13,10,"$"
 
 	db	0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER/GREYWOLF:2020"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX:2022"
 	db	0,0,0

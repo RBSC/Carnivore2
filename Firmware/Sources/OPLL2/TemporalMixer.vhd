@@ -20,8 +20,8 @@ entity TemporalMixer is
     maddr : out SLOT_TYPE;
     mdata : in SIGNED_LI_TYPE;
     
-    mo : out std_logic_vector(9 downto 0);
-    ro : out std_logic_vector(9 downto 0);
+ --   mo : out std_logic_vector(9 downto 0);
+ --   ro : out std_logic_vector(9 downto 0);
  --<
     BCMO		: out std_logic_vector(15 downto 0);--*
     BCRO 		: out std_logic_vector(15 downto 0); --*   
@@ -53,8 +53,8 @@ begin
    
     if reset = '1' then
     
-      mo <= (others =>'0');
-      ro <= (others =>'0');
+--      mo <= (others =>'0');
+--      ro <= (others =>'0');
       maddr <= 0;
       mmute <= '1';
       rmute <= '1';
@@ -74,8 +74,8 @@ begin
 --    elsif clk'event and clk = '0' then if clkena='1' then   
       if stage = 0 then
       
-        mo <= "1000000000";
-        ro <= "1000000000";
+ --       mo <= "1000000000";
+ --       ro <= "1000000000";
 --<        
         if slot = 0 then
           IdetROs <=IdetRO;
@@ -148,26 +148,26 @@ begin
           
         if mmute = '0' then    
           if mdata.sign = '0' then
-            mo <= "1000000000" + mdata.value;
+ --           mo <= "1000000000" + mdata.value;
             ACMO <= ACMO + (mdata.value&"0"); --*
           else
-            mo <= "1000000000" - mdata.value;
+ --           mo <= "1000000000" - mdata.value;
             ACMO <= ACMO - (mdata.value&"0"); --*
           end if;
         else
-          mo <= "1000000000";
+ --         mo <= "1000000000";
         end if;
         
         if rmute = '0' then
           if mdata.sign = '0' then
-            ro <= "1000000000" + (mdata.value&"0");--(10<10+9)
-            ACRO <= ACRO + mdata.value; --*    (16<16+9)
+ --           ro <= "1000000000" + mdata.value;
+            ACRO <= ACRO + (mdata.value&"0"); --*
           else
-            ro <= "1000000000" - (mdata.value&"0");
-            ACRO <= ACRO - mdata.value; --*
+ --           ro <= "1000000000" - mdata.value;
+            ACRO <= ACRO - (mdata.value&"0"); --*
           end if;
         else
-          ro <= "1000000000";
+ --         ro <= "1000000000";
         end if;
 
       end if;        

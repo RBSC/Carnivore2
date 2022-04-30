@@ -2942,7 +2942,7 @@ H_PAR_S:
 	db	"There will be no overwrite warnings when /u option is used!",10,13,"$"
 
 	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PENCIONER/GREYWOLF:2020"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX:2022"
 	db	0,0,0
 
 BUFTOP:

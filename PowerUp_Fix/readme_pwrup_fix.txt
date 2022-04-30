@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
-Carnivore2 MultiFunctional Cartridge version 2.40
-Copyright (c) 2017-2020 RBSC
+Carnivore2 MultiFunctional Cartridge
+Copyright (c) 2017-2022 RBSC
 --------------------------------------------------------------------------------
 
 The power-up modification is no longer needed for the Carnivore2 cartridge starting

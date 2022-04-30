@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
-Carnivore2 MultiFunctional Cartridge version 2.40
-Copyright (c) 2017-2020 RBSC
+Carnivore2 MultiFunctional Cartridge
+Copyright (c) 2017-2022 RBSC
 --------------------------------------------------------------------------------
 
 OpenMSX supports the emulation of the Carnivore2 cartridge since build 0_14_0-200:
@@ -12,8 +12,8 @@ OpenMSX support for Carnivore2
 
 To add Carnivore2 device into OpenMSX please do the following:
 
-1. Put "carnivore.xml" file into this folder: ..\openMSX\share\extensions\
-2. Put "carnivore.rom" file into this folder: ..\openMSX\share\systemroms\other\
+1. Put "carnivore2.xml" file into this folder: ..\openMSX\share\extensions\
+2. Put "carnivore2.rom" file into this folder: ..\openMSX\share\systemroms\other\
 3. Run "openMSX Catapult", select "Settings", click "Edit configuration" and "OK"
 
 The device called "Carnivore2" will appear in the list of found devices. You can then attach a disk image to Carnivore2
@@ -41,3 +41,4 @@ Certain features of Boot Menu starting from v2.30 will not work until the suppor
  - FMPAC mono mode will not be enabled
  - Dual-Slot screen will not allow to run ROMs in the slave slot
  - The firmware version will not be shown correctly
+ - Dual-PSG will not be supported
