@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge
 Copyright (c) 2017-2022 RBSC
-Last updated: 01.05.2022
+Last updated: 12.05.2022
 --------------------------------------------------------------------------------
 
 The user guide and technical documentation have been moved into the PDF files:
@@ -40,10 +40,6 @@ https://sysadminmosaic.ru/msx/carnivore2/qvl_list-en
 
 Last minute notes
 -----------------
-
-There is a minor problem with joystick and joypads on certain MSX1 models with Boot Menu. This problem will be fixed in the
-v2.52 of the Boot Menu. Also, the problem with certain games that have their music playing improperly after starting from the
-boot menu will be addressed in this release.
 
 The default dual-slot functionality doesn't work on at least 2 computers: Sony HB-55 and HB-75. Please enable the "Slave Slot
 as Master's Subslot" option to be able to run 2 ROMs at the same time on these computers. This also applies to certain Arabic

@@ -1,11 +1,11 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's Boot Menu
-; Copyright (c) 2015-2022 RBSC
+; Copyright (c) 2015-2021 RBSC
 ; Portions (c) Grauw
 ; Portions (c) Spark/SDM
 ; Portions (c) Jordon aka KOD/SDM 
  
-; Version 2.52
+; Version 2.50
 ;
 
 ; !COMPILATION OPTIONS!
@@ -154,7 +154,7 @@ L_STR	equ	16
 MUSINIT	equ	#C000
 MUSPLAY	equ	#C005
 MUSSTOP	equ	#C008
-REGLORG	equ	MUSINIT+#05AB
+
 
 ;------------------------------------------
 
@@ -167,7 +167,7 @@ REGLORG	equ	MUSINIT+#05AB
 	db	0,0,0,0,0,0
 Label	db	"CMFCCFRC"
 	db	0
-BBVers	db	"v2.52"  ; Version | also update it in the header!
+BBVers	db	"v2.50"  ; Version | also update it in the header!
 	db	0
 
 
@@ -1299,10 +1299,9 @@ RUN_CT1:
 	push	bc
 	push	ix
 ;	push	iy
-;	ld	ix,#0707
+	ld	ix,#0707
 	call	MUSSTOP		; stop music
 	call	HookOff		; disable hook
-	call	PSGINI		; init PSG
 ;	pop	iy
 	pop	ix
 	pop	bc
@@ -1375,10 +1374,9 @@ RUN_CR1:
 	push	bc
 	push	ix
 ;	push	iy
-;	ld	ix,#0707
+	ld	ix,#0707
 	call	MUSSTOP		; stop music
 	call	HookOff		; disable hook
-	call	PSGINI		; init PSG
 ;	pop	iy
 	pop	ix
 	pop	bc
@@ -1700,10 +1698,9 @@ RUN_CJ1:
 	push	bc
 	push	ix
 ;	push	iy
-;	ld	ix,#0707
+	ld	ix,#0707
 	call	MUSSTOP		; stop music
 	call	HookOff		; disable hook
-	call	PSGINI		; init PSG
 ;	pop	iy
 	pop	ix
 	pop	bc
@@ -1836,10 +1833,9 @@ AUTO_R:
 
 ; Exit from boot menu
 Exit:
-;	ld	ix,#0707
+	ld	ix,#0707
 	call	MUSSTOP		; stop music
 	call	HookOff		; disable hook
-	call	PSGINI		; init PSG
 	xor	a
 	ld      (MUSSTAT),a	; stop music
 
@@ -2229,8 +2225,9 @@ HookOE:
 
 ; Interrupt handler (works on timer interrupt!)
 IntCode:
-	di
 	push	af
+	di
+;	in	a,(#99)		; read status port to sync
 	push	hl
 	push	de
 	push	bc
@@ -2238,21 +2235,21 @@ IntCode:
 	push	iy
 	call	ORGHOOK		; call original hook code (if any)
 	di
-	in	a,(#99)		; read status port to sync
 	ld	a,(SCROLL)
 	or	a		; scroller enabled?
 	call	nz,DoScroll	; do scroller
 	ld      a,(MUSSTAT)
 	or	a
+	ld	ix,#0707
 	call	nz,MUSPLAY	; play music
 	pop	iy
 	pop	ix
 	pop	bc
 	pop	de
 	pop	hl
-	pop	af
 	ei
-	reti
+	pop	af
+	ret
 
 
 ; Play sound with PSG
@@ -3045,7 +3042,7 @@ Aurora:
 	ld      (MUSSTAT),a	; play music
 	jr	Aurora2
 Aurora1:
-;	ld	ix,#0707
+	ld	ix,#0707
 	call	MUSSTOP		; stop music
 	xor	a
 	ld      (MUSSTAT),a	; stop music
@@ -3076,21 +3073,12 @@ MusicInit:
 	di 
 	ld	hl,MusicData
 	ld	de,#C000
-	ld	bc,MusicDataEnd-MusicData	; size of music
+	ld	bc,7418
 	ldir			; move music player + data
-
-	ld	hl,PlayPatch
-	ld	bc,PlayPatchE-PlayPatch
-	ldir			; copy patch after music
-
-	ld	bc,PlayPatch
-	ld	hl,REGLORG
-	ld	a,#C3
-	ld	(hl),a
-	inc	hl
-	ld	(hl),c
-	inc	hl
-	ld	(hl),b		; Redirect PLAY to patcher
+	ld	hl,PatchPlr
+	ld	de,#C849
+	ld	bc,107
+	ldir 			; patch player for PSG
 
 	call	MUSINIT		; init music module
 
@@ -3100,34 +3088,77 @@ MusicInit:
 	ld	(CardMDR+#0E),a	; restore value
 	ret
 
-
-; Filter/patcher for original player
-PlayPatch:
-	ld	c,#A1		; ports A0-A1
-	ld	hl,#C6AE
-PatchLoop:
-	cp	#07		; reg 7?
-	jr	nz,NoPatchData
-	res	6,(hl)
-	set	7,(hl)
-NoPatchData:
-	dec	c
-	out	(c),a		; C=A0
-	inc	c		; C=A1
+PatchPlr:
+	ld	de,#A0A1	; changes to PSG ports
+	ld	bc,#FFA0	; changes to PSG ports
+	ld	hl,#C300
+	out	(c),l
+	ld	c,e
 	outi
-	inc	a
-	cp	#0D
-	jr	nz,PatchLoop
-	dec	c
-	out	(c),a		; C=A0
-	ld	a,(hl)
-	and	a
-	ret	m
-	inc	c		; C=A1
+	ld	c,d
+	out	(c),l
+	ld	c,e
+	outi
+ 	ld	c,d
+	out	(c),l
+ 	ld	c,e
+	outi
+ 	ld	c,d
+	out	(c),l
+ 	ld	c,e
+	outi
+ 	ld	c,d
+	out	(c),l
+	ld	c,e
+	outi
+	ld	c,d
+	out	(c),l
+ 	ld	c,e
+	outi
+ 	ld	c,d
+	out	(c),l
+	db	#DD,#7C		; ld   a,xh (UNDOCUMENTED!)
+   	ld	(#C4D5),a
+	add	a,00
+ 	ld	c,e
 	out	(c),a
-	ret
+	inc	l
+ 	ld	c,d
+	out	(c),l
+	db	#DD,#7D		; ld   a,xl (UNDOCUMENTED!)
+ 	ld	c,e
+	out	(c),a
+	inc	l
+ 	ld	c,d
+	out	(c),l
+ 	ld	c,e
+	outi
+	ld	c,d
+	out	(c),l
+	ld	c,e
+	outi
+	ld	c,d
+	out	(c),l
+	ld	c,e
+	outi
+	ld	c,d
+	out	(c),l
+	ld	c,e
+	outi
+ 	ld	c,d
+	out	(c),l
+ 	ld	c,e
+	outi
+	ld	a,00
+	or	a
+ 	db	#28,#0A		;jr   z,#C8B9
+ 	ld	c,d
+	out	(c),l
+	ld	c,e
+	out	(c),a
 	nop
-PlayPatchE:
+	nop
+	nop			; slack
 
 
 ; Jump to the last used entry
@@ -5737,7 +5768,7 @@ SltReset10:
 	push	bc
 	push	ix
 ;	push	iy
-;	ld	ix,#0707
+	ld	ix,#0707
 	call	MUSSTOP		; stop music
 	call	HookOff		; disable hook
 ;	pop	iy
@@ -7811,7 +7842,7 @@ PSG_ED:
 	ld	a,(MUSSTAT)
 	or	a
 	jr	z,PSG_ED0
-;	ld	ix,#0707
+	ld	ix,#0707
 	call	MUSSTOP		; stop music
 	xor	a
 	ld      (MUSSTAT),a	; stop music
@@ -7860,7 +7891,7 @@ DualPSG2:
 	ld	a,(MUSSTAT)
 	or	a
 	jr	z,DualPSG3
-;	ld	ix,#0707
+	ld	ix,#0707
 	call	MUSSTOP		; stop music
 	xor	a
 	ld      (MUSSTAT),a	; stop music
@@ -7929,7 +7960,7 @@ PSGReset:
 	ld	a,(MUSSTAT)
 	or	a
 	jr	z,PSGReset1
-;	ld	ix,#0707
+	ld	ix,#0707
 	call	MUSSTOP		; stop music
 	xor	a
 	ld      (MUSSTAT),a	; stop music
@@ -8847,20 +8878,6 @@ LDIRMV_E:
 	pop	hl
 	ret
 
-PSGINI_E:
-	push	hl
-	push	de
-	push	bc
-	push	ix
-;	push	iy
-	call	#0090		; PSG init
-;	pop	iy
-	pop	ix
-	pop	bc
-	pop	de
-	pop	hl
-	ret
-
 
 ; BIOS call envelope for Korean and Arabic machines (shadow registers get corrupted on BIOS calls!
 ; Bios Calls
@@ -8893,7 +8910,6 @@ RDVRM	equ	#004A
 FILVRM	equ	#0056
 LDIRVM	equ	#005C
 LDIRMV	equ	#0059
-PSGINI	equ	#0090
 
   else
 WRSLT	equ	WRSLT_E
@@ -8924,7 +8940,6 @@ RDVRM	equ	RDVRM_E
 FILVRM	equ	FILVRM_E
 LDIRVM	equ	LDIRVM_E
 LDIRMV	equ	LDIRMV_E
-PSGINI	equ	PSGINI_E
 
   endif
 
@@ -9270,7 +9285,7 @@ ScrollerE
 ;
 MusicData:
 
-	include	"aurora.inc"
+	include	"music.inc"
 
 MusicDataEnd:
 

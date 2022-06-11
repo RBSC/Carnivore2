@@ -1,5 +1,5 @@
 --------------------------------------------------------------------------------
-Carnivore2 MultiFunctional Cartridge version 2.52
+Carnivore2 MultiFunctional Cartridge version 2.50
 Copyright (c) 2017-2022 RBSC
 --------------------------------------------------------------------------------
 
