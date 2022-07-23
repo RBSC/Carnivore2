@@ -1,7 +1,0 @@
-#!/bin/bash
-DIR=`cygpath -wa .`
-F=`basename $1 .bin`
-D=`dirname $1`
-FDIR=`cygpath -d $D`
-FPATH=$FDIR\\$F
-DOSBox.exe -c "MOUNT D $DIR" -c "d:" -c "msxf2w $FPATH.bin $FPATH.wav -2" -noconsole -exit

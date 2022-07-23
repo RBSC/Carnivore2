@@ -1,3 +1,9 @@
+;
+; Carnivore2 ROM Dump/IDE Test Utility v1.10
+; Created by Vladimir & RBSC [2022]
+;
+
+
 CHGET = 0x9F
 CHPUT = 0xa2
 RDSLT = 0x0c
@@ -113,20 +119,19 @@ shftLLp	or	a	; clear Cy
 	org	0xc000 - 7
 
 ; BLOAD header, before the ORG so that the header isn’t counted
-	db 0xFE     ; magic number
-	dw begin    ; begin address
-	dw Last - 1  ; end address
-	dw exec  ; program execution address (for ,R option)
+
+	db	0xFE     ; magic number
+	dw	begin    ; begin address
+	dw	Last - 1  ; end address
+	dw	exec  ; program execution address (for ,R option)
 
 ; Program code entry point
+
 begin:
 exec:
-;	ld	sp,(Last+128) && 0xfffe
-;	in	a,(PPI_SLOT)
-;	ld	(PpiSlt),a
 	call	CLRSCR
 	call	KEYOFF
-	
+	print	Title	
 askS:
 	print	SLOTN
 	call	CHGET
@@ -186,17 +191,21 @@ AskChoice:
 	call	CHGET
 	print	ONE_NL_S
 	cp	27
-	jr	z,askS
+	jp	z,askS
+	or	%00100000		; lowercase
 	cp	"r"
 	jr	z,CallDumpRom
 	cp	"i"
 	jr	nz,AskChoice
 	call	dumpIDE
-	jr	askS
+	jp	askS
 CallDumpRom:
 	call	dumpROM
-	jr	askS
-	
+	jp	askS
+
+;
+; Read ROM and dump it
+;	
 dumpROM:
 	print	ROMOFFS
 	ld	hl,BUFTOP
@@ -212,7 +221,8 @@ dumpROM_ofs:
 	ld	a,d
 	or	a
 	jr	z,dumpROM
-	ld	hl,0x4000
+;	ld	hl,0x4000
+	ld	hl,0x0000
 	add	hl,bc
 dumpROM_do:
 	call	dumpBlock
@@ -220,6 +230,9 @@ dumpROM_do:
 	jr	dumpROM
 dumpROM_addr:	dw	0x4000
 
+;
+; Read IDE sector and dump it
+;
 dumpIDE:
 	print	BLOCKN
 	ld	hl,BUFTOP
@@ -252,6 +265,7 @@ sect0_OK:
 	ld	hl,BUFTOP
 	call	dumpBlock
 	jr	dumpIDE
+
 
 ; Get subslot register
 ; Input:
@@ -475,6 +489,7 @@ inps_esc:
 	scf
 	ret
 
+
 ; Print string (de) terminated by "$"
 ; alters de
 prints:	
@@ -639,9 +654,9 @@ dumpBlock_byte:
 dumpBlock_char:
 	ld	a,(hl)
 	cp	a," "
-	jr	m,dumpBlock_nonp
+	jp	m,dumpBlock_nonp
 	cp	a,126
-	jr	m,dumpBlock_p
+	jp	m,dumpBlock_p
 dumpBlock_nonp:
 	ld	a,"."
 dumpBlock_p:
@@ -686,14 +701,30 @@ ONE_NL_S:
 	db	13,10,"$"
 ABCD:	db	"0123456789ABCDEF"
 COLON:	db	": $"
-SLOTN:	db "Slot# $"
-SUBSLOTN: db "Sublot# $"
-Choice: db "Dump (r)om or (i)de$"
-BLOCKN:	db "Block# $"
-ROMOFFS: db "ROM offset: $"
-SECT0_ERR: db "Error reading sector 0: $"
-SSlotContent: db "Subslot reg: $"
-Switching: db "Switching slot",13,10,"$"
+Title:	
+	db	13,10
+	db	"Carnivore2 ROM/IDE Dumper v1.10",13,10
+	db	"Created by Vladimir & RBSC [2022]",13,10,"$"
+SLOTN:	
+	db	13,10
+	db	"Enter Carnivore2's slot number: $"
+
+SUBSLOTN:
+	db	"Enter subslot number (1=IDE): $"
+Choice: db	"Dump ROM or IDE sector (r/i): $"
+BLOCKN:
+	db	13,10	
+	db	"Sector number (decimal): $"
+ROMOFFS:
+	db	13,10
+	db	"ROM's address (decimal): $"
+SECT0_ERR:
+	db	"Error reading sector 0: $"
+SSlotContent:
+	db	"Subslot's register: $"
+Switching:
+	db	"Switching slot...",13,10,"$"
+
 BUFTOP:
 Last:
 Dummy:
