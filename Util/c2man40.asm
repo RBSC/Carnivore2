@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2021 RBSC
-; Version 2.12
+; Version 2.13
 ;
 ; WARNING!!
 ; The program's code and data before must not go over #4000 and below #C000 addresses!
@@ -6312,11 +6312,11 @@ CLRSCR:
 	ld	a,(VDPVER)
 	or	a			; v991x?
 	jr	z,Set40
+
+   if MODE=80
 	cp	2			; v995x?
 	jr	nc,Set80
-	ld	a,(SCR0WID)
-	cp	41
-	jr	nc,Set80
+   endif
 
 	ld	a,#80
 	ld	hl,#15C
@@ -6330,6 +6330,12 @@ CLRSCR:
 	ei
 	cp	#C3			; MSX2?
 	jr	nz,Set40
+
+   if MODE=40
+	ld	a,(SCR0WID)
+	cp	41
+	jr	c,Set40
+   endif
 
 Set80:
 	ld	a,80			; 80 symbols for screen0
@@ -7569,7 +7575,7 @@ I_MPAR_S:
 ;------------------ MODE 80 ------------------
 PRESENT_S:
 	db	3
-	db	"Carnivore2 Multi-Cartridge Manager v2.12",13,10
+	db	"Carnivore2 Multi-Cartridge Manager v2.13",13,10
 	db	"(C) 2015-2021 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -7621,7 +7627,7 @@ NO_B_UPD:
 ;------------------ MODE 40 ------------------
 PRESENT_S:
 	db	3
-	db	"Carnivore2 Multi-Cartridge",10,13,"Manager v2.12",13,10
+	db	"Carnivore2 Multi-Cartridge",10,13,"Manager v2.13",13,10
 	db	"(C) 2015-2021 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found.",10,13
