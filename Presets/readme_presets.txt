@@ -45,6 +45,7 @@ HOIN1SP.RCP	- RCP file for "Hole In One Special" game
 RMONSTER.RCP	- RCP file for "Rune Monster" game
 GUARDIC.RCP	- RCP file for "Guardic" game
 MUTANTS.RCP	- RCP file for "Mutants from the Deep" game
+SHRINES.RCP	- RCP file for "Shrines of Enigma" game
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
 more information about this file.
