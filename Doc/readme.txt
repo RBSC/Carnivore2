@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge
-Copyright (c) 2017-2022 RBSC
-Last updated: 12.06.2022
+Copyright (c) 2017-2023 RBSC
+Last updated: 14.05.2023
 --------------------------------------------------------------------------------
 
 The user guide and technical documentation have been moved into the PDF files:
@@ -45,12 +45,12 @@ The default dual-slot functionality doesn't work on at least 2 computers: Sony H
 as Master's Subslot" option to be able to run 2 ROMs at the same time on these computers. This also applies to certain Arabic
 MSXs that have only one free available slot.
 
-If any of your CF cards or SD-to-CF adapters no longer work with Carnivore2, try to replace the IDE bios with an alternative
-version. To do this, rename BIDECMFC.ALT into BIDECMFC.BIN and write the IDE BIOS into Carnivore2 with the C2MAN or C2MAN40
-utility.
+In some rare cases Carnivore2 may not work correctly. Such anomalous behavior has been spotted on at least 2 rare computers:
+Mistubishi ML-G30 and Toshiba HX-34. If you have such computers and you are able to boot them with Carnivore2, please inform
+the RBSC's coordinator.
 
 When a computer is just powered on with the Carnivore2 cartridge inserted into a slot, it may reboot twice. This is normal and
-was implemented to make sure that the cartridge is fully initialized after the cold boot. You can enable the dual-reboot feature
+was implemented to make sure that the cartridge is fully initialized after the cold boot. You can enable the Dual-Reset feature
 in the Configuration settings.
 
 When using Carnivore2 with National FS-4600F computer, always boot while holding the CTRL key. Otherwise some of Carnivore2
@@ -70,8 +70,8 @@ When the sources of the tools are used to create alternative projects, please al
 Contact information
 -------------------
 
-The members of RBSC group Tnt23, Wierzbowsky, Pyhesty, Ptero, GreyWolf, SuperMax and DJS3000 can be contacted via the group's e-mail
-address:
+The members of RBSC group Tnt23, Wierzbowsky, Pyhesty, Ptero, GreyWolf, SuperMax, VWarlock and DJS3000 can be contacted via the group's
+e-mail address:
 
 info@rbsc.su
 

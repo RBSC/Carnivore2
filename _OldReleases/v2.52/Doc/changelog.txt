@@ -1,0 +1,11 @@
+--------------------------------------------------------------------------------
+Changelog for Carnivore2 MultiFunctional Cartridge
+Copyright (c) 2017-2022 by RBSC
+English verison
+--------------------------------------------------------------------------------
+
+The changelog has been moved into the following PDF files:
+
+Carnivore2 Changelog (English).pdf
+Carnivore2 Changelog (Russian).pdf
+

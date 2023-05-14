@@ -1,0 +1,9 @@
+--------------------------------------------------------------------------------
+Carnivore2 MultiFunctional Cartridge
+Copyright (c) 2017-2022 RBSC
+--------------------------------------------------------------------------------
+
+The partslist has been moved into the following PDF files:
+
+Carnivore2 Partslist (English).pdf
+Carnivore2 Partslist (Russian).pdf

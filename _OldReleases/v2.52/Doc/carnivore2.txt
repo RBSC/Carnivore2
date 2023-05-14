@@ -1,0 +1,15 @@
+--------------------------------------------------------------------------------
+Carnivore2 Technical Details
+Copyright (c) 2017-2022 by RBSC
+English version
+--------------------------------------------------------------------------------
+
+The technical documentation has been moved into the following PDF files:
+
+Carnivore2 Technical Description (English).pdf
+Carnivore2 Technical Description (Russian).pdf
+
+The documentation is also available here:
+
+https://sysadminmosaic.ru/msx/carnivore2/specification
+https://sysadminmosaic.ru/msx/carnivore2/specification-en
