@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
-; Copyright (c) 2015-2021 RBSC
-; Version 2.13
+; Copyright (c) 2015-2023 RBSC
+; Version 2.15
 ;
 ; WARNING!!
 ; The program's code and data before must not go over #4000 and below #C000 addresses!
@@ -257,7 +257,11 @@ DoReset:
 	out	(#F4),a			; avoid "warm" reset on MSX2+
 
 	rst	#30			; call to BIOS
-	db	0			; slot
+   if SPC=0
+	db	0
+   else
+	db	#80
+   endif
 	dw	0			; address
 
 
@@ -2099,7 +2103,11 @@ Reset1:
 	out	(#F4),a			; avoid "warm" reset on MSX2+
 
 	rst	#30			; call to BIOS
-	db	0			; slot
+   if SPC=0
+	db	0
+   else
+	db	#80
+   endif
 	dw	0			; address
 
 
@@ -6323,7 +6331,11 @@ CLRSCR:
 	push	ix
 	push	iy
 	rst	#30
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#000C			; read byte at address #15C
 	pop	iy
 	pop	ix
@@ -6349,7 +6361,11 @@ SetScr:
 	push	iy
 	xor	a
 	rst	#30			; for compatibility with korean and arabix MSXx
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#005F
 	pop	iy
 	pop	ix
@@ -6385,7 +6401,11 @@ KEYOFF:
 	push	ix
 	push	iy
 	rst	#30			; for compatibility with korean and arabix MSXx
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#00CC
 	pop	iy
 	pop	ix
@@ -6396,7 +6416,11 @@ KEYON:
 	push	ix
 	push	iy
 	rst	#30			; for compatibility with korean and arabix MSXx
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#00CF
 	pop	iy
 	pop	ix
@@ -7575,8 +7599,8 @@ I_MPAR_S:
 ;------------------ MODE 80 ------------------
 PRESENT_S:
 	db	3
-	db	"Carnivore2 Multi-Cartridge Manager v2.13",13,10
-	db	"(C) 2015-2021 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 Multi-Cartridge Manager v2.15",13,10
+	db	"(C) 2015-2023 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
 Findcrt_S:
@@ -7627,8 +7651,8 @@ NO_B_UPD:
 ;------------------ MODE 40 ------------------
 PRESENT_S:
 	db	3
-	db	"Carnivore2 Multi-Cartridge",10,13,"Manager v2.13",13,10
-	db	"(C) 2015-2021 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 Multi-Cartridge",10,13,"Manager v2.15",13,10
+	db	"(C) 2015-2023 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found.",10,13
 	db	"Please specify its slot number - $"
@@ -8227,5 +8251,5 @@ HSOB	db	"ROM's starting options register",13,10
 EXIT_S:	db	10,13,"Thanks for using RBSC's products!",13,10,"$"
 
 	db	0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX:2022"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX/VWARLOCK/TNT23:2023"
 	db	0,0,0

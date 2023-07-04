@@ -1,8 +1,14 @@
 ;
 ; Carnivore2 Cartridge's FlashROM Backup
-; Copyright (c) 2015-2020 RBSC
-; Version 1.15
+; Copyright (c) 2015-2023 RBSC
+; Version 1.20
 ;
+
+; !COMPILATION OPTIONS!
+
+SPC	equ	0		; 1 = for Arabic and Korean computers
+				; 0 = for all other MSX computers
+; !COMPILATION OPTIONS!
 
 
 ;--- Macro for printing a $-terminated string
@@ -331,7 +337,11 @@ DoReset:
 	out	(#F4),a			; avoid "warm" reset on MSX2+
 
 	rst	#30			; call to BIOS
-	db	0			; slot
+   if SPC=0
+	db	0
+   else
+	db	#80
+   endif
 	dw	0			; address
 
 
@@ -472,14 +482,22 @@ rdt923:
 rdt989:
 	push	ix
 	rst	#30
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#009C			; wait for key and avoid displaying cursor
 	pop	ix
 	jr	z,rdt989a
 
 	push	ix
 	rst	#30
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#009F			; read one character
 	cp	27			; ESC?
 	pop	ix
@@ -1088,14 +1106,22 @@ DEF10a:
 Fpr02:
 	push	ix
 	rst	#30
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#009C			; wait for key and avoid displaying cursor
 	pop	ix
 	jr	z,Fpr02a
 
 	push	ix
 	rst	#30
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#009F			; read one character
 	pop	ix
 	cp	27			; ESC?
@@ -1265,7 +1291,11 @@ Reset1:
 	out	(#F4),a			; avoid "warm" reset on MSX2+
 
 	rst	#30			; call to BIOS
-	db	0			; slot
+   if SPC=0
+	db	0
+   else
+	db	#80
+   endif
 	dw	0			; address
 
 
@@ -2580,7 +2610,11 @@ CLRSCR:
 	push	ix
 	xor	a
 	rst	#30
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#005F
 	pop	ix
 
@@ -2592,14 +2626,22 @@ CLRSCR:
 ; Hide functional keys
 KEYOFF:	
 	rst	#30
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#00CC
 	ret
 
 ; Unhide functional keys
 KEYON:
 	rst	#30
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#00CF
 	ret
 
@@ -2886,8 +2928,8 @@ OpInterr2:
 	db	10,13,"ABORTED! This will result in an partially written FlashROM...",10,13,"$"
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge FlashROM Backup v1.15",13,10
-	db	"(C) 2015-2020 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 MultiFunctional Cartridge FlashROM Backup v1.20",13,10
+	db	"(C) 2015-2023 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
 Findcrt_S:
@@ -2942,7 +2984,7 @@ H_PAR_S:
 	db	"There will be no overwrite warnings when /u option is used!",10,13,"$"
 
 	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX:2022"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX/VWARLOCK/TNT23:2023"
 	db	0,0,0
 
 BUFTOP:
