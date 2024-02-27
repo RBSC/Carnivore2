@@ -7691,11 +7691,6 @@ BTbp_S:	db	"   *--------",#0D,#0A
 	db	"   ",124,124,124,124,124,124,"*--$"	
 ;	db	"FF-76543210-"
 
-GENHLP	db	"Use [UP] or [DOWN] to select an option",10,13
-	db	"Use [SPACE] or [ENTER] to confirm$"
-
-GENHLP1	db	"Use [UP] or [DOWN] to select an entry",10,13
-	db	"Use [SPACE] or [ENTER] to confirm$"
 
    if MODE=80
 ;------------------ MODE 80 ------------------
@@ -8049,6 +8044,13 @@ DetVDPE:
 
 ;
 ; Text strings
+
+GENHLP	db	"Use [UP] or [DOWN] to select an option",10,13
+	db	"Use [SPACE] or [ENTER] to confirm$"
+
+GENHLP1	db	"Use [UP] or [DOWN] to select an entry",10,13
+	db	"Use [SPACE] or [ENTER] to confirm$"
+
 
    if MODE=80
 ;------------------ MODE 80 ------------------
