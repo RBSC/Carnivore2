@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge
-Copyright (c) 2017-2022 RBSC
+Copyright (c) 2017-2024 RBSC
 --------------------------------------------------------------------------------
 
 The labels are copyright by RBSC. Non-commercial usage is allowed.

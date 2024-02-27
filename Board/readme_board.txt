@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge
-Copyright (c) 2017-2022 RBSC
+Copyright (c) 2017-2024 RBSC
 --------------------------------------------------------------------------------
 
 The board layout was created by RBSC. Commercial usage is not allowed!

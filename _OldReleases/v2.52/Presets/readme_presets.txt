@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge
-Copyright (c) 2017-2022 RBSC
+Copyright (c) 2017-2023 RBSC
 --------------------------------------------------------------------------------
 
 Register Configuration Presets
@@ -28,7 +28,7 @@ MANBOW2.RCP	- RCP file for "Manbow 2" game, R1 and R2 (see the patch note below)
 LIFEMARS.RCP	- RCP file for "Life on Mars" game
 ZOMBIE.RCP	- RCP file for "Zombie Outbreak" game
 IKARI.RCP	- RCP file for "Ikari Warrior" game
-LIFEMARS.RCP	- RCP file for "Life on Mars" game
+LIFEEART.RCP	- RCP file for "Life on Earth" game
 GMASTER.RCP	- RCP file for "Konami Game Master 1" ROM (must be located in the first page of the 64kb block)
 GMASTER2.RCP	- RCP file for "Konami Game Master 2" ROM
 NEM3E102.RCP	- RCP file for "Nemesis 3 Enhanced v1.02" game (shared by Carmeloco)
@@ -46,6 +46,18 @@ RMONSTER.RCP	- RCP file for "Rune Monster" game
 GUARDIC.RCP	- RCP file for "Guardic" game
 MUTANTS.RCP	- RCP file for "Mutants from the Deep" game
 SHRINES.RCP	- RCP file for "Shrines of Enigma" game
+DEMO_GNG.RCP	- RCP file for "Ghosts and Goblins" game (demo)
+DPUZZLE.RCP	- RCP file for "Dreams Puzzle" game
+GGGPLUS.RCP	- RCP file for "Green Gravity Guy+" game
+HIGHWAY.RCP	- RCP file for "Highway" game (KAI Magazine)
+INTRUDER.RCP	- RCP file for "Codename: Intruder" game
+MAPAX.RCP	- RCP file for "Mapax" game
+MYTHSMSX.RCP	- RCP file for "Myths and Dragons" game (KAI Magazine)
+MYTHSEMU.RCP	- RCP file for "Myths and Dragons" game (KAI Magazine)
+SORROWSE.RCP	- RCP file for "The Sorrow of Gadhlan Thur" game (KAI Magazine)
+SORROWPE.RCP	- RCP file for "The Sorrow of Gadhlan Thur" game (KAI Magazine)
+V90_LOSA.RCP	- RCP file for "Losaben Akel" game
+
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for
 more information about this file.

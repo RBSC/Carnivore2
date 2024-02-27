@@ -1,6 +1,7 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge
-Copyright (c) 2017-2023 RBSC
+Copyright (c) 2017-2024 RBSC
+Last updated: 26.02.2024
 --------------------------------------------------------------------------------
 
 The provided utilities allow to work with certain cartridge's features:

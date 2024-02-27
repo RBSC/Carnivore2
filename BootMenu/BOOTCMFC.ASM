@@ -1,16 +1,20 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's Boot Menu
-; Copyright (c) 2015-2022 RBSC
+; Copyright (c) 2015-2024 RBSC
 ; Portions (c) Grauw
 ; Portions (c) Spark/SDM
 ; Portions (c) Jordon aka KOD/SDM 
  
-; Version 2.52
+; Version 2.53
 ;
 
 ; !COMPILATION OPTIONS!
 SPC	equ	0		; 1 = only basic characters are used for UI (for Arabic and Korean computers)
 				; 0 = all characters are used for UI
+
+MUS	equ	0		; Music selction for the Boot Menu
+				; 1 = Stamper, 0 = Aurora
+; !COMPILATION OPTIONS!
 
 ; Variables
 GETPNT	equ	#F3FA
@@ -167,7 +171,7 @@ REGLORG	equ	MUSINIT+#05AB
 	db	0,0,0,0,0,0
 Label	db	"CMFCCFRC"
 	db	0
-BBVers	db	"v2.52"  ; Version | also update it in the header!
+BBVers	db	"v2.53"  ; Version | also update it in the header!
 	db	0
 
 
@@ -1682,7 +1686,7 @@ hdfill:
 	jp	#0000		; reset to apply changed configuration!
 
 
-; Run selected record directly (using the ROM's start adddress
+; Run selected record directly (using the ROM's start address)
 RUN_CJ:
 	ld	a,(AUTOST)	; autostart found?
 	cp	#FF
@@ -9268,10 +9272,16 @@ ScrollerE
 ; Play: call #C005 in loop
 ; Stop: call #C008
 ;
+; Music player + music data
+; Must be moved to #C000, initialized at #C000
+; Play: call #C005 in loop
+; Stop: call #C008
 MusicData:
-
+  if MUS=1
+	include	"stamper.inc"
+  else
 	include	"aurora.inc"
-
+  endif
 MusicDataEnd:
 
 ; Font data 2048 bytes
@@ -9280,10 +9290,13 @@ fontdat:
 
 	include	"font.inc"
 
+Filler:
+	ds	#8000-(Filler-Boot)-#1f
+
 
 ; End of Boot Menu
 
-	org	#C000
+;	org	#C000
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;

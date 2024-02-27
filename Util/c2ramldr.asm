@@ -1,7 +1,7 @@
 ;
 ; Carnivore2 Cartridge's ROM->RAM Loader
-; Copyright (c) 2015-2023 RBSC
-; Version 1.40
+; Copyright (c) 2015-2024 RBSC
+; Version 1.41
 ;
 
 
@@ -261,16 +261,18 @@ Ma01:
 
 	cp	27
 	jp	z,Exit
-	cp	"3"
+	cp	"4"
 	jr	z,DoReset
+	cp	"3"
+	jp	z,D_Compr
 	cp	"0"
 	jp	z,Exit
 	cp	"1"
-	jr	z,ADDimage
+	jp	z,ADDimage
 	cp	"2"
 	jr	nz,Ma01
 	xor 	a
-	jr	ADDimgR
+	jp	ADDimgR
 
 DoReset:
 ; Restore slot configuration!
@@ -298,6 +300,273 @@ DoReset:
 	db	#80
    endif
 	dw	0			; address
+
+
+D_Compr:
+	print	DirComr_S
+DCMPR1:
+	call	SymbIn
+	or	%00100000
+	cp	"y"
+	jr	z,DCMPR2
+	cp	"n"
+	jr	nz,DCMPR1
+	call	SymbOut
+	print	ONE_NL_S
+	jp	MainM
+
+DCMPR2:
+	call	SymbOut
+	call	CmprDIR
+	print	DirComr_E
+	print	ANIK_S
+	call	SymbIn
+	jp	MainM
+
+
+CmprDIR:
+; Compress directory 
+; Set flash configuration
+	call	SET2PD
+
+; copy valid record 1st 8kB
+	xor	a
+	ld	(Dpoint+2),a		; start number record
+	ld	hl,#8000
+	ld	(Dpoint),hl
+CVDR:
+; clear buffer #FF
+	ld	bc,#2000-1
+	ld	hl,BUFTOP
+	ld	de,BUFTOP+1
+	ld	a,#FF
+	ld	(hl),a
+	ldir
+; copy valid dir record -  to BUFFTOP
+	ld	de,BUFTOP
+	ld	hl,(Dpoint)
+CVDR2:	ld	a,(hl)	
+	inc	hl
+	cp	#FF			; b1 empty ?
+	jr	z,CVDR1			; empty
+	ld	a,(hl)
+	cp	#FF			; b2 erased ?
+	jr	nz,CVDR1		; erase
+	push	hl
+	push	de
+	inc	hl
+	inc	hl
+	inc	hl
+	inc	hl			; Point to name at +#5
+	ld	de,RAM_TEMPL+1		; Point to "RAM: "
+	ex	hl,de
+	ld	b,5
+CVDR24:
+	ld	a,(de)
+	cp	(hl)
+	jr	nz,CVDR25
+	inc	hl
+	inc	de
+	djnz	CVDR24
+	pop	de
+	pop	hl
+	jr	CVDR1			; skip "RAM: " entries
+CVDR25:
+	pop	de
+	pop	hl
+	ld	bc,#3F			; not empty not erase -> copy		
+	ld	a,(Dpoint+2)
+	ld	(de),a			; 1st byte = new number record
+	inc	a
+	ld	(Dpoint+2),a		; increment number
+	inc	de	
+	ldir				; copy other bytes from old record
+	ld	(Dpoint),hl		; save sourse pointer		
+	bit	7,a			; if numper >= 80 (half table)
+	jr	nz,CVDR4 		; next 8Kb 
+CVDR3:	ld	a,h
+	cp	#C0	 		; out or range directory #C000 address
+	jr	c,CVDR2			; go to next record
+	jr	CVDR4  			; finish copy
+CVDR1:	ld	bc,#3F			; skipping record
+	add	hl,bc			; hl = hl + #3F
+	ld	(Dpoint),hl		; save sourse pointer	
+	jr	CVDR3			; go to test tabl ending
+CVDR4:
+; save 1-st 8k directory
+; clear (1/2)
+	xor	a
+	ld	(EBlock),a
+	ld	a,#40
+	ld	(EBlock0),a
+	call	FBerase
+; programm (1/2)
+
+	ld	hl,DEF_CFG
+	ld	de,BUFTOP
+	ld	bc,#40
+	ldir				; update DefConfig
+
+	xor	a
+	ld	(EBlock),a
+	inc	a
+	ld	(PreBnk),a
+	ld	hl,BUFTOP
+	ld	de,#8000
+	ld	bc,#2000
+	call	FBProg
+; clear buffer #FF
+	ld	bc,#2000-1
+	ld	hl,BUFTOP
+	ld	de,BUFTOP+1
+	ld	a,#FF
+	ld	(hl),a
+	ldir
+
+; set flash configuration
+	call	SET2PD
+
+; 2-nd 8kB block directory
+	ld	a,(Dpoint+2)
+	bit	7,a
+	jr	z,CVDR20		; no 2-nd Block
+
+; copy valid record 2-nd 8kB
+; de - new TOPBUFF
+; hl - continue directory >= A000	
+	ld	de,BUFTOP
+	ld	hl,(Dpoint)
+	ld	a,h
+	cp	#C0
+	jr	nc,CVDR20
+CVDR12:	ld	a,(hl)	
+	inc	hl
+	cp	#FF
+	jr	z,CVDR11
+	ld	a,(hl)
+	cp	#FF
+	jr	nz,CVDR11
+	ld	bc,#3F
+	ld	a,(Dpoint+2)
+	ld	(de),a
+	inc	a
+	ld	(Dpoint+2),a
+	inc	de
+	ldir
+CVDR13:	ld	(Dpoint),hl	
+	ld	a,h
+	cp	#C0	 		; out or range directory
+	jr	c,CVDR12
+	jr	CVDR20    		; finish copy
+CVDR11:	ld	bc,#3F
+	add	hl,bc
+
+	jr	CVDR13
+
+CVDR20:
+;  clear (2/2)
+	xor	a
+	ld	(EBlock),a
+	ld	a,#60
+	ld	(EBlock0),a
+	call	FBerase
+;  programm (2/2)
+	ld	hl,BUFTOP
+	ld	de,#A000
+	ld	bc,#2000
+	call	FBProg
+
+	ld      a,(TPASLOT2)
+	ld      h,#80
+	call    ENASLT
+	ld      a,(TPASLOT1)
+	ld      h,#40
+	call    ENASLT       		; Select Main-RAM at bank 4000h~7FFFh
+	ret
+
+SET2PD:
+	ld	a,(ERMSlt)
+	ld	h,#40			; set 1 page
+	call	ENASLT
+
+	ld	hl,B2ON
+	ld	de,CardMDR+#0C		; set Bank2
+	ld	bc,6
+	ldir
+ 
+	ld	a,(ERMSlt)		; set 2 page
+	ld	h,#80
+	call	ENASLT
+	ld	a,1
+	ld	(CardMDR+#0E),a 	; set 2nd bank to directory map
+
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT
+	ret
+
+
+; Input one symbol
+; out: A=symbol
+SymbIn:
+	push	hl
+	push	de
+	push	bc
+	push	ix
+	push	iy
+	ld	c,_INNOE
+	call	DOS
+	pop	iy
+	pop	ix
+	pop	bc
+	pop	de
+	pop	hl
+	ret
+
+
+FBerase:
+; Flash block erase 
+; Eblock, Eblock0 - block address
+	ld	a,(ERMSlt)
+	ld	h,#40			; Set 1 page
+	call	ENASLT
+	di
+	ld	a,(ShadowMDR)
+	and	#FE
+	ld	(CardMDR),a
+	xor	a
+	ld	(AddrM0),a
+	ld	a,(EBlock0)
+	ld	(AddrM1),a
+	ld	a,(EBlock)		; block address
+	ld	(AddrM2),a
+	ld	a,#AA
+	ld	(#4AAA),a
+	ld	a,#55
+	ld	(#4555),a
+	ld	a,#80
+	ld	(#4AAA),a		; Erase Mode
+	ld	a,#AA
+	ld	(#4AAA),a
+	ld	a,#55
+	ld	(#4555),a
+	ld	a,#30			; command Erase Block
+	ld	(DatM0),a
+
+	ld	a,#FF
+    	ld	de,DatM0
+    	call	CHECK
+; save flag CF - erase fail
+	push	af
+	ld	a,(ShadowMDR)
+	ld	(CardMDR),a
+	ei
+        ld      a,(TPASLOT1)
+        ld      h,#40
+        call    ENASLT          	; Select Main-RAM at bank 4000h~7FFFh
+	pop	af
+	ret
+
 
 ;
 ; ADD ROM image
@@ -3582,6 +3851,15 @@ CRTT5:	db	"M"
 	
 	db	0			; end of mapper table
 
+DEF_CFG:
+	db	#00,#FF,00,00,"C"
+	db	"DefConfig: RAM+DISK+FMPAC+SCC "
+	db	#F8,#50,#00,#85,#3F,#40
+	db	#F8,#70,#01,#8C,#3F,#60		
+	db      #F8,#90,#02,#8C,#3F,#80		
+	db	#F8,#B0,#03,#8C,#3F,#A0	
+	db	#FF,#38,#00,#01,#FF
+
 ;
 ;Variables
 ;
@@ -3696,7 +3974,8 @@ MAIN_S:	db	13,10
 	db	"---------",13,10
 	db	" 1 - Write ROM image into cartridge's RAM with protection",13,10
 	db	" 2 - Write ROM image into cartridge's RAM without protection",13,10
-	db	" 3 - Restart the computer",13,10
+	db	" 3 - Optimize and clean-up directory",13,10
+	db	" 4 - Restart the computer",13,10
 	db	" 0 - Exit to MSX-DOS",13,10,"$"
 
 EXIT_S:	db	10,13,"Thanks for using the RBSC's products!",13,10,"$"
@@ -3767,6 +4046,10 @@ FL_erd_S:
 CreaDir:
 	db      "Create directory entry for the loaded ROM? (y/n)$"
 LOAD_S: db      "Ready to write the ROM image. Proceed? (y/n)$"
+DirComr_S:
+	db	10,13,"Directory entries will be optimized. Proceed? (y/n) $"
+DirComr_E:
+	db	13,10,"Directory optimization succeeded.",13,10,"$"
 TWO_NL_S:
 	db	13,10
 ONE_NL_S:
@@ -3781,8 +4064,8 @@ TestRDT:
 
 PRESENT_S:
 	db	3
-	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.40",13,10
-	db	"(C) 2015-2023 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 MultiFunctional Cartridge RAM Loader v1.41",13,10
+	db	"(C) 2015-2024 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
 Findcrt_S:
@@ -3830,7 +4113,7 @@ RCPData:
 	ds	30
 
 	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX/VWARLOCK/TNT23:2023"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX/VWARLOCK/TNT23:2024"
 	db	0,0,0
 
 BUFTOP:

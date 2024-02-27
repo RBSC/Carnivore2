@@ -1,6 +1,7 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge
-Copyright (c) 2017-2023 RBSC
+Copyright (c) 2017-2024 RBSC
+Last updated: 26.02.2024
 --------------------------------------------------------------------------------
 
 Register Configuration Presets
@@ -57,6 +58,8 @@ MYTHSEMU.RCP	- RCP file for "Myths and Dragons" game (KAI Magazine)
 SORROWSE.RCP	- RCP file for "The Sorrow of Gadhlan Thur" game (KAI Magazine)
 SORROWPE.RCP	- RCP file for "The Sorrow of Gadhlan Thur" game (KAI Magazine)
 V90_LOSA.RCP	- RCP file for "Losaben Akel" game
+BATMAN.RCP	- RCP file for "Batman" game from 2014
+PAMPAS_C.RCP	- RCP file for "Pampas and Selene" game (Carnivore2 version)
 
 
 Preset for certain SCC+ games is also included - SCCPLUS.RCP. Please see the readme.txt file for

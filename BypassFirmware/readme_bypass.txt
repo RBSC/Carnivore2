@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
-Carnivore2 MultiFunctional Cartridge version 2.50
-Copyright (c) 2017-2023 RBSC
-Last updated: 26.04.2023
+Carnivore2 MultiFunctional Cartridge version 2.53
+Copyright (c) 2017-2024 RBSC
+Last updated: 18.02.2024
 --------------------------------------------------------------------------------
 
 On some MSX computers with built-in firmware, for example Sony HB-75P, after exiting the Boot Menu it's impossible to

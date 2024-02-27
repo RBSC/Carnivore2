@@ -1,8 +1,14 @@
 ;
 ; Tester for Carnivore2 IDE/FDD controller
-; Copyright (c) 2019-2021 RBSC
-; Version 1.05
+; Copyright (c) 2019-2023 RBSC
+; Version 1.10
 ;
+
+; !COMPILATION OPTIONS!
+
+SPC	equ	0		; 1 = for Arabic and Korean computers
+				; 0 = for all other MSX computers
+; !COMPILATION OPTIONS!
 
 
 ;--- Macro for printing a $-terminated string
@@ -312,12 +318,20 @@ TSTITR:
 
 CHKKEY:
 	rst	#30			; wait for key and avoid displaying cursor
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#009C
 	jp	z,TSTLOOP
 
 	rst	#30			; get pressed key
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#009F
 
 	cp	27			; ESC?
@@ -407,7 +421,11 @@ HEXOUT:
 CLRSCR:
 	xor	a
 	rst	#30
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#005F
 
 	xor	a
@@ -417,14 +435,22 @@ CLRSCR:
 ; Hide functional keys
 KEYOFF:	
 	rst	#30
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#00CC
 	ret
 
 ; Unhide functional keys
 KEYON:
 	rst	#30
+   if SPC=0
 	db	0
+   else
+	db	#80
+   endif
 	dw	#00CF
 	ret
 
@@ -1049,8 +1075,8 @@ CRLF:
 	db	13,10,"$"
 
 PRESENT_S:
-	db	"Carnivore2 IDE Tester v1.05",13,10
-	db	"Copyright (c) 2019-2021 by RBSC",13,10,13,10,"$"
+	db	"Carnivore2 IDE Tester v1.10",13,10
+	db	"Copyright (c) 2019-2023 by RBSC",13,10,13,10,"$"
 
 FLAGS:
 	db	"Usage:",13,10
@@ -1065,6 +1091,6 @@ FLAGS:
 BUFFER:	ds	256
 
 	db	0,0,0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX:2022"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX/VWARLOCK/TNT23:2023"
 	db	0,0,0
 

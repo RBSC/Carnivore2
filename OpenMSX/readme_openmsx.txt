@@ -1,6 +1,7 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge
-Copyright (c) 2017-2022 RBSC
+Copyright (c) 2017-2024 RBSC
+Last updated: 26.02.2024
 --------------------------------------------------------------------------------
 
 OpenMSX supports the emulation of the Carnivore2 cartridge since build 0_14_0-200:
@@ -31,6 +32,11 @@ to MSX-DOS and use the "C2MAN" or "C2MAN40" utility to update the Boot Menu and 
 the Carnivore's Github repository:
 
 https://github.com/RBSC/Carnivore2
+
+With "Carnivore2.xml" Carnivore2 cartridge can be located in any unused slot. However, if you want to use the cartridge in
+slots 1 or 2, there are 2 additional XML files - "Carnivore2-1.xml" and "Carnivore2-2.xml". This way you can use Carnivore2
+in either slot 1 or slot 2, as well as in both slots. Copying these XML files to OpenMSX is similar to copying
+"Carnivore2.xml" that is descrived above.
 
 
 IMPORTANT!

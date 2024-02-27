@@ -1,0 +1,15 @@
+--------------------------------------------------------------------------------
+Спецификация Carnivore2 MultiFunctional Cartridge
+Copyright (c) 2017-2022 by RBSC
+Русская версия
+--------------------------------------------------------------------------------
+
+Техническая документация на картридж перенесена в следующие PDF файлы:
+
+Carnivore2 Technical Description (English).pdf
+Carnivore2 Technical Description (Russian).pdf
+
+Документация также доступна здесь:
+
+https://sysadminmosaic.ru/msx/carnivore2/specification
+https://sysadminmosaic.ru/msx/carnivore2/specification-en

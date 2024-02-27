@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge
-Copyright (c) 2017-2022 RBSC
+Copyright (c) 2017-2024 RBSC
 --------------------------------------------------------------------------------
 
 The latest firmware supports SCC+, so there's no need for the special firmware. Thus, this folder is empty now.

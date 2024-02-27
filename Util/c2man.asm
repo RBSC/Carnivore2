@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
-; Copyright (c) 2015-2023 RBSC
-; Version 2.15
+; Copyright (c) 2015-2024 RBSC
+; Version 2.22
 ;
 ; WARNING!!
 ; The program's code and data before must not go over #4000 and below #C000 addresses!
@@ -2064,8 +2064,8 @@ DEF10A:
 	print	ONE_NL_S
 	jp	MainM
 DEF10B:
-	cp	"e"
-	jr	z,EditCf
+;	cp	"e"			; edit was disabled as it caused some issues
+;	jr	z,EditCf
 	jr	DEF10A
 DEF10C:
 	call	SymbOut
@@ -2111,25 +2111,28 @@ Reset1:
 	dw	0			; address
 
 
-EditCf:
-	ld	hl,Record
-	ld	a,#FF
-	ld	de,BUFFER
-	ld	(de),a
-	inc	de
-	ld	(de),a
-	inc	de
-	ld	bc,#40
-	ldir
-	call	Redit
-	jr	z,DEF11a
-	ld	hl,BUFFER+2
-	ld	de,Record
-	ld	bc,#40
-	ldir
-DEF11a:
-	print	CLS_S
-	jp	DEF10	
+; Edit was disabled as it caused some issues
+;EditCf:
+;	ld	hl,Record
+;	ld	a,#FF
+;	ld	de,BUFFER
+;	ld	(de),a
+;	inc	de
+;	ld	(de),a
+;	inc	de
+;	ld	bc,#40
+;	ldir
+;	call	Redit
+;	jr	z,DEF11a
+;	ld	hl,BUFFER+2
+;	ld	de,Record
+;	ld	bc,#40
+;	ldir
+;DEF11a:
+;	print	CLS_S
+;	jp	DEF10	
+
+
 ;-----------------------------------------------------------------------------
 LoadImage:
 ; Erase block's and load ROM-image
@@ -2149,6 +2152,7 @@ LoadImage:
 	or	a
 	jr	z,LIF01			; file open
 	print	F_NOT_F_S
+	scf				; set carry flag because of an error
 	ret
 LIF01:	ld      c,_SDMA
 	ld      de,BUFTOP
@@ -3368,7 +3372,7 @@ ChipErOK:
 
 
 ;**********************************************************************
-;* Menu Utilites
+;* Service Menu
 ;********************************************************************** 
 UTIL:
 	xor	a
@@ -3465,8 +3469,30 @@ CVDR2:	ld	a,(hl)
 	cp	#FF			; b1 empty ?
 	jr	z,CVDR1			; empty
 	ld	a,(hl)
-	cp	#FF			; b2 erase ?
+	cp	#FF			; b2 erased ?
 	jr	nz,CVDR1		; erase
+	push	hl
+	push	de
+	inc	hl
+	inc	hl
+	inc	hl
+	inc	hl			; Point to name at +#5
+	ld	de,RAM_TEMPL		; Point to "RAM: "
+	ex	hl,de
+	ld	b,5
+CVDR24:
+	ld	a,(de)
+	cp	(hl)
+	jr	nz,CVDR25
+	inc	hl
+	inc	de
+	djnz	CVDR24
+	pop	de
+	pop	hl
+	jr	CVDR1			; skip "RAM: " entries
+CVDR25:
+	pop	de
+	pop	hl
 	ld	bc,#3F			; not empty not erase -> copy		
 	ld	a,(Dpoint+2)
 	ld	(de),a			; 1st byte = new number record
@@ -3569,11 +3595,11 @@ CVDR20:
 	ld	bc,#2000
 	call	FBProg
 ;  clear autostart
-	xor	a
-	ld	(EBlock),a
-	ld	a,#80
-	ld	(EBlock0),a
-	call	FBerase
+;	xor	a
+;	ld	(EBlock),a
+;	ld	a,#80
+;	ld	(EBlock0),a
+;	call	FBerase
 
 	ld      a,(TPASLOT2)
 	ld      h,#80
@@ -5465,14 +5491,11 @@ IDE_INI1:
 	print	IDE_I_S
 	call	QFYN
 
-; prepare standart "ROMFILE"
 	ld	a,#01
 	ld	(Record+2),a		; set state block #10000
 	ld	a,#02
 	ld	(Record+3),a		; set length 2 bl #10000-#2FFFF
-
 	ld	hl,IDEFNam
-
 	jr	Ifop
 
 FMPAC_INI:
@@ -5491,18 +5514,16 @@ FMPAC_INI1:
 	print	FMPAC_I_S
 	call	QFYN
 
-; prepare standard "ROMFILE"
 	ld	a,#03
 	ld	(Record+2),a		; set start block #30000
 	ld	a,#01
 	ld	(Record+3),a		; set length 1 bl #30000-#3FFFF
-
 	ld	hl,FMPACNam
+
 Ifop:
 	ld	de,FCB
 	ld	bc,1+8+3
 	ldir				; set file name
-
         ld      bc,24           	; Prepare the FCB
         ld      de,FCB+13
         ld      hl,FCB+12
@@ -5512,18 +5533,21 @@ Ifop:
 	ld	de,FCB
 	ld	c,_FOPEN
 	call	DOS			; Open file
-
-; Get File Size
+	ld      hl,1
+	ld      (FCB+14),hl     	; Record size = 1 byte
+	or	a
+	jr	z,Ifop01			; file open
+	print	F_NOT_F_S
+	jp	UTIL
+Ifop01:
 	ld	hl,FCB+#10
 	ld	bc,4
 	ld	de,Size
-	ldir
+	ldir				; Get File Size
 
 	ld	a,(F_V)			; verbose mode?
 	or	a
-	jr	z,Ifop0
-
-; print ROM size in hex
+	jr	z,Ifop02
 	print	FileSZH
 	ld	a,(Size+3)
 	call	HEXOUT
@@ -5532,8 +5556,48 @@ Ifop:
 	ld	a,(Size+1)
 	call	HEXOUT
 	ld	a,(Size)
-	call	HEXOUT
+	call	HEXOUT			; print ROM size in hex
 	print	ONE_NL_S
+
+Ifop02:
+	ld      c,_SDMA
+	ld      de,BUFTOP
+	call    DOS
+
+	ld	c,_RBREAD
+	ld	de,FCB
+	ld	hl,#2000
+	call	DOS			; Load first 8kb
+	ld	a,h
+	or	l	
+	jr	nz,Ifop03
+	print	FR_ERS			; Read error
+	jr	Ifop041
+Ifop03:
+	ld	de,FCB
+	ld	c,_FCLOSE
+	call	DOS			; close file
+
+	ld	hl,BUFTOP
+	ld	a,(hl)
+	inc	hl
+	cp	"A"
+	jr	nz,Ifop04
+	ld	a,(hl)
+	inc	hl
+	inc	hl
+	cp	"B"
+	jr	nz,Ifop04
+	ld	a,(hl)
+	cp	#40			; test "AB" + high address value
+	jr	z,Ifop0
+Ifop04:
+	print	BadFile			; Broken or incompatible file
+Ifop041:
+	ld	de,FCB
+	ld	c,_FCLOSE
+	call	DOS			; close file
+	jp	UTIL
 
 Ifop0:
 ; load BIOS
@@ -5555,7 +5619,6 @@ Ifop0a:
 	call	ENASLT
 	xor	a
 	ld	(AddrFR),a		; Set back the first 64kb
-
 	jp	UTIL
 
 Ifop1:
@@ -5571,7 +5634,6 @@ BootINI:
 	print	Boot_I_S
 	call	QFYN
 
-; open file
 	ld	hl,BootFNam
 	ld	de,FCB
 	ld	bc,1+8+3
@@ -5590,37 +5652,75 @@ BootINI:
 	jr	z,Boot03		; file open
 	print	F_NOT_F_S
 	jp	UTIL
+
 Boot03:	ld      c,_SDMA
 	ld      de,BUFTOP
 	call    DOS			; set DMA
-; Get File Size
+
 	ld	hl,FCB+#10
 	ld	bc,4
 	ld	de,Size
-	ldir
-; Check size
-;	ld	bc,(Size+2)
-;	ld	a,(Size+1)	
-;	dec	a
-;	and	%11000000		; 2000h 0010 0000
-;	or	b
-;	or	c
-;	jr	z,Boot04
-;	print	FSizE_S			; File size >= 15kb
-;	jp	UTIL
-Boot04:
+	ldir				; Get File Size
 
-; Load first 8kb
+	ld	a,(F_V)			; verbose mode?
+	or	a
+	jr	z,Boot031
+	print	FileSZH
+	ld	a,(Size+3)
+	call	HEXOUT
+	ld	a,(Size+2)
+	call	HEXOUT
+	ld	a,(Size+1)
+	call	HEXOUT
+	ld	a,(Size)
+	call	HEXOUT			; print ROM size in hex
+	print	ONE_NL_S
+
+Boot031:
+	ld	bc,(Size+1)		; Check size: must be 32768 bytes for Boot Menu
+	ld	a,(Size)	
+	or	a
+	jr	nz,Boot035
+	or	b
+	jr	nz,Boot035
+	ld	a,c
+	cp	#80			; 32kb?
+	jr	z,Boot04
+Boot035:
+	print	BadFile			; Incorrect file size or format
+Boot0351:
+	ld	de,FCB
+	ld	c,_FCLOSE
+	call	DOS			; close file
+	jp	UTIL
+Boot04:
 	ld	c,_RBREAD
 	ld	de,FCB
 	ld	hl,#2000
-	call	DOS
+	call	DOS			; Load first 8kb
 	ld	a,h
 	or	l	
-	jr	nz,Boot05
-	print	FR_ER_S
-	jp	UTIL
-		
+	jr	nz,Boot045
+Boot04Er:
+	print	FR_ERS			; Read error
+	jr	Boot0351
+Boot045:
+	ld	hl,BUFTOP
+	ld	a,(hl)
+	inc	hl
+	cp	"A"
+	jr	nz,Boot035
+	ld	a,(hl)
+	inc	hl
+	cp	"B"
+	jr	nz,Boot035
+	ld	a,(hl)
+	inc	hl
+	cp	#1F
+	jr	nz,Boot035
+	ld	a,(hl)
+	cp	#40
+	jr	nz,Boot035
 Boot05:
 ;Erase boot menu		
 	print	BootWrit
@@ -7309,15 +7409,6 @@ BHtab:
 
 DESCR:	db	"CMFCCFRC"
 
-BTbp_S:	db	"   *--------",#0D,#0A
-	db	"   ",124,"*-------",#0D,#0A
-	db	"   ",124,124,"*------",#0D,#0A
-	db	"   ",124,124,124,"*-----",#0D,#0A
-	db	"   ",124,124,124,124,"*----",#0D,#0A
-	db	"   ",124,124,124,124,124,"*---",#0D,#0A
-	db	"   ",124,124,124,124,124,124,"*--$"	
-;	db	"FF-76543210-"
-
 F_NOT_F_S:
 	db	"File not found!",13,10,"$"
 F_NOT_FS:
@@ -7332,7 +7423,8 @@ FR_ERW_S:
 	db	13,10,"File write error!","$"
 FR_ERC_S:
 	db	13,10,"File create error!","$"
-
+BadFile:
+	db	10,13,"Damaged or incorrect file!",10,13,"$"	
 F_LOD_OK:
         db      13,10,"Preset loaded successfully!$"
 F_SAV_OK:
@@ -7436,7 +7528,8 @@ EBlock:	db	0
 strp:	db	0
 strI:	dw	#8000
 ROMEXT:	db	".ROM",0
-
+RAM_TEMPL:
+	db	"RAM: ",0
 BootFNam:
 	db	0,"BOOTCMFCBIN"
 IDEFNam:
@@ -7564,12 +7657,6 @@ H2Mconf	db	"> Enable RAM and mapper$"
 H1Mconf	db	"> Enable IDE controller$"
 H0Mconf	db	"> Enable SCC and mappers$"
 
-GENHLP	db	"Use [UP] or [DOWN] to select an option",10,13
-	db	"Use [SPACE] or [ENTER] to confirm$"
-
-GENHLP1	db	"Use [UP] or [DOWN] to select an entry",10,13
-	db	"Use [SPACE] or [ENTER] to confirm$"
-
 
 ;------------------------------------------------------------------------------
 
@@ -7595,12 +7682,27 @@ I_PAR_S:
 I_MPAR_S:
 	db	"Too many parameters!",13,10,13,10,"$"
 
+BTbp_S:	db	"   *--------",#0D,#0A
+	db	"   ",124,"*-------",#0D,#0A
+	db	"   ",124,124,"*------",#0D,#0A
+	db	"   ",124,124,124,"*-----",#0D,#0A
+	db	"   ",124,124,124,124,"*----",#0D,#0A
+	db	"   ",124,124,124,124,124,"*---",#0D,#0A
+	db	"   ",124,124,124,124,124,124,"*--$"	
+;	db	"FF-76543210-"
+
+GENHLP	db	"Use [UP] or [DOWN] to select an option",10,13
+	db	"Use [SPACE] or [ENTER] to confirm$"
+
+GENHLP1	db	"Use [UP] or [DOWN] to select an entry",10,13
+	db	"Use [SPACE] or [ENTER] to confirm$"
+
    if MODE=80
 ;------------------ MODE 80 ------------------
 PRESENT_S:
 	db	3
-	db	"Carnivore2 Multi-Cartridge Manager v2.15",13,10
-	db	"(C) 2015-2023 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 Multi-Cartridge Manager v2.22",13,10
+	db	"(C) 2015-2024 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
 Findcrt_S:
@@ -7651,8 +7753,8 @@ NO_B_UPD:
 ;------------------ MODE 40 ------------------
 PRESENT_S:
 	db	3
-	db	"Carnivore2 Multi-Cartridge",10,13,"Manager v2.15",13,10
-	db	"(C) 2015-2023 RBSC. All rights reserved",13,10,13,10,"$"
+	db	"Carnivore2 Multi-Cartridge",10,13,"Manager v2.22",13,10
+	db	"(C) 2015-2024 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found.",10,13
 	db	"Please specify its slot number - $"
@@ -8028,7 +8130,7 @@ CRD_S:	db	"Directory Editor - Press [ESC] to exit",10,13
 RDELQ_S:
 	db	"Delete this entry? (y/n) $"
 NODEL:	db	"Entry can't be deleted! Press any key...$"
-LOAD_S: db      "Ready to write the ROM image. Proceed or edit entry (y/n/e)? $"
+LOAD_S: db      "Ready to write the ROM image. Proceed (y/n)? $"
 MapBL:	db	"Map of FlashROM chip's 64kb blocks (FF = reserved, 00 = empty):",13,10,"$"
 
 ConfName:
@@ -8138,7 +8240,7 @@ RDELQ_S:
 	db	" - Delete this entry? (y/n)$"
 NODEL:	db	"Entry can't be deleted! Press any key...$"
 LOAD_S: db      "Ready to write the ROM image.",10,13
-	db	"Proceed or edit entry (y/n/e)? $"
+	db	"Proceed (y/n)? $"
 MapBL:	db	"Map of FlashROM chip's 64kb blocks",10,13
 	db	"(FF = reserved, 00 = empty):",13,10,"$"
 
@@ -8251,5 +8353,5 @@ HSOB	db	"ROM's starting options register",13,10
 EXIT_S:	db	10,13,"Thanks for using RBSC's products!",13,10,"$"
 
 	db	0
-	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX/VWARLOCK/TNT23:2023"
+	db	"RBSC:PTERO/WIERZBOWSKY/DJS3000/PYHESTY/GREYWOLF/SUPERMAX/VWARLOCK/TNT23:2024"
 	db	0,0,0
