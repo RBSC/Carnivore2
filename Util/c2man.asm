@@ -1,7 +1,7 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's FlashROM Manager
 ; Copyright (c) 2015-2024 RBSC
-; Version 2.22
+; Version 2.23
 ;
 ; WARNING!!
 ; The program's code and data before must not go over #4000 and below #C000 addresses!
@@ -5585,11 +5585,16 @@ Ifop03:
 	jr	nz,Ifop04
 	ld	a,(hl)
 	inc	hl
-	inc	hl
 	cp	"B"
 	jr	nz,Ifop04
+	inc	hl
 	ld	a,(hl)
-	cp	#40			; test "AB" + high address value
+	cp	#40			; test "AB" + high address value for IDE BIOS
+	jr	z,Ifop0
+	inc	hl
+	inc	hl
+	ld	a,(hl)
+	cp	#40			; test "AB" + high address value for FMPAC BIOS
 	jr	z,Ifop0
 Ifop04:
 	print	BadFile			; Broken or incompatible file
@@ -7696,7 +7701,7 @@ BTbp_S:	db	"   *--------",#0D,#0A
 ;------------------ MODE 80 ------------------
 PRESENT_S:
 	db	3
-	db	"Carnivore2 Multi-Cartridge Manager v2.22",13,10
+	db	"Carnivore2 Multi-Cartridge Manager v2.23",13,10
 	db	"(C) 2015-2024 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found. Please specify its slot number - $"
@@ -7748,7 +7753,7 @@ NO_B_UPD:
 ;------------------ MODE 40 ------------------
 PRESENT_S:
 	db	3
-	db	"Carnivore2 Multi-Cartridge",10,13,"Manager v2.22",13,10
+	db	"Carnivore2 Multi-Cartridge",10,13,"Manager v2.23",13,10
 	db	"(C) 2015-2024 RBSC. All rights reserved",13,10,13,10,"$"
 NSFin_S:
 	db	"Carnivore2 cartridge was not found.",10,13
