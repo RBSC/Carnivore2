@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
 Carnivore2 MultiFunctional Cartridge
-Copyright (c) 2017-2024 RBSC
-Last updated: 26.02.2024
+Copyright (c) 2017-2025 RBSC
+Last updated: 05.04.2025
 --------------------------------------------------------------------------------
 
 The user guide and technical documentation have been moved into the PDF files:
@@ -70,8 +70,8 @@ When the sources of the tools are used to create alternative projects, please al
 Contact information
 -------------------
 
-The members of RBSC group Tnt23, Wierzbowsky, Pyhesty, Ptero, GreyWolf, SuperMax, VWarlock and DJS3000 can be contacted via the group's
-e-mail address:
+The members of RBSC group Tnt23, Wierzbowsky, Pyhesty, Ptero, GreyWolf, SuperMax, VWarlock, Alspru and DJS3000 can be contacted via the
+group's e-mail address:
 
 info@rbsc.su
 

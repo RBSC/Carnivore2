@@ -1,7 +1,7 @@
 --------------------------------------------------------------------------------
-Carnivore2 MultiFunctional Cartridge version 2.53
-Copyright (c) 2017-2024 RBSC
-Last updated: 26.02.2024
+Carnivore2 MultiFunctional Cartridge version 2.54
+Copyright (c) 2017-2025 RBSC
+Last updated: 05.04.2025
 --------------------------------------------------------------------------------
 
 The Boot Menu code and the custom font were created by RBSC.

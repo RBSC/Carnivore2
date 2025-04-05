@@ -5,7 +5,7 @@
 ; Portions (c) Spark/SDM
 ; Portions (c) Jordon aka KOD/SDM 
  
-; Version 2.53
+; Version 2.54
 ;
 
 ; !COMPILATION OPTIONS!
@@ -171,7 +171,7 @@ REGLORG	equ	MUSINIT+#05AB
 	db	0,0,0,0,0,0
 Label	db	"CMFCCFRC"
 	db	0
-BBVers	db	"v2.53"  ; Version | also update it in the header!
+BBVers	db	"v2.54"  ; Version | also update it in the header!
 	db	0
 
 
@@ -7272,17 +7272,28 @@ TurboMode:
 	ld	a,(TURBOM)
 	or	a
 	jr	z,TurboM1
-	ld	a,1
+
+	in	a,(#41)		; get status bytes
+	bit	2,a
+	jp	nz,CH00
+	set	0,a
+	di
 	out	(#41),a		; disable Turbo mode on MSX2+
-	dec	a
+	ei
+	xor	a
 	ld	(TURBOM),a
 	call	PrintTur
 	jp	CH00
 	
 TurboM1:
-	xor	a
+	in	a,(#41)		; get status bytes
+	bit	2,a
+	jp	nz,CH00
+	res	0,a
+	di
 	out	(#41),a		; enable Turbo mode on MSX2+
-	inc	a
+	ei
+	ld	a,1
 	ld	(TURBOM),a
 	call	PrintTur
 	jp	CH00
