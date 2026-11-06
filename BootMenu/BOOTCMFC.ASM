@@ -1,11 +1,11 @@
 ;
 ; Carnivore/Carnivore2 Cartridge's Boot Menu
-; Copyright (c) 2015-2024 RBSC
+; Copyright (c) 2015-2026 RBSC
 ; Portions (c) Grauw
 ; Portions (c) Spark/SDM
 ; Portions (c) Jordon aka KOD/SDM 
  
-; Version 2.54
+; Version 2.55
 ;
 
 ; !COMPILATION OPTIONS!
@@ -123,7 +123,8 @@ SPECRBS	equ	#F5B2
 SCRSEM	equ	#F5B3
 SYMSEM	equ	#F5B4
 SCOLORS	equ	#F5B5	; 3 bytes!
-SORTBUF	equ	#F5B8	; will use 64 characters for sorting!
+ENAJOY	equ	#F5B8	; 1 byte
+SORTBUF	equ	#F5B9	; will use 64 characters for sorting!
 
 VDPR10	equ	#FFE8
 KEYBUF	equ	#FBF0
@@ -171,7 +172,7 @@ REGLORG	equ	MUSINIT+#05AB
 	db	0,0,0,0,0,0
 Label	db	"CMFCCFRC"
 	db	0
-BBVers	db	"v2.54"  ; Version | also update it in the header!
+BBVers	db	"v2.55"  ; Version | also update it in the header!
 	db	0
 
 
@@ -380,6 +381,7 @@ Boot2:
 	ld	(MASSLTS),a	; nothing selected for master slot
 	ld	(SLASLTS),a	; nothing selected for slave slot
 	ld	(MASSLAV),a	; slave slot not used as master's subslot
+	ld	(ENAJOY),a	; enable joystick by default
 	xor	a
 	ld	(MASSEXP),a	; master slot not expanded by default
 	ld	(SLASEXP),a	; slave slot not expanded by default
@@ -3366,31 +3368,51 @@ CHFKEY_E:
 	ret
 
 
-; Wait until the joystick keys are released
+; Wait until the joystick keys are released, disable joystick on stuck key
 ;
-KILJOY:
-	ld	a,1
+KILJOY:	push	hl
+	ld	hl,#0000
+KILJ0:	ld	a,1
 	call	GTTRIGG		; joystick 1 button A
 	cp	#FF
-	jr	z,KILJOY
+	jr	nz,KILJ1
+	inc	hl
+KILJ1:
 	ld	a,2
 	call	GTTRIGG		; joystick 2 button A
 	cp	#FF
-	jr	z,KILJOY
+	jr	nz,KILJ2
+	inc	hl
+KILJ2:
 	ld	a,3
 	call	GTTRIGG		; joystick 1 button B
 	cp	#FF
-	jr	z,KILJOY
+	jr	nz,KILJ3
+	inc	hl
+KILJ3:
 	ld	a,4
 	call	GTTRIGG		; joystick 2 button B
 	cp	#FF
-	jr	z,KILJOY
+	jr	nz,KILJ4
+	inc	hl
+KILJ4:
+	ld	a,l
+	add	h
+	or	a
+	jr	z,KILJE
+	xor	a
+	ld	(ENAJOY),a	; disable joystick
+KILJE:
+	pop	hl
 	ret
 
 
 ; Check joystick buttons and directions, transform into keypresses
 ;
 JoyCheck:
+	ld	a,(ENAJOY)
+	or	a		; enable joystick?
+	ret	z
 	xor	a
 	call	GTTRIGG	 	; space/built-in buttons
 	or	a
